@@ -20,3 +20,11 @@ var ErrImmutable = &ErrCore{
 	Code:    "ER-CORE-001",
 	Message: "el registro no puede ser modificado en su estado actual",
 }
+
+// ErrInvalidTransition se emite cuando se intenta una transición
+// de estado no declarada en la matriz de lifecycle.
+// Código: ER-CORE-002
+var ErrInvalidTransition = &ErrCore{
+	Code:    "ER-CORE-002",
+	Message: "la transición de estado no está permitida",
+}
