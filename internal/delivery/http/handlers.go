@@ -9,9 +9,12 @@ import (
 // pageData contiene los datos comunes de todas las páginas.
 // El nombre de la app es configurable para soportar white label.
 type pageData struct {
-	AppName     string
-	PageTitle   string
-	CurrentPath string
+	ErrorCode    string
+	ErrorMessage string
+	UXErrors     []UXValidationError
+	AppName      string
+	PageTitle    string
+	CurrentPath  string
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
