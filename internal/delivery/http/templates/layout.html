@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.PageTitle}} — {{.AppName}}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
+        header { background: #1a1a1a; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+        header h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: 0.05em; }
+        nav a { color: #ccc; text-decoration: none; margin-left: 1.5rem; font-size: 0.9rem; }
+        nav a:hover { color: #fff; }
+        main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+        h2 { font-size: 1.5rem; margin-bottom: 1rem; color: #1a1a1a; }
+        .placeholder { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 2rem; color: #666; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>{{.AppName}}</h1>
+        <nav>
+            <a href="/">Inicio</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/pacientes">Pacientes</a>
+        </nav>
+    </header>
+    <main>
+        <h2>{{.PageTitle}}</h2>
+        <div class="placeholder">
+            Módulo en construcción. La integración con el Core se realiza en issues posteriores vía Shaders.
+        </div>
+    </main>
+</body>
+</html>
