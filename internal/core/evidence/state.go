@@ -1,23 +1,16 @@
-// Package evidence defines the minimal Core entity representing a base
-// evidence record in VUHMÍK.
-//
-// SCOPE NOTE (Issue #1):
-// This package contains only structure. It has no behavior, no methods,
-// no lifecycle enforcement, no persistence and no business logic.
-// Subsequent issues introduce states, lifecycle, transitions, immutability
-// guards and persistence per the execution plan.
 package evidence
 
 // State is the strongly-typed value of the State field on Evidence.
 //
-// SCOPE NOTE (Issue #1):
-// This type exists solely to type the State field on the Evidence struct,
-// as authorized by ADR-0003 §5. Valid state values, lifecycle, transitions
-// and behavior are defined in subsequent issues per the execution plan.
-//
-// This file intentionally contains:
-//   - no state constants
-//   - no transition matrix
-//   - no methods
-//   - no behavior
+// Valid state constants are defined below. Any value outside these
+// constants is invalid and will be rejected by lifecycle enforcement
+// introduced in subsequent issues.
 type State string
+
+// Valid states of an Evidence record.
+const (
+	StateDraft  State = "draft"
+	StateIssued State = "issued"
+	StateLocked State = "locked"
+	StateVoided State = "voided"
+)
