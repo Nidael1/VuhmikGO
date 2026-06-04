@@ -29,3 +29,13 @@ func renderUXError(w http.ResponseWriter, r *http.Request, errs []UXValidationEr
 		UXErrors:  errs,
 	})
 }
+
+// decisionFromError convierte un error genérico en un ShaderDecision de deny.
+// Usado cuando el Export retorna error sin ShaderDecision explícita.
+func decisionFromError(err error) shaders.ShaderDecision {
+	return shaders.ShaderDecision{
+		Result:    shaders.DecisionDeny,
+		ErrorCode: "ER-SHADER-001",
+		Reason:    err.Error(),
+	}
+}
