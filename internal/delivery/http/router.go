@@ -8,4 +8,5 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/", handleIndex)
 	mux.HandleFunc("/dashboard", handleDashboard)
 	mux.HandleFunc("/pacientes", handlePacientes)
+	mux.HandleFunc("/registros/nuevo", handleNuevoRegistro)
 }
