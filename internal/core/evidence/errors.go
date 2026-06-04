@@ -28,3 +28,11 @@ var ErrInvalidTransition = &ErrCore{
 	Code:    "ER-CORE-002",
 	Message: "la transición de estado no está permitida",
 }
+
+// ErrMissingReasonCode se emite cuando se intenta una operación
+// que requiere reason_code y no fue provisto.
+// Código: ER-CORE-003
+var ErrMissingReasonCode = &ErrCore{
+	Code:    "ER-CORE-003",
+	Message: "se requiere un reason_code para ejecutar esta operación",
+}
