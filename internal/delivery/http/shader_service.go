@@ -33,3 +33,25 @@ func (s *ShaderService) Authorize(
 	}
 	return s.medical.Evaluate(ctx)
 }
+
+// Export genera un export legal en memoria vía LegalExportShader.
+// El resultado debe usarse inmediatamente. No se persiste.
+// No se registra PHI en logs.
+func (s *ShaderService) Export(
+	tenantID string,
+	actorID string,
+	evidenceID string,
+) ([]byte, error) {
+	ctx := shaders.ShaderContext{
+		TenantID:  tenantID,
+		ActorID:   actorID,
+		Operation: shaders.OperationExport,
+		SubjectID: evidenceID,
+	}
+	data := shaders.ExportData{
+		EvidenceID: evidenceID,
+		TenantID:   tenantID,
+		State:      "issued",
+	}
+	return s.export.GenerateExport(ctx, data)
+}
