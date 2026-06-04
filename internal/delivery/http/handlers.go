@@ -45,7 +45,7 @@ func handlePacientes(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func render(w http.ResponseWriter, tmpl string, data pageData) {
+func render(w http.ResponseWriter, tmpl string, data any) {
 	path := filepath.Join("internal", "delivery", "http", "templates", tmpl)
 	t, err := template.ParseFiles(path)
 	if err != nil {

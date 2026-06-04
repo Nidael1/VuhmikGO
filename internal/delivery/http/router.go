@@ -11,4 +11,5 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/registros/nuevo", handleNuevoRegistro)
 	mux.HandleFunc("/ece/nuevo", handleECENuevo)
 	mux.HandleFunc("/ece/emitir", handleECEEmitir)
+	mux.HandleFunc("/ece/anular", handleECEVoid)
 }
