@@ -14,6 +14,12 @@
         main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
         h2 { font-size: 1.5rem; margin-bottom: 1rem; color: #1a1a1a; }
         .placeholder { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 2rem; color: #666; }
+        .error-box { background: #fff3f3; border: 1px solid #e53e3e; border-radius: 6px; padding: 1.5rem; margin-bottom: 1rem; }
+        .error-code { font-family: monospace; font-weight: 700; color: #c53030; }
+        .error-msg { color: #742a2a; margin-top: 0.5rem; }
+        .ux-errors { list-style: none; margin-top: 0.5rem; }
+        .ux-errors li { color: #742a2a; font-size: 0.9rem; padding: 0.25rem 0; }
+        .ux-errors li::before { content: "• "; }
     </style>
 </head>
 <body>
@@ -27,6 +33,20 @@
     </header>
     <main>
         <h2>{{.PageTitle}}</h2>
+        {{if .ErrorCode}}
+        <div class="error-box">
+            <span class="error-code">{{.ErrorCode}}</span>
+            {{if .ErrorMessage}}<p class="error-msg">{{.ErrorMessage}}</p>{{end}}
+        </div>
+        {{end}}
+        {{if .UXErrors}}
+        <div class="error-box">
+            <p class="error-code">Errores de validación</p>
+            <ul class="ux-errors">
+                {{range .UXErrors}}<li>{{.Field}}: {{.Message}}</li>{{end}}
+            </ul>
+        </div>
+        {{end}}
         <div class="placeholder">
             Módulo en construcción. La integración con el Core se realiza en issues posteriores vía Shaders.
         </div>
