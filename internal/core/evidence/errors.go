@@ -36,3 +36,11 @@ var ErrMissingReasonCode = &ErrCore{
 	Code:    "ER-CORE-003",
 	Message: "se requiere un reason_code para ejecutar esta operación",
 }
+
+// ErrInvalidReplacement se emite cuando el registro de reemplazo
+// tiene un ID inválido o igual al original.
+// Código: ER-CORE-004
+var ErrInvalidReplacement = &ErrCore{
+	Code:    "ER-CORE-004",
+	Message: "el registro de reemplazo debe tener un ID único y distinto al original",
+}
