@@ -54,3 +54,31 @@ func (s *ECEService) Issue(id string) (evidence.Evidence, error) {
 	}
 	return e, nil
 }
+
+// Lock bloquea un registro issued, transitando a locked.
+// Post-lock el registro es completamente inmutable.
+func (s *ECEService) Lock(id string) (evidence.Evidence, error) {
+	e, err := s.repo.FindByID(id)
+	if err != nil {
+		return evidence.Evidence{}, err
+	}
+	if err := evidence.GuardTransition(e.State, evidence.StateLocked); err != nil {
+		return evidence.Evidence{}, err
+	}
+	e.State = evidence.StateLocked
+	if err := s.repo.Update(e); err != nil {
+		return evidence.Evidence{}, err
+	}
+	return e, nil
+}
+
+// IssueAndLock emite y bloquea en una sola operación atómica de dominio.
+// Equivale a draft → issued → locked.
+// Post-operación el registro es completamente inmutable.
+func (s *ECEService) IssueAndLock(id string) (evidence.Evidence, error) {
+	issued, err := s.Issue(id)
+	if err != nil {
+		return evidence.Evidence{}, err
+	}
+	return s.Lock(issued.ID)
+}
