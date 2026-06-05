@@ -82,3 +82,21 @@ func (s *ECEService) IssueAndLock(id string) (evidence.Evidence, error) {
 	}
 	return s.Lock(issued.ID)
 }
+
+// Void anula un registro con reason_code obligatorio.
+// El registro original queda voided y preservado en historial.
+// Rechaza si reason_code no está en el catálogo.
+func (s *ECEService) Void(id string, reasonCode evidence.ReasonCode) (evidence.Evidence, error) {
+	e, err := s.repo.FindByID(id)
+	if err != nil {
+		return evidence.Evidence{}, err
+	}
+	voided, err := evidence.Void(e, reasonCode, time.Now().UTC())
+	if err != nil {
+		return evidence.Evidence{}, err
+	}
+	if err := s.repo.Update(voided); err != nil {
+		return evidence.Evidence{}, err
+	}
+	return voided, nil
+}
