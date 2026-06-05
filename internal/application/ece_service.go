@@ -100,3 +100,38 @@ func (s *ECEService) Void(id string, reasonCode evidence.ReasonCode) (evidence.E
 	}
 	return voided, nil
 }
+
+// Replace anula el original y crea el reemplazo emitido en una operación.
+// El original queda voided. El reemplazo queda issued con replaced_by_id enlazado.
+// Rechaza si el original no está en estado que permita void.
+func (s *ECEService) Replace(
+	originalID string,
+	replacementID string,
+	tenantID string,
+	reasonCode evidence.ReasonCode,
+) (original evidence.Evidence, replacement evidence.Evidence, err error) {
+	orig, err := s.repo.FindByID(originalID)
+	if err != nil {
+		return evidence.Evidence{}, evidence.Evidence{}, err
+	}
+
+	repl := evidence.Evidence{
+		ID:        replacementID,
+		TenantID:  tenantID,
+		State:     evidence.StateDraft,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	voided, issued, err := evidence.Replace(orig, repl, reasonCode, time.Now().UTC())
+	if err != nil {
+		return evidence.Evidence{}, evidence.Evidence{}, err
+	}
+
+	if err := s.repo.Update(voided); err != nil {
+		return evidence.Evidence{}, evidence.Evidence{}, err
+	}
+	if err := s.repo.Create(issued); err != nil {
+		return evidence.Evidence{}, evidence.Evidence{}, err
+	}
+	return voided, issued, nil
+}
