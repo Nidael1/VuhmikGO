@@ -15,9 +15,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	delivery.RegisterRoutes(mux)
+	handler := delivery.Handler(mux)
 
 	observability.Logger.Info("servidor iniciado", "addr", ":8080")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	if err := http.ListenAndServe(":8080", handler); err != nil {
 		log.Fatalf("error al iniciar servidor: %v", err)
 	}
 }
