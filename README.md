@@ -24,14 +24,21 @@ binario Go.
 
 ```
 VuhmikGO/
-├── cmd/                 → entrypoints ejecutables (futuro)
+├── cmd/                 → entrypoints ejecutables
+│   └── vuhmik-api/      → servidor HTTP principal
 ├── internal/
 │   ├── core/            → reglas puras, entidades, lifecycle (Core)
-│   ├── application/     → casos de uso y puertos (futuro)
-│   ├── infrastructure/  → adaptadores concretos (futuro)
-│   └── delivery/        → entrada HTTP (futuro)
+│   ├── application/     → casos de uso y puertos
+│   │   └── ports/       → interfaces de repositorio
+│   ├── infrastructure/  → adaptadores concretos
+│   │   ├── postgres/    → repositorio PostgreSQL (pgx/v5)
+│   │   └── inmemory/    → repositorio en memoria (tests)
+│   ├── delivery/        → entrada HTTP (handlers, router, templates)
+│   ├── shaders/         → frontera contractual al Core
+│   └── observability/   → logging, métricas, secretos
 ├── docs/
-│   └── adr/             → Architecture Decision Records
+│   ├── adr/             → Architecture Decision Records
+│   └── runbooks/        → guías operativas
 ├── go.mod
 └── README.md
 ```
