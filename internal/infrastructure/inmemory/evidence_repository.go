@@ -34,24 +34,26 @@ func (r *EvidenceRepository) Create(e evidence.Evidence) error {
 	return nil
 }
 
-// FindByID recupera un registro por ID.
-func (r *EvidenceRepository) FindByID(id string) (evidence.Evidence, error) {
+// FindByID recupera un registro por ID, exigiendo que pertenezca a tenantID.
+// Aislamiento multi-tenant (Issue #56): un registro de otro tenant
+// retorna el mismo error que "no encontrado".
+func (r *EvidenceRepository) FindByID(tenantID, id string) (evidence.Evidence, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	e, ok := r.records[id]
-	if !ok {
+	if !ok || e.TenantID != tenantID {
 		return evidence.Evidence{}, fmt.Errorf("registro %s no encontrado", id)
 	}
 	return e, nil
 }
 
-// Update actualiza un registro existente.
+// Update actualiza un registro existente, exigiendo que pertenezca a tenantID.
 // Rechaza si el estado actual es issued o locked (ER-CORE-001).
-func (r *EvidenceRepository) Update(e evidence.Evidence) error {
+func (r *EvidenceRepository) Update(tenantID string, e evidence.Evidence) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	current, ok := r.records[e.ID]
-	if !ok {
+	if !ok || current.TenantID != tenantID {
 		return fmt.Errorf("registro %s no encontrado", e.ID)
 	}
 	if err := evidence.GuardMutation(current); err != nil {
