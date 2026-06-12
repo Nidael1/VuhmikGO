@@ -37,12 +37,14 @@ func (r *EvidenceRepository) Create(e evidence.Evidence) error {
 	return nil
 }
 
-// FindByID recupera un registro Evidence por su ID.
-func (r *EvidenceRepository) FindByID(id string) (evidence.Evidence, error) {
+// FindByID recupera un registro Evidence por su ID, exigiendo que
+// pertenezca a tenantID (Issue #56 — aislamiento multi-tenant).
+// Un registro de otro tenant retorna el mismo error que "no encontrado".
+func (r *EvidenceRepository) FindByID(tenantID, id string) (evidence.Evidence, error) {
 	sql := `
 		SELECT id, tenant_id, state, created_at, issued_at, voided_at, replaced_by_id
-		FROM evidence WHERE id = $1`
-	row := r.pool.QueryRow(context.Background(), sql, id)
+		FROM evidence WHERE id = $1 AND tenant_id = $2`
+	row := r.pool.QueryRow(context.Background(), sql, id, tenantID)
 
 	var e evidence.Evidence
 	var state string
@@ -57,10 +59,11 @@ func (r *EvidenceRepository) FindByID(id string) (evidence.Evidence, error) {
 	return e, nil
 }
 
-// Update persiste cambios de estado en un registro existente.
+// Update persiste cambios de estado en un registro existente, exigiendo
+// que pertenezca a tenantID (Issue #56 — aislamiento multi-tenant).
 // Rechaza si el estado actual en BD es issued o locked (ER-CORE-001).
-func (r *EvidenceRepository) Update(e evidence.Evidence) error {
-	current, err := r.FindByID(e.ID)
+func (r *EvidenceRepository) Update(tenantID string, e evidence.Evidence) error {
+	current, err := r.FindByID(tenantID, e.ID)
 	if err != nil {
 		return err
 	}
@@ -70,9 +73,9 @@ func (r *EvidenceRepository) Update(e evidence.Evidence) error {
 	sql := `
 		UPDATE evidence
 		SET state = $1, issued_at = $2, voided_at = $3, replaced_by_id = $4
-		WHERE id = $5`
+		WHERE id = $5 AND tenant_id = $6`
 	_, err = r.pool.Exec(context.Background(), sql,
-		string(e.State), e.IssuedAt, e.VoidedAt, e.ReplacedByID, e.ID,
+		string(e.State), e.IssuedAt, e.VoidedAt, e.ReplacedByID, e.ID, tenantID,
 	)
 	if err != nil {
 		return fmt.Errorf("error al actualizar evidencia: %w", err)

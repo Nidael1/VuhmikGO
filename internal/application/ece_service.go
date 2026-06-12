@@ -12,6 +12,11 @@ import (
 )
 
 // ECEService orquesta los casos de uso del Expediente Clínico Electrónico.
+//
+// Aislamiento multi-tenant (Issue #56): todas las operaciones que
+// recuperan o mutan un registro existente exigen tenantID explícito,
+// propagado al repositorio. Un tenant nunca puede leer ni mutar
+// registros de otro tenant, incluso conociendo el ID exacto.
 type ECEService struct {
 	repo ports.EvidenceRepository
 }
@@ -38,8 +43,9 @@ func (s *ECEService) CreateDraft(id, tenantID string) (evidence.Evidence, error)
 
 // Issue emite un registro draft, transitando a issued.
 // Registra issued_at. El registro queda inmutable post-emisión.
-func (s *ECEService) Issue(id string) (evidence.Evidence, error) {
-	e, err := s.repo.FindByID(id)
+// Exige tenantID — solo opera sobre registros del tenant dado.
+func (s *ECEService) Issue(tenantID, id string) (evidence.Evidence, error) {
+	e, err := s.repo.FindByID(tenantID, id)
 	if err != nil {
 		return evidence.Evidence{}, err
 	}
@@ -49,7 +55,7 @@ func (s *ECEService) Issue(id string) (evidence.Evidence, error) {
 	now := time.Now().UTC()
 	e.State = evidence.StateIssued
 	e.IssuedAt = &now
-	if err := s.repo.Update(e); err != nil {
+	if err := s.repo.Update(tenantID, e); err != nil {
 		return evidence.Evidence{}, err
 	}
 	return e, nil
@@ -57,8 +63,9 @@ func (s *ECEService) Issue(id string) (evidence.Evidence, error) {
 
 // Lock bloquea un registro issued, transitando a locked.
 // Post-lock el registro es completamente inmutable.
-func (s *ECEService) Lock(id string) (evidence.Evidence, error) {
-	e, err := s.repo.FindByID(id)
+// Exige tenantID — solo opera sobre registros del tenant dado.
+func (s *ECEService) Lock(tenantID, id string) (evidence.Evidence, error) {
+	e, err := s.repo.FindByID(tenantID, id)
 	if err != nil {
 		return evidence.Evidence{}, err
 	}
@@ -66,7 +73,7 @@ func (s *ECEService) Lock(id string) (evidence.Evidence, error) {
 		return evidence.Evidence{}, err
 	}
 	e.State = evidence.StateLocked
-	if err := s.repo.Update(e); err != nil {
+	if err := s.repo.Update(tenantID, e); err != nil {
 		return evidence.Evidence{}, err
 	}
 	return e, nil
@@ -75,19 +82,20 @@ func (s *ECEService) Lock(id string) (evidence.Evidence, error) {
 // IssueAndLock emite y bloquea en una sola operación atómica de dominio.
 // Equivale a draft → issued → locked.
 // Post-operación el registro es completamente inmutable.
-func (s *ECEService) IssueAndLock(id string) (evidence.Evidence, error) {
-	issued, err := s.Issue(id)
+func (s *ECEService) IssueAndLock(tenantID, id string) (evidence.Evidence, error) {
+	issued, err := s.Issue(tenantID, id)
 	if err != nil {
 		return evidence.Evidence{}, err
 	}
-	return s.Lock(issued.ID)
+	return s.Lock(tenantID, issued.ID)
 }
 
 // Void anula un registro con reason_code obligatorio.
 // El registro original queda voided y preservado en historial.
 // Rechaza si reason_code no está en el catálogo.
-func (s *ECEService) Void(id string, reasonCode evidence.ReasonCode) (evidence.Evidence, error) {
-	e, err := s.repo.FindByID(id)
+// Exige tenantID — solo opera sobre registros del tenant dado.
+func (s *ECEService) Void(tenantID, id string, reasonCode evidence.ReasonCode) (evidence.Evidence, error) {
+	e, err := s.repo.FindByID(tenantID, id)
 	if err != nil {
 		return evidence.Evidence{}, err
 	}
@@ -95,7 +103,7 @@ func (s *ECEService) Void(id string, reasonCode evidence.ReasonCode) (evidence.E
 	if err != nil {
 		return evidence.Evidence{}, err
 	}
-	if err := s.repo.Update(voided); err != nil {
+	if err := s.repo.Update(tenantID, voided); err != nil {
 		return evidence.Evidence{}, err
 	}
 	return voided, nil
@@ -104,13 +112,15 @@ func (s *ECEService) Void(id string, reasonCode evidence.ReasonCode) (evidence.E
 // Replace anula el original y crea el reemplazo emitido en una operación.
 // El original queda voided. El reemplazo queda issued con replaced_by_id enlazado.
 // Rechaza si el original no está en estado que permita void.
+// El original debe pertenecer a tenantID; el reemplazo se crea en el
+// mismo tenant (no se permite mover registros entre tenants).
 func (s *ECEService) Replace(
+	tenantID string,
 	originalID string,
 	replacementID string,
-	tenantID string,
 	reasonCode evidence.ReasonCode,
 ) (original evidence.Evidence, replacement evidence.Evidence, err error) {
-	orig, err := s.repo.FindByID(originalID)
+	orig, err := s.repo.FindByID(tenantID, originalID)
 	if err != nil {
 		return evidence.Evidence{}, evidence.Evidence{}, err
 	}
@@ -127,7 +137,7 @@ func (s *ECEService) Replace(
 		return evidence.Evidence{}, evidence.Evidence{}, err
 	}
 
-	if err := s.repo.Update(voided); err != nil {
+	if err := s.repo.Update(tenantID, voided); err != nil {
 		return evidence.Evidence{}, evidence.Evidence{}, err
 	}
 	if err := s.repo.Create(issued); err != nil {
