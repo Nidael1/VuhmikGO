@@ -1,0 +1,22 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import type { AuthTokens, UserProfile } from '@/domain/types/auth'
+
+export const useAuthStore = defineStore('auth', () => {
+  const token = ref<string | null>(null)
+  const profile = ref<UserProfile | null>(null)
+
+  const isAuthenticated = computed(() => token.value !== null)
+
+  function setSession(tokens: AuthTokens) {
+    token.value = tokens.token
+    profile.value = { actor_id: tokens.actor_id, tenant_id: tokens.tenant_id }
+  }
+
+  function clearSession() {
+    token.value = null
+    profile.value = null
+  }
+
+  return { token, profile, isAuthenticated, setSession, clearSession }
+})

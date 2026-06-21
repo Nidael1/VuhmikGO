@@ -1,5 +1,5 @@
 <script setup lang="ts">
 </script>
 <template>
-  <div></div>
+  <div class="view-placeholder"><h2>LoginView</h2></div>
 </template>
