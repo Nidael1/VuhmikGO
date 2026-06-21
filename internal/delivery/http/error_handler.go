@@ -35,7 +35,7 @@ func renderUXError(w http.ResponseWriter, r *http.Request, errs []UXValidationEr
 func decisionFromError(err error) shaders.ShaderDecision {
 	return shaders.ShaderDecision{
 		Result:    shaders.DecisionDeny,
-		ErrorCode: "ER-SHADER-001",
+		ErrorCode: shaders.ErrShaderContextInvalid,
 		Reason:    err.Error(),
 	}
 }

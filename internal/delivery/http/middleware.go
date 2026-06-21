@@ -1,6 +1,10 @@
 package delivery
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/Nidael1/VuhmikGO/internal/shaders"
+)
 
 // publicPaths son las rutas que no requieren contexto de tenant/actor.
 // Solo navegación de solo lectura sin operaciones sensibles.
@@ -33,8 +37,8 @@ func TenantContextMiddleware(next http.Handler) http.Handler {
 			render(w, "layout.html", pageData{
 				AppName:      appName(),
 				PageTitle:    "Acceso denegado",
-				ErrorCode:    "ER-SHADER-001",
-				ErrorMessage: UXCopyFor("ER-SHADER-001", "contexto de tenant ausente"),
+				ErrorCode:    shaders.ErrShaderContextInvalid,
+				ErrorMessage: UXCopyFor(shaders.ErrShaderContextInvalid, "contexto de tenant ausente"),
 			})
 			return
 		}

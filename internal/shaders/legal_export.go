@@ -37,14 +37,14 @@ func (s *LegalExportShader) Evaluate(ctx ShaderContext) ShaderDecision {
 	if err := ctx.Validate(); err != nil {
 		return ShaderDecision{
 			Result:    DecisionDeny,
-			ErrorCode: errShaderContextInvalid,
+			ErrorCode: ErrShaderContextInvalid,
 			Reason:    err.Error(),
 		}
 	}
 	if ctx.Operation != OperationExport {
 		return ShaderDecision{
 			Result:    DecisionDeny,
-			ErrorCode: errShaderOperationDenied,
+			ErrorCode: ErrShaderOperationDenied,
 			Reason:    "este shader solo permite operación export",
 		}
 	}
