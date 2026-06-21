@@ -8,6 +8,7 @@ import (
 
 	"github.com/Nidael1/VuhmikGO/internal/core/evidence"
 	"github.com/Nidael1/VuhmikGO/internal/infrastructure/inmemory"
+	"github.com/Nidael1/VuhmikGO/internal/shaders"
 )
 
 // evidenceStore es el repositorio en memoria compartido para demo.
@@ -306,4 +307,64 @@ func mapCoreError(err error) string {
 	default:
 		return "INTERNAL_ERROR"
 	}
+}
+
+// HandleEvidenceExport genera el export legal efimero de una evidencia.
+//
+// POST /api/v1/evidence/:id/export
+// El archivo se genera en memoria y se sirve directamente.
+// No se persiste ningun archivo. Cache-Control: no-store.
+func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := TenantIDFromContext(r)
+	actorID := ActorIDFromContext(r)
+	if tenantID == "" || actorID == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+	id := extractID(r.URL.Path, "/export")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "id requerido")
+		return
+	}
+	e, err := evidenceStore.FindByID(tenantID, id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
+		return
+	}
+
+	svc := buildExportShader()
+	ctx := shaders.ShaderContext{
+		TenantID:  tenantID,
+		ActorID:   actorID,
+		Operation: shaders.OperationExport,
+		SubjectID: id,
+	}
+	data := shaders.ExportData{
+		EvidenceID:   e.ID,
+		TenantID:     e.TenantID,
+		State:        string(e.State),
+		CreatedAt:    e.CreatedAt,
+		IssuedAt:     e.IssuedAt,
+		VoidedAt:     e.VoidedAt,
+		ReplacedByID: e.ReplacedByID,
+	}
+	exportBytes, err := svc.GenerateExport(ctx, data)
+	if err != nil {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "export no autorizado")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"export_"+id+".json\"")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	w.Write(exportBytes)
+}
+
+func buildExportShader() shaders.ExportShader {
+	return shaders.NewLegalExportShader()
 }
