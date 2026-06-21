@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	delivery "github.com/Nidael1/VuhmikGO/internal/delivery/http"
+	"github.com/Nidael1/VuhmikGO/internal/delivery/http/api"
 	"github.com/Nidael1/VuhmikGO/internal/observability"
 )
 
@@ -15,6 +16,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	delivery.RegisterRoutes(mux)
+	api.RegisterAPIRoutes(mux)
 	handler := delivery.Handler(mux)
 
 	observability.Logger.Info("servidor iniciado", "addr", ":8080")

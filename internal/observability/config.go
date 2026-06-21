@@ -9,6 +9,7 @@ import (
 // La app falla inmediatamente si alguna falta.
 var requiredEnvVars = []string{
 	"DATABASE_URL",
+	"JWT_SECRET",
 }
 
 // ValidateRuntimeSecrets verifica que todas las variables de entorno
