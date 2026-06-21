@@ -82,3 +82,32 @@ func (r *EvidenceRepository) Update(tenantID string, e evidence.Evidence) error 
 	}
 	return nil
 }
+
+// FindAll retorna todos los registros del tenant dado desde PostgreSQL.
+// Nunca retorna registros de otro tenant.
+func (r *EvidenceRepository) FindAll(tenantID string) ([]evidence.Evidence, error) {
+	sql := `
+		SELECT id, tenant_id, state, created_at, issued_at, voided_at, replaced_by_id
+		FROM evidence
+		WHERE tenant_id = $1
+		ORDER BY created_at DESC`
+	rows, err := r.pool.Query(context.Background(), sql, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("error al listar evidencias: %w", err)
+	}
+	defer rows.Close()
+	var result []evidence.Evidence
+	for rows.Next() {
+		var e evidence.Evidence
+		var state string
+		if err := rows.Scan(
+			&e.ID, &e.TenantID, &state,
+			&e.CreatedAt, &e.IssuedAt, &e.VoidedAt, &e.ReplacedByID,
+		); err != nil {
+			return nil, fmt.Errorf("error al escanear evidencia: %w", err)
+		}
+		e.State = evidence.State(state)
+		result = append(result, e)
+	}
+	return result, nil
+}

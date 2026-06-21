@@ -62,3 +62,17 @@ func (r *EvidenceRepository) Update(tenantID string, e evidence.Evidence) error 
 	r.records[e.ID] = e
 	return nil
 }
+
+// FindAll retorna todos los registros del tenant dado.
+// Nunca retorna registros de otro tenant.
+func (r *EvidenceRepository) FindAll(tenantID string) ([]evidence.Evidence, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []evidence.Evidence
+	for _, e := range r.records {
+		if e.TenantID == tenantID {
+			result = append(result, e)
+		}
+	}
+	return result, nil
+}
