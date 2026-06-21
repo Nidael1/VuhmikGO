@@ -55,7 +55,7 @@ func TestMedicalBasicShader_DeniegaContextoInvalido(t *testing.T) {
 	if d.Result != DecisionDeny {
 		t.Fatal("esperaba deny por contexto vacío")
 	}
-	if d.ErrorCode != errShaderContextInvalid {
+	if d.ErrorCode != ErrShaderContextInvalid {
 		t.Fatalf("código incorrecto: %s", d.ErrorCode)
 	}
 }

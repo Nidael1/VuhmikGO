@@ -11,8 +11,8 @@ type MedicalBasicShader struct{}
 
 // shaderErrorCodes para el perfil médico básico.
 const (
-	errShaderContextInvalid  = "ER-SHADER-001"
-	errShaderOperationDenied = "ER-SHADER-002"
+	ErrShaderContextInvalid  = "ER-SHADER-001"
+	ErrShaderOperationDenied = "ER-SHADER-002"
 )
 
 // Evaluate evalúa si la operación está permitida en el perfil médico básico.
@@ -25,7 +25,7 @@ func (s *MedicalBasicShader) Evaluate(ctx ShaderContext) ShaderDecision {
 	if err := ctx.Validate(); err != nil {
 		return ShaderDecision{
 			Result:    DecisionDeny,
-			ErrorCode: errShaderContextInvalid,
+			ErrorCode: ErrShaderContextInvalid,
 			Reason:    err.Error(),
 		}
 	}
@@ -43,7 +43,7 @@ func (s *MedicalBasicShader) Evaluate(ctx ShaderContext) ShaderDecision {
 	default:
 		return ShaderDecision{
 			Result:    DecisionDeny,
-			ErrorCode: errShaderOperationDenied,
+			ErrorCode: ErrShaderOperationDenied,
 			Reason:    "operación no reconocida en perfil médico básico",
 		}
 	}
