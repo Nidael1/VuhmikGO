@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -85,4 +86,51 @@ func HandleEvidenceDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": toItem(e), "error": nil})
+}
+
+// DraftRequest es el payload para crear un borrador.
+type DraftRequest struct {
+	SubjectID string `json:"subject_id"`
+	Notes     string `json:"notes"`
+}
+
+// HandleEvidenceDraft crea un nuevo registro de evidencia en estado draft.
+//
+// POST /api/v1/evidence/draft
+func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := TenantIDFromContext(r)
+	actorID := ActorIDFromContext(r)
+	if tenantID == "" || actorID == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+	var req DraftRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
+		return
+	}
+	if strings.TrimSpace(req.SubjectID) == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "subject_id es obligatorio")
+		return
+	}
+	if strings.TrimSpace(req.Notes) == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "notes es obligatorio")
+		return
+	}
+	id := "ev-" + tenantID + "-" + req.SubjectID + "-" + time.Now().Format("20060102150405")
+	e := evidence.Evidence{
+		ID:        id,
+		TenantID:  tenantID,
+		State:     evidence.StateDraft,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := evidenceStore.Create(e); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear borrador")
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"data": toItem(e), "error": nil})
 }
