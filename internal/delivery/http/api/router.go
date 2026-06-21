@@ -15,6 +15,9 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/evidence/draft", JWTMiddleware(HandleEvidenceDraft))
 	mux.HandleFunc("/api/v1/evidence", JWTMiddleware(HandleEvidenceList))
 	mux.HandleFunc("/api/v1/evidence/", JWTMiddleware(HandleEvidenceDetail))
+	mux.HandleFunc("/api/v1/evidence/emit", JWTMiddleware(HandleEvidenceEmit))
+	mux.HandleFunc("/api/v1/evidence/void", JWTMiddleware(HandleEvidenceVoid))
+	mux.HandleFunc("/api/v1/evidence/replace", JWTMiddleware(HandleEvidenceReplace))
 }
 
 // JWTMiddleware protege un handler exigiendo un JWT valido.
