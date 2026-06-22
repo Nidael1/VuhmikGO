@@ -1,33 +1,56 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/presentation/layouts/AppLayout.vue'
 import { evidenceRepository } from '@/infrastructure/repositories/evidenceRepository'
+import { patientRepository } from '@/infrastructure/repositories/patientRepository'
+import type { Patient } from '@/domain/types/patient'
 
+const route = useRoute()
 const router = useRouter()
-const subjectId = ref('')
+
+const patientId = route.query.patient as string | undefined
+const patient = ref<Patient | null>(null)
 const notes = ref('')
 const error = ref('')
 const loading = ref(false)
+const loadingPatient = ref(false)
+
+onMounted(async () => {
+  if (patientId) {
+    loadingPatient.value = true
+    try { patient.value = await patientRepository.get(patientId) }
+    catch { error.value = 'No se encontró el paciente' }
+    finally { loadingPatient.value = false }
+  }
+})
 
 async function save() {
   error.value = ''
-  if (!subjectId.value.trim() || !notes.value.trim()) {
-    error.value = 'Todos los campos son obligatorios'
+  if (!notes.value.trim()) { error.value = 'La nota clínica no puede estar vacía'; return }
+  if (!patientId && !patient.value) {
+    error.value = 'Selecciona un paciente antes de guardar'
     return
   }
   loading.value = true
   try {
     const ev = await evidenceRepository.draft({
-      subject_id: subjectId.value,
+      subject_id: patientId || patient.value!.id,
       notes: notes.value,
     })
-    router.push(`/evidence/${ev.id}`)
-  } catch (e: any) {
-    error.value = e.message
-  } finally {
-    loading.value = false
-  }
+    // Regresar al detalle del paciente si venimos de ahí
+    if (patientId) {
+      router.push(`/patients/${patientId}`)
+    } else {
+      router.push(`/evidence/${ev.id}`)
+    }
+  } catch (e: any) { error.value = e.message }
+  finally { loading.value = false }
+}
+
+function cancelar() {
+  if (patientId) router.push(`/patients/${patientId}`)
+  else router.push('/evidence')
 }
 </script>
 
@@ -37,19 +60,27 @@ async function save() {
       <div class="page-header">
         <div>
           <h2>Nueva nota clínica</h2>
-          <p class="page-sub">Los campos se guardan automáticamente.</p>
+          <p class="page-sub" v-if="patient">
+            Paciente: <strong>{{ patient.nombre }}</strong>
+            · Exp. {{ patient.num_expediente }}
+          </p>
+          <p class="page-sub" v-else>Los campos se guardan automáticamente</p>
         </div>
-        <RouterLink to="/evidence" class="btn-back">← Volver</RouterLink>
+        <button class="btn-back" @click="cancelar">← Cancelar</button>
       </div>
 
-      <div class="card">
-        <div class="form-group">
-          <label for="subject">ID del paciente / expediente</label>
-          <input id="subject" v-model="subjectId" type="text" placeholder="pac-001" />
-        </div>
+      <div v-if="loadingPatient" class="state-empty">Cargando paciente...</div>
+
+      <div v-else class="card">
         <div class="form-group">
           <label for="notes">Nota clínica</label>
-          <textarea id="notes" v-model="notes" rows="8" placeholder="Ingrese la nota clínica..." maxlength="2000" />
+          <textarea
+            id="notes"
+            v-model="notes"
+            rows="10"
+            placeholder="Ingrese la nota clínica en lenguaje técnico-médico..."
+            maxlength="2000"
+          />
           <span class="char-count">{{ notes.length }} / 2000</span>
         </div>
         <div class="alert-error" v-if="error">{{ error }}</div>
@@ -66,17 +97,17 @@ async function save() {
 <style scoped>
 .page { max-width: 720px; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
-.page-sub { color: var(--text-secondary); font-size: 14px; margin-top: var(--space-1); }
-.btn-back { color: var(--color-clinical-blue); font-size: 14px; text-decoration: none; padding-top: 4px; }
+.page-sub { color: var(--text-secondary); font-size: 13px; margin-top: var(--space-1); }
+.btn-back { background: transparent; border: none; color: var(--color-clinical-blue); font-size: 14px; cursor: pointer; padding: 0; }
 .card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-md); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
 .form-group { display: flex; flex-direction: column; gap: var(--space-2); }
 label { font-size: 14px; font-weight: 500; color: var(--text-primary); }
-input, textarea { font-family: var(--font-body); padding: var(--space-3) var(--space-4); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); font-size: 15px; color: var(--text-primary); background: var(--app-bg); resize: vertical; outline: none; }
-input:focus, textarea:focus { border-color: var(--color-turquoise); }
+textarea { font-family: var(--font-body); padding: var(--space-3) var(--space-4); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); font-size: 15px; color: var(--text-primary); background: var(--app-bg); resize: vertical; outline: none; }
+textarea:focus { border-color: var(--color-turquoise); }
 .char-count { font-size: 12px; color: var(--text-secondary); text-align: right; }
 .alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); }
-.form-actions { display: flex; align-items: center; justify-content: space-between; }
-.badge-draft { background: #F1F5F9; color: var(--text-secondary); font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; }
+.form-actions { display: flex; justify-content: flex-end; }
 .btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-3) var(--space-6); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); }
 </style>
