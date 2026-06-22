@@ -26,6 +26,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/evidence/:id/editar',
+      name: 'evidence-edit',
+      component: () => import('@/presentation/views/EvidenceEditView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/evidence/:id',
       name: 'evidence-detail',
       component: () => import('@/presentation/views/EvidenceDetailView.vue'),
