@@ -23,6 +23,8 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	// /api/v1/evidence/:id/export
 	// /api/v1/evidence/:id/edit
 	mux.HandleFunc("/api/v1/evidence/", JWTMiddleware(evidenceDispatcher))
+	mux.HandleFunc("/api/v1/patients", JWTMiddleware(HandlePatientList))
+	mux.HandleFunc("/api/v1/patients/", JWTMiddleware(patientDispatcher))
 }
 
 // evidenceDispatcher enruta requests con ID dinamico en el path.
@@ -72,4 +74,26 @@ func JWTMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		r = r.WithContext(ContextWithClaims(r.Context(), claims))
 		next(w, r)
 	}
+}
+
+func init() {
+	// rutas de pacientes registradas en RegisterAPIRoutes
+}
+
+// patientDispatcher enruta requests de pacientes con ID dinamico.
+func patientDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/patients/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 1 {
+		switch r.Method {
+		case http.MethodGet:
+			HandlePatientDetail(w, r)
+		case http.MethodPut:
+			HandlePatientUpdate(w, r)
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		}
+		return
+	}
+	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
 }
