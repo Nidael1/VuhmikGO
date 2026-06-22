@@ -17,6 +17,8 @@ var evidenceStore = inmemory.NewEvidenceRepository()
 
 // EvidenceItem es el DTO de respuesta para evidencia.
 type EvidenceItem struct {
+	SubjectID    string     `json:"subject_id"`
+	Notes        string     `json:"notes"`
 	ID           string     `json:"id"`
 	TenantID     string     `json:"tenant_id"`
 	State        string     `json:"state"`
@@ -30,6 +32,8 @@ func toItem(e evidence.Evidence) EvidenceItem {
 	return EvidenceItem{
 		ID:           e.ID,
 		TenantID:     e.TenantID,
+		SubjectID:    e.SubjectID,
+		Notes:        e.Notes,
 		State:        string(e.State),
 		CreatedAt:    e.CreatedAt,
 		IssuedAt:     e.IssuedAt,
