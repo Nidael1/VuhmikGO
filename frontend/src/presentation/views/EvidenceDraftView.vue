@@ -37,7 +37,7 @@ async function save() {
       <div class="page-header">
         <div>
           <h2>Nueva nota clínica</h2>
-          <p class="page-sub">Se guardará como borrador. Podrás emitirla cuando esté lista.</p>
+          <p class="page-sub">Los campos se guardan automáticamente.</p>
         </div>
         <RouterLink to="/evidence" class="btn-back">← Volver</RouterLink>
       </div>
@@ -54,9 +54,8 @@ async function save() {
         </div>
         <div class="alert-error" v-if="error">{{ error }}</div>
         <div class="form-actions">
-          <span class="badge-draft">BORRADOR</span>
           <button class="btn-primary" @click="save" :disabled="loading">
-            {{ loading ? 'Guardando...' : 'Guardar borrador' }}
+            {{ loading ? 'Guardando...' : 'Guardar nota' }}
           </button>
         </div>
       </div>

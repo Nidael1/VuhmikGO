@@ -65,10 +65,6 @@ async function exportEvidence() {
             <span class="detail-label">Emitida</span>
             <span class="detail-value">{{ formatDate(ev.issued_at) }}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">Paciente</span>
-            <span class="detail-value">{{ ev.id.split('-')[2] || '—' }}</span>
-          </div>
         </div>
 
         <div class="actions">
