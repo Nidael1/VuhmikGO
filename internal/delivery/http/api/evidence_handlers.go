@@ -227,7 +227,7 @@ func HandleEvidenceVoid(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
-	if err := evidenceStore.Update(tenantID, voided); err != nil {
+	if err := evidenceStore.UpdateForVoid(tenantID, voided); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
@@ -273,7 +273,7 @@ func HandleEvidenceReplace(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
-	if err := evidenceStore.Update(tenantID, voided); err != nil {
+	if err := evidenceStore.UpdateForVoid(tenantID, voided); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
@@ -443,7 +443,7 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := evidenceStore.Update(tenantID, voided); err != nil {
+	if err := evidenceStore.UpdateForVoid(tenantID, voided); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}

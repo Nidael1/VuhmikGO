@@ -3,7 +3,9 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/presentation/layouts/AppLayout.vue'
 import { evidenceRepository } from '@/infrastructure/repositories/evidenceRepository'
+import { patientRepository } from '@/infrastructure/repositories/patientRepository'
 import { useAuthStore } from '@/app/stores/auth'
+import type { Patient } from '@/domain/types/patient'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,7 +13,7 @@ const auth = useAuthStore()
 const id = route.params.id as string
 
 const notes = ref('')
-const subjectId = ref('')
+const patient = ref<Patient | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
@@ -20,7 +22,10 @@ onMounted(async () => {
   try {
     const ev = await evidenceRepository.get(id)
     notes.value = ev.notes
-    subjectId.value = ev.subject_id
+    if (ev.subject_id) {
+      try { patient.value = await patientRepository.get(ev.subject_id) }
+      catch { /* paciente no encontrado, no es error critico */ }
+    }
   } catch (e: any) { error.value = e.message }
   finally { loading.value = false }
 })
@@ -40,7 +45,12 @@ async function save() {
     })
     const data = await res.json()
     if (data.error) { error.value = data.error.message; return }
-    router.push(`/evidence/${data.data.id}`)
+    // Regresar al paciente si existe
+    if (patient.value) {
+      router.push(`/patients/${patient.value.id}`)
+    } else {
+      router.push(`/evidence/${data.data.id}`)
+    }
   } catch (e: any) { error.value = e.message }
   finally { saving.value = false }
 }
@@ -52,9 +62,15 @@ async function save() {
       <div class="page-header">
         <div>
           <h2>Editar nota clínica</h2>
-          <p class="page-sub" v-if="subjectId">Paciente: {{ subjectId }}</p>
+          <p class="page-sub" v-if="patient">
+            Paciente: <strong>{{ patient.nombre }}</strong>
+            · Exp. {{ patient.num_expediente }}
+          </p>
+          <p class="page-sub" v-else>Los cambios quedan registrados automáticamente</p>
         </div>
-        <RouterLink :to="`/evidence/${id}`" class="btn-back">← Cancelar</RouterLink>
+        <button class="btn-back" @click="() => patient ? router.push(`/patients/${patient!.id}`) : router.push(`/evidence/${id}`)">
+          ← Cancelar
+        </button>
       </div>
       <div v-if="loading" class="state-empty">Cargando...</div>
       <div v-else class="card">
@@ -79,7 +95,7 @@ async function save() {
 .page { max-width: 720px; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
 .page-sub { color: var(--text-secondary); font-size: 13px; margin-top: var(--space-1); }
-.btn-back { color: var(--color-clinical-blue); font-size: 14px; text-decoration: none; }
+.btn-back { background: transparent; border: none; color: var(--color-clinical-blue); font-size: 14px; cursor: pointer; padding: 0; }
 .card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-md); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
 .form-group { display: flex; flex-direction: column; gap: var(--space-2); }
 label { font-size: 14px; font-weight: 500; color: var(--text-primary); }
