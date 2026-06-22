@@ -21,7 +21,7 @@ async function submit() {
       ? await authRepository.login({ email: email.value, password: password.value })
       : await authRepository.register({ email: email.value, password: password.value })
     auth.setSession(tokens)
-    router.push('/evidence')
+    router.push('/patients')
   } catch (e: any) {
     error.value = e.message || 'Error al iniciar sesión'
   } finally {

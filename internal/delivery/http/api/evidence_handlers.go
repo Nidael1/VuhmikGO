@@ -123,14 +123,22 @@ func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := "ev-" + time.Now().Format("20060102150405.000")
+	now := time.Now().UTC()
 	e := evidence.Evidence{
 		ID:        id,
 		TenantID:  tenantID,
+		SubjectID: req.SubjectID,
+		Notes:     req.Notes,
 		State:     evidence.StateDraft,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: now,
 	}
 	if err := evidenceStore.Create(e); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear borrador")
+		return
+	}
+	// Emite automaticamente (ADR-0006 — el medico no ve estados internos)
+	if err := transitionTo(&e, evidence.StateIssued, tenantID, now); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"data": toItem(e), "error": nil})
