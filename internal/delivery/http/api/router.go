@@ -23,7 +23,7 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	// /api/v1/evidence/:id/export
 	// /api/v1/evidence/:id/edit
 	mux.HandleFunc("/api/v1/evidence/", JWTMiddleware(evidenceDispatcher))
-	mux.HandleFunc("/api/v1/patients", JWTMiddleware(HandlePatientList))
+	mux.HandleFunc("/api/v1/patients", JWTMiddleware(patientsBaseDispatcher))
 	mux.HandleFunc("/api/v1/patients/", JWTMiddleware(patientDispatcher))
 }
 
@@ -96,4 +96,16 @@ func patientDispatcher(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+}
+
+// patientsBaseDispatcher maneja GET (lista) y POST (crear) en /api/v1/patients.
+func patientsBaseDispatcher(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		HandlePatientList(w, r)
+	case http.MethodPost:
+		HandlePatientCreate(w, r)
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+	}
 }
