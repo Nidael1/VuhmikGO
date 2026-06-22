@@ -32,6 +32,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/patients/:id',
+      name: 'patient-detail',
+      component: () => import('@/presentation/views/PatientDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/evidence/new',
       name: 'evidence-new',
       component: () => import('@/presentation/views/EvidenceDraftView.vue'),
