@@ -19,6 +19,10 @@ function logout() {
         <span class="brand-name">vuhmik</span>
       </div>
       <nav class="sidebar-nav">
+        <RouterLink to="/patients" class="nav-item">
+          <span class="nav-icon">👥</span>
+          <span>Pacientes</span>
+        </RouterLink>
         <RouterLink to="/evidence" class="nav-item">
           <span class="nav-icon">📋</span>
           <span>Expedientes</span>

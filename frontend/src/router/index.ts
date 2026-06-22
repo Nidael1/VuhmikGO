@@ -14,6 +14,18 @@ const router = createRouter({
       redirect: '/evidence',
     },
     {
+      path: '/patients',
+      name: 'patient-list',
+      component: () => import('@/presentation/views/PatientListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/patients/new',
+      name: 'patient-new',
+      component: () => import('@/presentation/views/PatientNewView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/evidence',
       name: 'evidence-list',
       component: () => import('@/presentation/views/EvidenceListView.vue'),
