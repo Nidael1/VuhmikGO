@@ -9,6 +9,8 @@ import (
 // publicPaths son las rutas que no requieren contexto de tenant/actor.
 // Solo navegación de solo lectura sin operaciones sensibles.
 var publicPaths = map[string]bool{
+	"/api/v1/auth/register": true,
+	"/api/v1/auth/login":    true,
 	"/":          true,
 	"/dashboard": true,
 	"/pacientes": true,
