@@ -11,7 +11,7 @@ const router = createRouter({
     },
     {
       path: '/',
-      redirect: '/evidence',
+      redirect: '/patients',
     },
     {
       path: '/patients',

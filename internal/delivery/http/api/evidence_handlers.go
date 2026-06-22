@@ -122,7 +122,7 @@ func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "notes es obligatorio")
 		return
 	}
-	id := "ev-" + tenantID + "-" + req.SubjectID + "-" + time.Now().Format("20060102150405")
+	id := "ev-" + time.Now().Format("20060102150405.000")
 	e := evidence.Evidence{
 		ID:        id,
 		TenantID:  tenantID,
