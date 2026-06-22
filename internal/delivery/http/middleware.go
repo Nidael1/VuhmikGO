@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/Nidael1/VuhmikGO/internal/shaders"
 )
@@ -26,7 +27,7 @@ var publicPaths = map[string]bool{
 //   - No contiene lógica de permisos — eso es responsabilidad del Shader.
 func TenantContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if publicPaths[r.URL.Path] {
+		if publicPaths[r.URL.Path] || strings.HasPrefix(r.URL.Path, "/api/") {
 			next.ServeHTTP(w, r)
 			return
 		}
