@@ -368,3 +368,79 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 func buildExportShader() shaders.ExportShader {
 	return shaders.NewLegalExportShader()
 }
+
+// HandleEvidenceEdit implementa la edicion fluida segun ADR-0006.
+// El medico percibe que edita. Internamente: void + replace silencioso.
+// El Core no cambia. La inmutabilidad es total.
+//
+// PUT /api/v1/evidence/:id
+func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := TenantIDFromContext(r)
+	if tenantID == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+	id := strings.TrimPrefix(r.URL.Path, "/api/v1/evidence/")
+	id = strings.TrimSuffix(id, "/edit")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "id requerido")
+		return
+	}
+
+	orig, err := evidenceStore.FindByID(tenantID, id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
+		return
+	}
+
+	// Si esta en draft, solo actualiza el registro existente (reemite)
+	// Si esta emitida/bloqueada, ejecuta void + replace silencioso
+	now := time.Now().UTC()
+	newID := id + "-v" + now.Format("20060102150405")
+
+	if orig.State == evidence.StateDraft {
+		// Solo re-emite el draft existente
+		if err := transitionTo(&orig, evidence.StateIssued, tenantID, now); err != nil {
+			writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"data": toItem(orig), "error": nil})
+		return
+	}
+
+	// Void + replace silencioso (ADR-0006)
+	// El medico no ve este proceso — solo ve el resultado final
+	repl := evidence.Evidence{
+		ID:        newID,
+		TenantID:  tenantID,
+		State:     evidence.StateDraft,
+		CreatedAt: now,
+	}
+
+	voided, issued, err := evidence.Replace(
+		orig, repl,
+		evidence.RCReplaceUpdate, // RC-REPLACE-002 automatico
+		now,
+	)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
+		return
+	}
+
+	if err := evidenceStore.Update(tenantID, voided); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
+		return
+	}
+	if err := evidenceStore.Create(issued); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear version")
+		return
+	}
+
+	// Retorna el nuevo registro como si fuera el mismo
+	// El medico no ve que hubo un void + replace
+	writeJSON(w, http.StatusOK, map[string]any{"data": toItem(issued), "error": nil})
+}
