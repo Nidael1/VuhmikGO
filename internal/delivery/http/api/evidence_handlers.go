@@ -380,6 +380,11 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 func buildExportShader() shaders.ExportShader {
 	return shaders.NewLegalExportShader()
 }
+// EditRequest es el payload para edicion fluida (ADR-0006).
+type EditRequest struct {
+	Notes string `json:"notes"`
+}
+
 
 // HandleEvidenceEdit implementa la edicion fluida segun ADR-0006.
 // El medico percibe que edita. Internamente: void + replace silencioso.
@@ -409,6 +414,12 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var req EditRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
+		return
+	}
+
 	// Si esta en draft, solo actualiza el registro existente (reemite)
 	// Si esta emitida/bloqueada, ejecuta void + replace silencioso
 	now := time.Now().UTC()
@@ -429,6 +440,8 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 	repl := evidence.Evidence{
 		ID:        newID,
 		TenantID:  tenantID,
+		SubjectID: orig.SubjectID,
+		Notes:     req.Notes,
 		State:     evidence.StateDraft,
 		CreatedAt: now,
 	}
