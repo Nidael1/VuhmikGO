@@ -28,7 +28,6 @@ onMounted(async () => {
   finally { loading.value = false }
 })
 
-// Solo notas activas de este paciente — las anuladas son invisibles (ADR-0006)
 const activeNotes = computed(() =>
   allNotes.value.filter(n =>
     n.subject_id === id &&
@@ -50,9 +49,21 @@ function calcEdad(fechaNac: string): number {
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('es-MX', {
-    year: 'numeric', month: 'long', day: 'numeric',
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     hour: '2-digit', minute: '2-digit'
   })
+}
+
+async function exportNote(noteId: string) {
+  try {
+    const blob = await evidenceRepository.export(noteId)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `nota_${noteId}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e: any) { error.value = e.message }
 }
 </script>
 
@@ -63,6 +74,7 @@ function formatDate(d: string) {
       <div v-else-if="error" class="alert-error">{{ error }}</div>
 
       <template v-else-if="patient">
+        <!-- Encabezado del paciente -->
         <div class="page-header">
           <div>
             <h2>{{ patient.nombre }}</h2>
@@ -71,50 +83,51 @@ function formatDate(d: string) {
           <RouterLink to="/patients" class="btn-back">← Pacientes</RouterLink>
         </div>
 
-        <div class="card patient-info">
-          <div class="detail-row">
-            <span class="detail-label">Edad</span>
-            <span class="detail-value">{{ calcEdad(patient.fecha_nacimiento) }} años</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Nacimiento</span>
-            <span class="detail-value">{{ new Date(patient.fecha_nacimiento).toLocaleDateString('es-MX', {year:'numeric',month:'long',day:'numeric'}) }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Sexo</span>
-            <span class="detail-value">{{ sexoLabel[patient.sexo] }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Expediente</span>
-            <span class="detail-value mono">{{ patient.num_expediente }}</span>
-          </div>
+        <!-- Datos del paciente en línea -->
+        <div class="patient-meta">
+          <span>{{ calcEdad(patient.fecha_nacimiento) }} años</span>
+          <span class="sep">·</span>
+          <span>{{ sexoLabel[patient.sexo] }}</span>
+          <span class="sep">·</span>
+          <span class="mono">{{ patient.num_expediente }}</span>
         </div>
 
-        <div class="section-header">
-          <h3>Notas clínicas</h3>
-          <RouterLink :to="`/evidence/new?patient=${id}`" class="btn-primary">
-            + Nueva nota
-          </RouterLink>
-        </div>
-
-        <div v-if="activeNotes.length === 0" class="state-empty-sm">
-          Sin notas clínicas registradas para este paciente.
-        </div>
-
-        <div v-else class="notes-list">
-          <div v-for="note in activeNotes" :key="note.id" class="note-card">
-            <div class="note-header">
-              <span class="note-date">{{ formatDate(note.created_at) }}</span>
-              <RouterLink :to="`/evidence/${note.id}/editar`" class="btn-edit-note">
-                Editar
-              </RouterLink>
-            </div>
-            <p class="note-preview" v-if="note.notes">
-              {{ note.notes.slice(0, 200) }}{{ note.notes.length > 200 ? '...' : '' }}
-            </p>
-            <RouterLink :to="`/evidence/${note.id}`" class="note-detail-link">
-              Ver detalle →
+        <!-- Expediente clínico — hoja continua -->
+        <div class="expediente">
+          <div class="expediente-header">
+            <h3>Expediente clínico</h3>
+            <RouterLink :to="`/evidence/new?patient=${id}`" class="btn-primary">
+              + Nueva nota
             </RouterLink>
+          </div>
+
+          <div v-if="activeNotes.length === 0" class="state-empty-sm">
+            Sin notas clínicas registradas para este paciente.
+          </div>
+
+          <!-- Hoja continua de notas -->
+          <div v-else class="hoja">
+            <div
+              v-for="(note, index) in activeNotes"
+              :key="note.id"
+              class="nota-entrada"
+              :class="{ 'primera': index === 0 }"
+            >
+              <div class="nota-meta">
+                <span class="nota-fecha">{{ formatDate(note.created_at) }}</span>
+                <div class="nota-acciones">
+                  <RouterLink :to="`/evidence/${note.id}/editar`" class="btn-accion">
+                    Editar
+                  </RouterLink>
+                  <button class="btn-accion" @click="exportNote(note.id)">
+                    Descargar
+                  </button>
+                </div>
+              </div>
+              <div class="nota-contenido">
+                {{ note.notes || 'Sin contenido.' }}
+              </div>
+            </div>
           </div>
         </div>
       </template>
@@ -123,28 +136,86 @@ function formatDate(d: string) {
 </template>
 
 <style scoped>
-.page { max-width: 720px; }
-.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
-.page-sub { color: var(--text-secondary); font-size: 13px; margin-top: var(--space-1); }
-.btn-back { color: var(--color-clinical-blue); font-size: 14px; text-decoration: none; }
-.card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-md); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
-.patient-info {}
-.detail-row { display: flex; align-items: center; gap: var(--space-4); }
-.detail-label { width: 90px; font-size: 13px; color: var(--text-secondary); flex-shrink: 0; }
-.detail-value { font-size: 14px; color: var(--text-primary); }
+.page { max-width: 780px; }
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-2); }
+.page-sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+.btn-back { color: var(--color-clinical-blue); font-size: 14px; text-decoration: none; white-space: nowrap; }
+
+.patient-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid #E2E8F0;
+}
+.sep { color: #CBD5E1; }
 .mono { font-family: monospace; }
-.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+
+.expediente { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); overflow: hidden; }
+
+.expediente-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid #E2E8F0;
+  background: #FAFBFC;
+}
+
 .btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
+
+.hoja { padding: 0; }
+
+.nota-entrada {
+  padding: var(--space-6);
+  border-bottom: 1px solid #F1F5F9;
+}
+.nota-entrada:last-child { border-bottom: none; }
+
+.nota-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.nota-fecha {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.nota-acciones {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.btn-accion {
+  font-size: 12px;
+  color: var(--color-clinical-blue);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid #E2E8F0;
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s;
+  font-family: var(--font-body);
+}
+.btn-accion:hover { border-color: var(--color-clinical-blue); }
+
+.nota-contenido {
+  font-size: 15px;
+  color: var(--text-primary);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
 .state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); }
-.state-empty-sm { color: var(--text-secondary); font-size: 14px; padding: var(--space-4) 0; }
+.state-empty-sm { color: var(--text-secondary); font-size: 14px; padding: var(--space-6); }
 .alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); }
-.notes-list { display: flex; flex-direction: column; gap: var(--space-4); }
-.note-card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-md); padding: var(--space-5) var(--space-6); display: flex; flex-direction: column; gap: var(--space-3); }
-.note-header { display: flex; align-items: center; justify-content: space-between; }
-.note-date { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
-.btn-edit-note { font-size: 13px; color: var(--color-clinical-blue); text-decoration: none; border: 1px solid #E2E8F0; padding: 2px 12px; border-radius: var(--radius-sm); transition: border-color 0.15s; }
-.btn-edit-note:hover { border-color: var(--color-clinical-blue); }
-.note-preview { font-size: 15px; color: var(--text-primary); line-height: 1.6; white-space: pre-wrap; }
-.note-detail-link { font-size: 13px; color: var(--text-secondary); text-decoration: none; }
-.note-detail-link:hover { color: var(--color-clinical-blue); }
 </style>
