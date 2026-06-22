@@ -1,5 +1,3 @@
-// Package inmemory provee adaptadores de repositorio en memoria.
-// Solo para desarrollo y testing — no para producción.
 package inmemory
 
 import (
@@ -9,21 +7,15 @@ import (
 	"github.com/Nidael1/VuhmikGO/internal/core/evidence"
 )
 
-// EvidenceRepository es una implementación en memoria del puerto EvidenceRepository.
-// Thread-safe. No persiste entre reinicios.
 type EvidenceRepository struct {
 	mu      sync.RWMutex
 	records map[string]evidence.Evidence
 }
 
-// NewEvidenceRepository retorna un repositorio en memoria vacío.
 func NewEvidenceRepository() *EvidenceRepository {
-	return &EvidenceRepository{
-		records: make(map[string]evidence.Evidence),
-	}
+	return &EvidenceRepository{records: make(map[string]evidence.Evidence)}
 }
 
-// Create persiste un registro nuevo en memoria.
 func (r *EvidenceRepository) Create(e evidence.Evidence) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -34,9 +26,6 @@ func (r *EvidenceRepository) Create(e evidence.Evidence) error {
 	return nil
 }
 
-// FindByID recupera un registro por ID, exigiendo que pertenezca a tenantID.
-// Aislamiento multi-tenant (Issue #56): un registro de otro tenant
-// retorna el mismo error que "no encontrado".
 func (r *EvidenceRepository) FindByID(tenantID, id string) (evidence.Evidence, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -47,8 +36,6 @@ func (r *EvidenceRepository) FindByID(tenantID, id string) (evidence.Evidence, e
 	return e, nil
 }
 
-// Update actualiza un registro existente, exigiendo que pertenezca a tenantID.
-// Rechaza si el estado actual es issued o locked (ER-CORE-001).
 func (r *EvidenceRepository) Update(tenantID string, e evidence.Evidence) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -63,8 +50,19 @@ func (r *EvidenceRepository) Update(tenantID string, e evidence.Evidence) error 
 	return nil
 }
 
-// FindAll retorna todos los registros del tenant dado.
-// Nunca retorna registros de otro tenant.
+// UpdateForVoid permite actualizar el estado a voided sin GuardMutation.
+// Solo para void+replace silencioso (ADR-0006).
+func (r *EvidenceRepository) UpdateForVoid(tenantID string, e evidence.Evidence) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	current, ok := r.records[e.ID]
+	if !ok || current.TenantID != tenantID {
+		return fmt.Errorf("registro %s no encontrado", e.ID)
+	}
+	r.records[e.ID] = e
+	return nil
+}
+
 func (r *EvidenceRepository) FindAll(tenantID string) ([]evidence.Evidence, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

@@ -11,13 +11,17 @@ const auth = useAuthStore()
 const id = route.params.id as string
 
 const notes = ref('')
+const subjectId = ref('')
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
 
 onMounted(async () => {
-  try { await evidenceRepository.get(id) }
-  catch (e: any) { error.value = e.message }
+  try {
+    const ev = await evidenceRepository.get(id)
+    notes.value = ev.notes
+    subjectId.value = ev.subject_id
+  } catch (e: any) { error.value = e.message }
   finally { loading.value = false }
 })
 
@@ -26,7 +30,7 @@ async function save() {
   saving.value = true
   error.value = ''
   try {
-    await fetch(`/api/v1/evidence/${id}/edit`, {
+    const res = await fetch(`/api/v1/evidence/${id}/edit`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -34,7 +38,9 @@ async function save() {
       },
       body: JSON.stringify({ notes: notes.value }),
     })
-    router.push(`/evidence/${id}`)
+    const data = await res.json()
+    if (data.error) { error.value = data.error.message; return }
+    router.push(`/evidence/${data.data.id}`)
   } catch (e: any) { error.value = e.message }
   finally { saving.value = false }
 }
@@ -46,7 +52,7 @@ async function save() {
       <div class="page-header">
         <div>
           <h2>Editar nota clínica</h2>
-          <p class="page-sub">Los cambios quedan registrados automáticamente</p>
+          <p class="page-sub" v-if="subjectId">Paciente: {{ subjectId }}</p>
         </div>
         <RouterLink :to="`/evidence/${id}`" class="btn-back">← Cancelar</RouterLink>
       </div>

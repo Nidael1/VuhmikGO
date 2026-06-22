@@ -12,7 +12,6 @@ const id = route.params.id as string
 const ev = ref<Evidence | null>(null)
 const loading = ref(true)
 const error = ref('')
-const saving = ref(false)
 
 onMounted(async () => {
   try { ev.value = await evidenceRepository.get(id) }
@@ -57,6 +56,10 @@ async function exportEvidence() {
 
       <template v-else-if="ev">
         <div class="card">
+          <div class="detail-row" v-if="ev.subject_id">
+            <span class="detail-label">Paciente</span>
+            <span class="detail-value">{{ ev.subject_id }}</span>
+          </div>
           <div class="detail-row">
             <span class="detail-label">Fecha</span>
             <span class="detail-value">{{ formatDate(ev.created_at) }}</span>
@@ -64,6 +67,10 @@ async function exportEvidence() {
           <div class="detail-row" v-if="ev.issued_at">
             <span class="detail-label">Emitida</span>
             <span class="detail-value">{{ formatDate(ev.issued_at) }}</span>
+          </div>
+          <div class="notes-section" v-if="ev.notes">
+            <span class="detail-label">Nota</span>
+            <p class="notes-content">{{ ev.notes }}</p>
           </div>
         </div>
 
@@ -89,6 +96,8 @@ async function exportEvidence() {
 .detail-row { display: flex; align-items: center; gap: var(--space-4); }
 .detail-label { width: 80px; font-size: 13px; color: var(--text-secondary); flex-shrink: 0; }
 .detail-value { font-size: 14px; color: var(--text-primary); }
+.notes-section { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid #F1F5F9; }
+.notes-content { font-size: 15px; color: var(--text-primary); line-height: 1.6; white-space: pre-wrap; }
 .actions { display: flex; gap: var(--space-3); }
 .btn-edit { background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; }
 .btn-export { background: transparent; border: 1.5px solid #E2E8F0; color: var(--text-secondary); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); font-size: 14px; cursor: pointer; }

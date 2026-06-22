@@ -1,11 +1,10 @@
-// Tipos de dominio para evidencia clínica.
-// Espeja el contrato de la API /api/v1 — no contiene lógica de negocio.
-
 export type EvidenceState = 'draft' | 'issued' | 'locked' | 'voided'
 
 export interface Evidence {
   id: string
   tenant_id: string
+  subject_id: string
+  notes: string
   state: EvidenceState
   created_at: string
   issued_at: string | null

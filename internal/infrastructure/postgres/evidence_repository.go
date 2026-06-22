@@ -1,5 +1,3 @@
-// Package postgres provee el adaptador PostgreSQL para el repositorio de evidencia.
-// Usa pgx/v5 con SQL explícito. Sin ORM.
 package postgres
 
 import (
@@ -12,23 +10,20 @@ import (
 )
 
 // EvidenceRepository es el adaptador PostgreSQL para evidencia Core.
-// Implementa ports.EvidenceRepository.
 type EvidenceRepository struct {
 	pool *pgxpool.Pool
 }
 
-// NewEvidenceRepository retorna un repositorio PostgreSQL usando el pool dado.
 func NewEvidenceRepository(pool *pgxpool.Pool) *EvidenceRepository {
 	return &EvidenceRepository{pool: pool}
 }
 
-// Create inserta un registro Evidence en estado draft.
 func (r *EvidenceRepository) Create(e evidence.Evidence) error {
 	sql := `
-		INSERT INTO evidence (id, tenant_id, state, created_at, issued_at, voided_at, replaced_by_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`
+		INSERT INTO evidence (id, tenant_id, subject_id, notes, state, created_at, issued_at, voided_at, replaced_by_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 	_, err := r.pool.Exec(context.Background(), sql,
-		e.ID, e.TenantID, string(e.State),
+		e.ID, e.TenantID, e.SubjectID, e.Notes, string(e.State),
 		e.CreatedAt, e.IssuedAt, e.VoidedAt, e.ReplacedByID,
 	)
 	if err != nil {
@@ -37,19 +32,15 @@ func (r *EvidenceRepository) Create(e evidence.Evidence) error {
 	return nil
 }
 
-// FindByID recupera un registro Evidence por su ID, exigiendo que
-// pertenezca a tenantID (Issue #56 — aislamiento multi-tenant).
-// Un registro de otro tenant retorna el mismo error que "no encontrado".
 func (r *EvidenceRepository) FindByID(tenantID, id string) (evidence.Evidence, error) {
 	sql := `
-		SELECT id, tenant_id, state, created_at, issued_at, voided_at, replaced_by_id
+		SELECT id, tenant_id, subject_id, notes, state, created_at, issued_at, voided_at, replaced_by_id
 		FROM evidence WHERE id = $1 AND tenant_id = $2`
 	row := r.pool.QueryRow(context.Background(), sql, id, tenantID)
-
 	var e evidence.Evidence
 	var state string
 	err := row.Scan(
-		&e.ID, &e.TenantID, &state,
+		&e.ID, &e.TenantID, &e.SubjectID, &e.Notes, &state,
 		&e.CreatedAt, &e.IssuedAt, &e.VoidedAt, &e.ReplacedByID,
 	)
 	if err != nil {
@@ -59,9 +50,6 @@ func (r *EvidenceRepository) FindByID(tenantID, id string) (evidence.Evidence, e
 	return e, nil
 }
 
-// Update persiste cambios de estado en un registro existente, exigiendo
-// que pertenezca a tenantID (Issue #56 — aislamiento multi-tenant).
-// Rechaza si el estado actual en BD es issued o locked (ER-CORE-001).
 func (r *EvidenceRepository) Update(tenantID string, e evidence.Evidence) error {
 	current, err := r.FindByID(tenantID, e.ID)
 	if err != nil {
@@ -83,14 +71,27 @@ func (r *EvidenceRepository) Update(tenantID string, e evidence.Evidence) error 
 	return nil
 }
 
-// FindAll retorna todos los registros del tenant dado desde PostgreSQL.
-// Nunca retorna registros de otro tenant.
+// UpdateForVoid permite actualizar el estado a voided sin pasar por GuardMutation.
+// Solo para uso interno de void+replace silencioso (ADR-0006).
+func (r *EvidenceRepository) UpdateForVoid(tenantID string, e evidence.Evidence) error {
+	_, err := r.FindByID(tenantID, e.ID)
+	if err != nil {
+		return err
+	}
+	sql := `
+		UPDATE evidence
+		SET state = $1, voided_at = $2, replaced_by_id = $3
+		WHERE id = $4 AND tenant_id = $5`
+	_, err = r.pool.Exec(context.Background(), sql,
+		string(e.State), e.VoidedAt, e.ReplacedByID, e.ID, tenantID,
+	)
+	return err
+}
+
 func (r *EvidenceRepository) FindAll(tenantID string) ([]evidence.Evidence, error) {
 	sql := `
-		SELECT id, tenant_id, state, created_at, issued_at, voided_at, replaced_by_id
-		FROM evidence
-		WHERE tenant_id = $1
-		ORDER BY created_at DESC`
+		SELECT id, tenant_id, subject_id, notes, state, created_at, issued_at, voided_at, replaced_by_id
+		FROM evidence WHERE tenant_id = $1 ORDER BY created_at DESC`
 	rows, err := r.pool.Query(context.Background(), sql, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("error al listar evidencias: %w", err)
@@ -101,7 +102,7 @@ func (r *EvidenceRepository) FindAll(tenantID string) ([]evidence.Evidence, erro
 		var e evidence.Evidence
 		var state string
 		if err := rows.Scan(
-			&e.ID, &e.TenantID, &state,
+			&e.ID, &e.TenantID, &e.SubjectID, &e.Notes, &state,
 			&e.CreatedAt, &e.IssuedAt, &e.VoidedAt, &e.ReplacedByID,
 		); err != nil {
 			return nil, fmt.Errorf("error al escanear evidencia: %w", err)
