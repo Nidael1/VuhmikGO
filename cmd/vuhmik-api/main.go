@@ -32,6 +32,7 @@ func main() {
 	api.InitDeps(api.Deps{
 		EvidenceRepo: postgres.NewEvidenceRepository(pool),
 		UserRepo:     postgres.NewUserRepository(pool),
+		PatientRepo:  postgres.NewPatientRepository(pool),
 	})
 
 	mux := http.NewServeMux()
