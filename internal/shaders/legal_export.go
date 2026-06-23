@@ -5,11 +5,12 @@ import (
 	"time"
 )
 
-// ExportData contiene los metadatos estructurales exportables de un registro.
-// No incluye contenido clínico ni PHI. Solo campos del Core.
+// ExportData contiene los campos exportables de un registro de evidencia.
 type ExportData struct {
 	EvidenceID   string     `json:"evidence_id"`
 	TenantID     string     `json:"tenant_id"`
+	SubjectID    string     `json:"subject_id"`
+	Notes        string     `json:"notes"`
 	State        string     `json:"state"`
 	CreatedAt    time.Time  `json:"created_at"`
 	IssuedAt     *time.Time `json:"issued_at,omitempty"`

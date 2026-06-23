@@ -8,6 +8,7 @@ import (
 
 	"github.com/Nidael1/VuhmikGO/internal/core/evidence"
 	"github.com/Nidael1/VuhmikGO/internal/infrastructure/inmemory"
+	"github.com/Nidael1/VuhmikGO/internal/integrity"
 	"github.com/Nidael1/VuhmikGO/internal/shaders"
 )
 
@@ -358,6 +359,8 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 	data := shaders.ExportData{
 		EvidenceID:   e.ID,
 		TenantID:     e.TenantID,
+		SubjectID:    e.SubjectID,
+		Notes:        e.Notes,
 		State:        string(e.State),
 		CreatedAt:    e.CreatedAt,
 		IssuedAt:     e.IssuedAt,
@@ -368,6 +371,37 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusForbidden, "FORBIDDEN", "export no autorizado")
 		return
+	}
+
+	// Calcular hash SHA-256 del contenido (ADR-0008)
+	issuedStr := ""
+	if e.IssuedAt != nil {
+		issuedStr = e.IssuedAt.Format(time.RFC3339Nano)
+	}
+	hashInput := integrity.EvidenceHashInput{
+		EvidenceID: e.ID,
+		TenantID:   e.TenantID,
+		SubjectID:  e.SubjectID,
+		Notes:      e.Notes,
+		State:      string(e.State),
+		CreatedAt:  e.CreatedAt.Format(time.RFC3339Nano),
+		IssuedAt:   func() *string { if issuedStr == "" { return nil }; return &issuedStr }(),
+	}
+	contentHash, hashErr := integrity.Hash(hashInput)
+	if hashErr != nil {
+		contentHash = "sha256:error"
+	}
+
+	// Construir respuesta final con hash y contenido completo
+	var exportMap map[string]any
+	if err := json.Unmarshal(exportBytes, &exportMap); err == nil {
+		exportMap["subject_id"] = e.SubjectID
+		exportMap["notes"] = e.Notes
+		exportMap["hash"] = contentHash
+		exportMap["exported_at"] = time.Now().UTC().Format(time.RFC3339Nano)
+		if finalBytes, err := json.Marshal(exportMap); err == nil {
+			exportBytes = finalBytes
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
