@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	delivery "github.com/Nidael1/VuhmikGO/internal/delivery/http"
 	"github.com/Nidael1/VuhmikGO/internal/delivery/http/api"
+	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
 	"github.com/Nidael1/VuhmikGO/internal/observability"
 )
 
@@ -13,6 +18,21 @@ func main() {
 	if err := observability.ValidateRuntimeSecrets(); err != nil {
 		log.Fatalf("error de configuración: %v", err)
 	}
+
+	pool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalf("error al conectar PostgreSQL: %v", err)
+	}
+	defer pool.Close()
+
+	if err := pool.Ping(context.Background()); err != nil {
+		log.Fatalf("error al verificar conexion PostgreSQL: %v", err)
+	}
+
+	api.InitDeps(api.Deps{
+		EvidenceRepo: postgres.NewEvidenceRepository(pool),
+		UserRepo:     postgres.NewUserRepository(pool),
+	})
 
 	mux := http.NewServeMux()
 	delivery.RegisterRoutes(mux)
