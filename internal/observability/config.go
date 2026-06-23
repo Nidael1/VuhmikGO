@@ -10,6 +10,7 @@ import (
 var requiredEnvVars = []string{
 	"DATABASE_URL",
 	"JWT_SECRET",
+	"REDIS_URL",
 }
 
 // ValidateRuntimeSecrets verifica que todas las variables de entorno

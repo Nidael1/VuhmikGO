@@ -11,6 +11,7 @@ import (
 	delivery "github.com/Nidael1/VuhmikGO/internal/delivery/http"
 	"github.com/Nidael1/VuhmikGO/internal/delivery/http/api"
 	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
+	infraredis "github.com/Nidael1/VuhmikGO/internal/infrastructure/redis"
 	"github.com/Nidael1/VuhmikGO/internal/observability"
 )
 
@@ -19,21 +20,31 @@ func main() {
 		log.Fatalf("error de configuración: %v", err)
 	}
 
+	// PostgreSQL
 	pool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatalf("error al conectar PostgreSQL: %v", err)
 	}
 	defer pool.Close()
-
 	if err := pool.Ping(context.Background()); err != nil {
 		log.Fatalf("error al verificar conexion PostgreSQL: %v", err)
 	}
 
+	// Redis (WAR-A obligatorio)
+	redisClient, err := infraredis.NewClient()
+	if err != nil {
+		log.Fatalf("error al conectar Redis: %v", err)
+	}
+	defer redisClient.Close()
+	observability.Logger.Info("redis conectado")
+
+	// Inyectar dependencias
 	api.InitDeps(api.Deps{
-		EvidenceRepo: postgres.NewEvidenceRepository(pool),
-		UserRepo:     postgres.NewUserRepository(pool),
+		EvidenceRepo:     postgres.NewEvidenceRepository(pool),
+		UserRepo:         postgres.NewUserRepository(pool),
 		PatientRepo:      postgres.NewPatientRepository(pool),
 		RefreshTokenRepo: postgres.NewRefreshTokenRepository(pool),
+		RedisClient:      redisClient,
 	})
 
 	mux := http.NewServeMux()
