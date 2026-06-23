@@ -1,31 +1,17 @@
-// Package api implementa los handlers JSON de la API /api/v1.
-// No renderiza HTML. Retorna exclusivamente JSON.
-// No accede al Core directamente — usa servicios de aplicacion.
 package api
 
 import (
-	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"encoding/hex"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/Nidael1/VuhmikGO/internal/auth"
+	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
 )
-
-// User representa un usuario del sistema en memoria para el MVP.
-// La persistencia real requiere UserRepository (issue posterior).
-type userRecord struct {
-	ID           string
-	TenantID     string
-	Email        string
-	PasswordHash string
-	CreatedAt    time.Time
-}
-
-// userStore es un store en memoria para demo.
-// Sera reemplazado por repositorio PostgreSQL en issue posterior.
-var userStore = map[string]*userRecord{}
 
 // RegisterRequest es el payload de registro.
 type RegisterRequest struct {
@@ -40,35 +26,50 @@ type LoginRequest struct {
 }
 
 // AuthResponse es la respuesta de autenticacion.
+// Incluye access token (15min) y refresh token (7 dias).
 type AuthResponse struct {
-	Token    string `json:"token"`
-	TenantID string `json:"tenant_id"`
-	ActorID  string `json:"actor_id"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
+	TenantID     string `json:"tenant_id"`
+	ActorID      string `json:"actor_id"`
 }
 
-// ErrorResponse es el formato estandar de error de la API.
-type ErrorResponse struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
+func issueTokenPair(user postgres.User) (AuthResponse, error) {
+	// Access token — 15 minutos
+	accessToken, err := auth.GenerateToken(user.ID, user.TenantID)
+	if err != nil {
+		return AuthResponse{}, fmt.Errorf("error al generar access token: %w", err)
+	}
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}
+	// Refresh token — 7 dias, stateful en PostgreSQL
+	plain, hash, err := postgres.GenerateRefreshTokenValue()
+	if err != nil {
+		return AuthResponse{}, fmt.Errorf("error al generar refresh token: %w", err)
+	}
 
-func writeError(w http.ResponseWriter, status int, code, message string) {
-	writeJSON(w, status, map[string]any{
-		"data":  nil,
-		"error": ErrorResponse{Code: code, Message: message},
-	})
+	rt := postgres.RefreshToken{
+		ID:        "rt-" + user.ID + "-" + time.Now().Format("20060102150405"),
+		UserID:    user.ID,
+		TenantID:  user.TenantID,
+		TokenHash: hash,
+		ExpiresAt: time.Now().UTC().Add(7 * 24 * time.Hour),
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := deps.RefreshTokenRepo.Create(rt); err != nil {
+		return AuthResponse{}, fmt.Errorf("error al persistir refresh token: %w", err)
+	}
+
+	return AuthResponse{
+		Token:        accessToken,
+		RefreshToken: plain,
+		TenantID:     user.TenantID,
+		ActorID:      user.ID,
+	}, nil
 }
 
 // HandleRegister registra un nuevo medico en el sistema.
 //
 // POST /api/v1/auth/register
-// Body: {"email": "...", "password": "..."}
 func HandleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
@@ -88,7 +89,7 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "PASSWORD_TOO_SHORT", "password minimo 8 caracteres")
 		return
 	}
-	if _, exists := userStore[req.Email]; exists {
+	if deps.UserRepo.ExistsByEmail(req.Email) {
 		writeError(w, http.StatusConflict, "EMAIL_EXISTS", "el email ya esta registrado")
 		return
 	}
@@ -99,28 +100,28 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := "usr-" + strings.ReplaceAll(req.Email, "@", "-")
 	tenantID := "tenant-" + userID
-	userStore[req.Email] = &userRecord{
+	u := postgres.User{
 		ID:           userID,
 		TenantID:     tenantID,
 		Email:        req.Email,
 		PasswordHash: hash,
 		CreatedAt:    time.Now().UTC(),
 	}
-	token, err := auth.GenerateToken(userID, tenantID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "TOKEN_ERROR", "error al generar token")
+	if err := deps.UserRepo.Create(u); err != nil {
+		writeError(w, http.StatusInternalServerError, "DB_ERROR", "error al registrar usuario")
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"data":  AuthResponse{Token: token, TenantID: tenantID, ActorID: userID},
-		"error": nil,
-	})
+	resp, err := issueTokenPair(u)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "TOKEN_ERROR", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"data": resp, "error": nil})
 }
 
-// HandleLogin autentica un medico y retorna un JWT.
+// HandleLogin autentica un medico y retorna access + refresh token.
 //
 // POST /api/v1/auth/login
-// Body: {"email": "...", "password": "..."}
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
@@ -132,26 +133,22 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
-	user, exists := userStore[req.Email]
-	if !exists || !auth.CheckPassword(req.Password, user.PasswordHash) {
+	u, err := deps.UserRepo.FindByEmail(req.Email)
+	if err != nil || !auth.CheckPassword(req.Password, u.PasswordHash) {
 		writeError(w, http.StatusUnauthorized, "INVALID_CREDENTIALS", "credenciales invalidas")
 		return
 	}
-	token, err := auth.GenerateToken(user.ID, user.TenantID)
+	resp, err := issueTokenPair(u)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "TOKEN_ERROR", "error al generar token")
+		writeError(w, http.StatusInternalServerError, "TOKEN_ERROR", err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"data":  AuthResponse{Token: token, TenantID: user.TenantID, ActorID: user.ID},
-		"error": nil,
-	})
+	writeJSON(w, http.StatusOK, map[string]any{"data": resp, "error": nil})
 }
 
 // HandleMe retorna el perfil del usuario autenticado.
 //
 // GET /api/v1/auth/me
-// Header: Authorization: Bearer <token>
 func HandleMe(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
@@ -171,10 +168,8 @@ func HandleMe(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// claimsKey es la clave de contexto para los claims JWT.
-type claimsKey struct{}
-
-// ContextWithClaims agrega claims al contexto de la request.
-func ContextWithClaims(ctx context.Context, claims *auth.Claims) context.Context {
-	return context.WithValue(ctx, claimsKey{}, claims)
+// hashToken calcula SHA-256 de un token en texto plano.
+func hashToken(plain string) string {
+	h := sha256.Sum256([]byte(plain))
+	return hex.EncodeToString(h[:])
 }

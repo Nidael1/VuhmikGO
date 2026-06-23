@@ -7,9 +7,10 @@ import (
 
 // Deps contiene las dependencias inyectadas en los handlers de la API.
 type Deps struct {
-	EvidenceRepo ports.EvidenceRepository
-	UserRepo     *postgres.UserRepository
-	PatientRepo  *postgres.PatientRepository
+	EvidenceRepo     ports.EvidenceRepository
+	UserRepo         *postgres.UserRepository
+	PatientRepo      *postgres.PatientRepository
+	RefreshTokenRepo *postgres.RefreshTokenRepository
 }
 
 var deps Deps
