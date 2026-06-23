@@ -5,7 +5,17 @@ import { useRouter } from 'vue-router'
 const auth = useAuthStore()
 const router = useRouter()
 
-function logout() {
+async function logout() {
+  // Revocar refresh token en servidor antes de limpiar sesion local
+  if (auth.refreshToken) {
+    try {
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: auth.refreshToken }),
+      })
+    } catch { /* si falla la revocacion, igual limpiamos local */ }
+  }
   auth.clearSession()
   router.push('/login')
 }

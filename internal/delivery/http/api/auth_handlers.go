@@ -223,3 +223,33 @@ func HandleRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": resp, "error": nil})
 }
+
+// LogoutRequest es el payload para cerrar sesion.
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+// HandleLogout revoca el refresh token activo cerrando la sesion.
+// El access token expirara naturalmente en 15 minutos.
+//
+// POST /api/v1/auth/logout
+func HandleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	var req LogoutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RefreshToken == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "refresh_token es obligatorio")
+		return
+	}
+	hash := hashToken(req.RefreshToken)
+	rt, err := deps.RefreshTokenRepo.FindByHash(hash)
+	if err != nil {
+		// Si no existe o ya fue revocado, logout es exitoso igual
+		writeJSON(w, http.StatusOK, map[string]any{"data": map[string]string{"message": "sesion cerrada"}, "error": nil})
+		return
+	}
+	deps.RefreshTokenRepo.Revoke(rt.ID)
+	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]string{"message": "sesion cerrada"}, "error": nil})
+}
