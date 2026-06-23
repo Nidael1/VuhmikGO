@@ -63,3 +63,16 @@ func (r *UserRepository) ExistsByEmail(email string) bool {
 	r.pool.QueryRow(context.Background(), sql, email).Scan(&count)
 	return count > 0
 }
+
+// FindByID busca un usuario por su ID.
+func (r *UserRepository) FindByID(id string) (User, error) {
+	sql := `
+		SELECT id, tenant_id, email, password_hash, created_at
+		FROM users WHERE id = $1`
+	row := r.pool.QueryRow(context.Background(), sql, id)
+	var u User
+	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.CreatedAt); err != nil {
+		return User{}, fmt.Errorf("usuario no encontrado: %w", err)
+	}
+	return u, nil
+}

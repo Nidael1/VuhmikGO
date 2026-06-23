@@ -173,3 +173,53 @@ func hashToken(plain string) string {
 	h := sha256.Sum256([]byte(plain))
 	return hex.EncodeToString(h[:])
 }
+
+// RefreshRequest es el payload para renovar el access token.
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+// HandleRefresh renueva el access token usando un refresh token valido.
+// El refresh token se rota — se revoca el anterior y se emite uno nuevo.
+//
+// POST /api/v1/auth/refresh
+func HandleRefresh(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	var req RefreshRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RefreshToken == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "refresh_token es obligatorio")
+		return
+	}
+
+	// Buscar el refresh token por hash
+	hash := hashToken(req.RefreshToken)
+	rt, err := deps.RefreshTokenRepo.FindByHash(hash)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "INVALID_REFRESH_TOKEN", "refresh token invalido o expirado")
+		return
+	}
+
+	// Buscar el usuario
+	u, err := deps.UserRepo.FindByID(rt.UserID)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "USER_NOT_FOUND", "usuario no encontrado")
+		return
+	}
+
+	// Revocar el refresh token actual (rotacion)
+	if err := deps.RefreshTokenRepo.Revoke(rt.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al revocar token")
+		return
+	}
+
+	// Emitir nuevo par de tokens
+	resp, err := issueTokenPair(u)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "TOKEN_ERROR", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": resp, "error": nil})
+}

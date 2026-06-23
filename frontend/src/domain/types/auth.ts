@@ -1,7 +1,6 @@
-// Tipos de dominio para autenticación.
-
 export interface AuthTokens {
   token: string
+  refresh_token: string
   tenant_id: string
   actor_id: string
 }
