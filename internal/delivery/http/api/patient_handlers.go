@@ -101,7 +101,7 @@ func HandlePatientCreate(w http.ResponseWriter, r *http.Request) {
 	p := postgres.Patient{
 		ID:              "pac-" + tenantID + "-" + now.Format("20060102150405"),
 		TenantID:        tenantID,
-		Nombre:          req.Nombre,
+		Nombre:          strings.ToUpper(strings.TrimSpace(req.Nombre)),
 		FechaNacimiento: req.FechaNacimiento,
 		Sexo:            req.Sexo,
 		NumExpediente:   expediente,
