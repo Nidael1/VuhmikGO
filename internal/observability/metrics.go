@@ -56,3 +56,14 @@ func Snapshot() map[string]int64 {
 		"errors":  GlobalMetrics.Errors.Load(),
 	}
 }
+
+// ResetMetrics resetea todos los contadores de metricas en memoria.
+// Llamado por el MetricsPurgeWorker cada 30 dias (WAR-A).
+func ResetMetrics() {
+	GlobalMetrics.Create.Store(0)
+	GlobalMetrics.Issue.Store(0)
+	GlobalMetrics.Void.Store(0)
+	GlobalMetrics.Replace.Store(0)
+	GlobalMetrics.Export.Store(0)
+	GlobalMetrics.Errors.Store(0)
+}
