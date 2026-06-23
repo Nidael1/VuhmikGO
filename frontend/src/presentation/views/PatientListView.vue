@@ -8,6 +8,7 @@ const patients = ref<Patient[]>([])
 const loading = ref(true)
 const error = ref('')
 const search = ref('')
+const sortBy = ref<'nombre' | 'expediente'>('nombre')
 
 onMounted(async () => {
   try { patients.value = await patientRepository.list() }
@@ -27,12 +28,20 @@ function calcEdad(fechaNac: string): number {
 }
 
 const filtered = computed(() => {
-  if (!search.value.trim()) return patients.value
-  const q = search.value.toLowerCase()
-  return patients.value.filter(p =>
-    p.nombre.toLowerCase().includes(q) ||
-    p.num_expediente.toLowerCase().includes(q)
-  )
+  let list = [...patients.value]
+  if (search.value.trim()) {
+    const q = search.value.toLowerCase()
+    list = list.filter(p =>
+      p.nombre.toLowerCase().includes(q) ||
+      p.num_expediente.toLowerCase().includes(q)
+    )
+  }
+  if (sortBy.value === 'nombre') {
+    list.sort((a, b) => a.nombre.localeCompare(b.nombre))
+  } else {
+    list.sort((a, b) => a.num_expediente.localeCompare(b.num_expediente))
+  }
+  return list
 })
 </script>
 
@@ -53,13 +62,23 @@ const filtered = computed(() => {
       <div v-else-if="error" class="alert-error">{{ error }}</div>
 
       <template v-else>
-        <div class="search-bar" v-if="patients.length > 0">
+        <div class="controls" v-if="patients.length > 0">
           <input
             v-model="search"
             type="text"
             placeholder="Buscar por nombre o expediente..."
             class="search-input"
           />
+          <div class="sort-buttons">
+            <button
+              :class="['btn-sort', sortBy === 'nombre' && 'active']"
+              @click="sortBy = 'nombre'"
+            >A–Z</button>
+            <button
+              :class="['btn-sort', sortBy === 'expediente' && 'active']"
+              @click="sortBy = 'expediente'"
+            ># Exp</button>
+          </div>
         </div>
 
         <div v-if="filtered.length === 0 && patients.length === 0" class="state-empty">
@@ -99,9 +118,13 @@ const filtered = computed(() => {
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-4); }
 .page-sub { color: var(--text-secondary); font-size: 13px; margin-top: var(--space-1); }
 .btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }
-.search-bar { margin-bottom: var(--space-4); }
-.search-input { width: 100%; font-family: var(--font-body); padding: var(--space-3) var(--space-4); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); font-size: 15px; color: var(--text-primary); background: var(--app-surface); outline: none; }
+.controls { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); align-items: center; }
+.search-input { flex: 1; font-family: var(--font-body); padding: var(--space-3) var(--space-4); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); font-size: 15px; color: var(--text-primary); background: var(--app-surface); outline: none; }
 .search-input:focus { border-color: var(--color-turquoise); }
+.sort-buttons { display: flex; gap: var(--space-1); }
+.btn-sort { background: var(--app-surface); border: 1.5px solid #E2E8F0; color: var(--text-secondary); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn-sort:hover { border-color: var(--color-turquoise); color: var(--color-turquoise); }
+.btn-sort.active { background: var(--color-obsidian); border-color: var(--color-obsidian); color: #fff; }
 .state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
 .alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-md); padding: var(--space-4); color: var(--color-error); font-size: 14px; }
 .patient-list { display: flex; flex-direction: column; gap: var(--space-3); }
