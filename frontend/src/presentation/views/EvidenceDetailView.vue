@@ -27,13 +27,14 @@ function formatDate(d: string | null) {
   })
 }
 
-async function exportEvidence() {
+async function exportEvidence(format: 'json' | 'xml' = 'json') {
   try {
-    const blob = await evidenceRepository.export(id)
+    const accept = format === 'xml' ? 'application/xml' : 'application/json'
+    const blob = await evidenceRepository.exportWithFormat(id, accept)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `nota_${id}.json`
+    a.download = `nota_${id}.${format}`
     a.click()
     URL.revokeObjectURL(url)
   } catch (e: any) { error.value = e.message }
@@ -78,8 +79,11 @@ async function exportEvidence() {
           <RouterLink :to="`/evidence/${ev.id}/editar`" class="btn-edit">
             ✏️ Editar nota
           </RouterLink>
-          <button class="btn-export" @click="exportEvidence">
-            ⬇ Descargar
+          <button class="btn-export" @click="exportEvidence('json')">
+            ⬇ JSON
+          </button>
+          <button class="btn-export" @click="exportEvidence('xml')">
+            ⬇ XML
           </button>
         </div>
       </template>

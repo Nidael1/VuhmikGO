@@ -66,4 +66,18 @@ export const evidenceRepository = {
     if (!res.ok) throw new Error('export fallido')
     return res.blob()
   },
+
+  async exportWithFormat(id: string, accept: string): Promise<Blob> {
+    const { useAuthStore } = await import('@/app/stores/auth')
+    const auth = useAuthStore()
+    const res = await fetch(`/api/v1/evidence/${id}/export`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${auth.token}`,
+        Accept: accept,
+      },
+    })
+    if (!res.ok) throw new Error('export fallido')
+    return res.blob()
+  },
 }

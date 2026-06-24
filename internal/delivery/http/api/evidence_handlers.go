@@ -404,8 +404,21 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Detectar formato segun header Accept (ADR-0007)
+	accept := r.Header.Get("Accept")
+	if accept == "application/xml" {
+		xmlBytes, xmlErr := shaders.GenerateExportXML(data, contentHash)
+		if xmlErr == nil {
+			w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+			w.Header().Set("Content-Disposition", `attachment; filename="export_`+id+`.xml"`)
+			w.Header().Set("Cache-Control", "no-store")
+			w.WriteHeader(http.StatusOK)
+			w.Write(xmlBytes)
+			return
+		}
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Content-Disposition", "attachment; filename=\"export_"+id+".json\"")
+	w.Header().Set("Content-Disposition", `attachment; filename="export_`+id+`.json"`)
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
 	w.Write(exportBytes)
