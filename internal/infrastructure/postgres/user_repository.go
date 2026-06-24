@@ -11,6 +11,7 @@ import (
 
 // User representa un usuario del sistema en PostgreSQL.
 type User struct {
+	CURP         string
 	ID           string
 	TenantID     string
 	Email        string
@@ -31,10 +32,10 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 // Create inserta un nuevo usuario en la BD.
 func (r *UserRepository) Create(u User) error {
 	sql := `
-		INSERT INTO users (id, tenant_id, email, password_hash, created_at)
-		VALUES ($1, $2, $3, $4, $5)`
+		INSERT INTO users (id, tenant_id, email, password_hash, curp, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)`
 	_, err := r.pool.Exec(context.Background(), sql,
-		u.ID, u.TenantID, u.Email, u.PasswordHash, u.CreatedAt,
+		u.ID, u.TenantID, u.Email, u.PasswordHash, u.CURP, u.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("error al crear usuario: %w", err)
@@ -46,11 +47,11 @@ func (r *UserRepository) Create(u User) error {
 // Retorna error si no existe.
 func (r *UserRepository) FindByEmail(email string) (User, error) {
 	sql := `
-		SELECT id, tenant_id, email, password_hash, created_at
+		SELECT id, tenant_id, email, password_hash, curp, created_at
 		FROM users WHERE email = $1`
 	row := r.pool.QueryRow(context.Background(), sql, email)
 	var u User
-	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.CURP, &u.CreatedAt); err != nil {
 		return User{}, fmt.Errorf("usuario no encontrado: %w", err)
 	}
 	return u, nil
@@ -67,11 +68,11 @@ func (r *UserRepository) ExistsByEmail(email string) bool {
 // FindByID busca un usuario por su ID.
 func (r *UserRepository) FindByID(id string) (User, error) {
 	sql := `
-		SELECT id, tenant_id, email, password_hash, created_at
+		SELECT id, tenant_id, email, password_hash, curp, created_at
 		FROM users WHERE id = $1`
 	row := r.pool.QueryRow(context.Background(), sql, id)
 	var u User
-	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.CURP, &u.CreatedAt); err != nil {
 		return User{}, fmt.Errorf("usuario no encontrado: %w", err)
 	}
 	return u, nil

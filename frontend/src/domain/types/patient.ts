@@ -7,6 +7,7 @@ export interface Patient {
   nombre: string
   fecha_nacimiento: string
   sexo: 'M' | 'F' | 'I'
+  curp: string
   num_expediente: string
   created_at: string
   updated_at: string
@@ -16,4 +17,5 @@ export interface PatientRequest {
   nombre: string
   fecha_nacimiento: string
   sexo: string
+  curp?: string
 }

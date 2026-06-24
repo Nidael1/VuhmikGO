@@ -8,6 +8,7 @@ const router = useRouter()
 const nombre = ref('')
 const fechaNacimiento = ref('')
 const sexo = ref('M')
+const curp = ref('')
 const error = ref('')
 const saving = ref(false)
 
@@ -21,6 +22,7 @@ async function save() {
       nombre: nombre.value,
       fecha_nacimiento: fechaNacimiento.value,
       sexo: sexo.value,
+      curp: curp.value.trim().toUpperCase() || undefined,
     })
     router.push(`/patients/${p.id}`)
   } catch (e: any) { error.value = e.message }
@@ -55,6 +57,10 @@ async function save() {
             <option value="I">Indeterminado</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>CURP <span class="optional">(opcional)</span></label>
+          <input v-model="curp" type="text" placeholder="AAAA000000XXXXXX00" maxlength="18" />
+        </div>
         <div class="alert-error" v-if="error">{{ error }}</div>
         <div class="form-actions">
           <button class="btn-primary" @click="save" :disabled="saving">
@@ -76,6 +82,7 @@ async function save() {
 label { font-size: 14px; font-weight: 500; color: var(--text-primary); }
 input, select { font-family: var(--font-body); padding: var(--space-3) var(--space-4); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); font-size: 15px; color: var(--text-primary); background: var(--app-bg); outline: none; }
 input:focus, select:focus { border-color: var(--color-turquoise); }
+.optional { font-size: 12px; color: var(--text-secondary); font-weight: 400; }
 .alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); }
 .form-actions { display: flex; justify-content: flex-end; }
 .btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-3) var(--space-6); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; }

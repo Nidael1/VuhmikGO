@@ -10,6 +10,7 @@ import (
 
 // Patient representa un paciente del consultorio en PostgreSQL.
 type Patient struct {
+	CURP            string
 	ID              string
 	TenantID        string
 	Nombre          string
@@ -31,11 +32,11 @@ func NewPatientRepository(pool *pgxpool.Pool) *PatientRepository {
 
 func (r *PatientRepository) Create(p Patient) error {
 	sql := `
-		INSERT INTO patients (id, tenant_id, nombre, fecha_nacimiento, sexo, num_expediente, created_at, updated_at)
-		VALUES ($1, $2, $3, $4::date, $5, $6, $7, $8)`
+		INSERT INTO patients (id, tenant_id, nombre, fecha_nacimiento, sexo, num_expediente, curp, created_at, updated_at)
+		VALUES ($1, $2, $3, $4::date, $5, $6, $7, $8, $9)`
 	_, err := r.pool.Exec(context.Background(), sql,
 		p.ID, p.TenantID, p.Nombre, p.FechaNacimiento,
-		p.Sexo, p.NumExpediente, p.CreatedAt, p.UpdatedAt,
+		p.Sexo, p.NumExpediente, p.CURP, p.CreatedAt, p.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("error al crear paciente: %w", err)
@@ -48,7 +49,7 @@ func scanPatient(row interface{ Scan(...any) error }) (Patient, error) {
 	var fechaNac time.Time
 	if err := row.Scan(
 		&p.ID, &p.TenantID, &p.Nombre, &fechaNac,
-		&p.Sexo, &p.NumExpediente, &p.CreatedAt, &p.UpdatedAt,
+		&p.Sexo, &p.NumExpediente, &p.CURP, &p.CreatedAt, &p.UpdatedAt,
 	); err != nil {
 		return Patient{}, err
 	}
@@ -58,7 +59,7 @@ func scanPatient(row interface{ Scan(...any) error }) (Patient, error) {
 
 func (r *PatientRepository) FindByID(tenantID, id string) (Patient, error) {
 	sql := `
-		SELECT id, tenant_id, nombre, fecha_nacimiento, sexo, num_expediente, created_at, updated_at
+		SELECT id, tenant_id, nombre, fecha_nacimiento, sexo, num_expediente, curp, created_at, updated_at
 		FROM patients WHERE id = $1 AND tenant_id = $2`
 	row := r.pool.QueryRow(context.Background(), sql, id, tenantID)
 	p, err := scanPatient(row)
@@ -70,7 +71,7 @@ func (r *PatientRepository) FindByID(tenantID, id string) (Patient, error) {
 
 func (r *PatientRepository) FindAll(tenantID string) ([]Patient, error) {
 	sql := `
-		SELECT id, tenant_id, nombre, fecha_nacimiento, sexo, num_expediente, created_at, updated_at
+		SELECT id, tenant_id, nombre, fecha_nacimiento, sexo, num_expediente, curp, created_at, updated_at
 		FROM patients WHERE tenant_id = $1 ORDER BY nombre ASC`
 	rows, err := r.pool.Query(context.Background(), sql, tenantID)
 	if err != nil {

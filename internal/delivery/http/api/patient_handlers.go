@@ -11,6 +11,7 @@ import (
 
 // PatientItem es el DTO de respuesta para paciente.
 type PatientItem struct {
+	CURP            string    `json:"curp"`
 	ID              string    `json:"id"`
 	TenantID        string    `json:"tenant_id"`
 	Nombre          string    `json:"nombre"`
@@ -29,6 +30,7 @@ func toPatientItem(p postgres.Patient) PatientItem {
 		FechaNacimiento: p.FechaNacimiento,
 		Sexo:            p.Sexo,
 		NumExpediente:   p.NumExpediente,
+		CURP:            p.CURP,
 		CreatedAt:       p.CreatedAt,
 		UpdatedAt:       p.UpdatedAt,
 	}
@@ -36,6 +38,7 @@ func toPatientItem(p postgres.Patient) PatientItem {
 
 // PatientRequest es el payload para crear o actualizar un paciente.
 type PatientRequest struct {
+	CURP            string `json:"curp"`
 	Nombre          string `json:"nombre"`
 	FechaNacimiento string `json:"fecha_nacimiento"`
 	Sexo            string `json:"sexo"`
@@ -105,6 +108,7 @@ func HandlePatientCreate(w http.ResponseWriter, r *http.Request) {
 		FechaNacimiento: req.FechaNacimiento,
 		Sexo:            req.Sexo,
 		NumExpediente:   expediente,
+		CURP:            strings.ToUpper(strings.TrimSpace(req.CURP)),
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}

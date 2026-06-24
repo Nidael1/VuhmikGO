@@ -15,6 +15,7 @@ import (
 
 // RegisterRequest es el payload de registro.
 type RegisterRequest struct {
+	CURP     string `json:"curp"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -101,6 +102,7 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 	userID := "usr-" + strings.ReplaceAll(req.Email, "@", "-")
 	tenantID := "tenant-" + userID
 	u := postgres.User{
+		CURP:         strings.ToUpper(strings.TrimSpace(req.CURP)),
 		ID:           userID,
 		TenantID:     tenantID,
 		Email:        req.Email,
