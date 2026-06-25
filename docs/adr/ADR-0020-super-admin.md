@@ -1,0 +1,125 @@
+# ADR-0020 — Super-admin: plano de control off-web (diferido)
+
+## Estado
+Propuesto
+
+## Fecha
+2026-06-24
+
+## Contexto
+
+El registro de capacidades (ADR-0017) separa dos planos de escritura:
+
+  Plano de datos (admin, ADR-0018): activa modulos por cuenta. Vive en
+  la web, lo opera el administrador comercial.
+
+  Plano de control (super-admin): define que modulos EXISTEN y estan
+  publicados, y a que rubro pertenecen. Es lo que convierte el mismo
+  Core agnostico (ADR-0016) en un ECE medico hoy, o en un ERP manana.
+
+En v1 el plano de control no tiene UI: la publicacion de modulos se
+hace por migracion forward-only desde una maquina de confianza. Eso
+es suficiente para un equipo de uno con un solo rubro activo (medico).
+
+Este ADR documenta la decision de diferir el super-admin con UI, las
+razones de seguridad que lo justifican, y como debe construirse cuando
+sea necesario.
+
+## Decision
+
+### En v1: configuracion como codigo, sin superficie web
+
+El super-admin no es una aplicacion web en v1. Publicar o despublicar
+un modulo, cambiar su rubro o su estado es una migracion forward-only
+que el dueno de la plataforma corre desde su maquina de confianza,
+a traves de un canal controlado (SSH al servidor de produccion).
+
+La app que corre en produccion NO tiene ningun endpoint HTTP que
+escriba en la tabla MODULES. Solo la lee. Esto significa que aunque
+alguien comprometiera por completo la app publica, no podria publicar
+nuevos modulos, cambiar rubros ni alterar el catalogo: esa capacidad
+de escritura no existe en el binario desplegado.
+
+Ventajas de este modelo en v1:
+  - Superficie de ataque del plano de control = cero en la web.
+  - Toda publicacion queda como migracion versionada en git: auditada,
+    con fecha, autoria y revertible por historial.
+  - Sin costo de desarrollo de una UI que aun no se necesita.
+
+### Cuando escale: app interna aislada, nunca en la web publica
+
+Cuando el volumen de modulos o de rubros haga inmanejable la gestion
+por migraciones, el super-admin se convierte en una aplicacion interna
+separada con estas restricciones invariantes:
+
+  - Otro binario, otro proceso, otro despliegue. Nunca fusionado con
+    la app publica del medico ni con el panel del admin comercial.
+  - Accesible solo desde localhost o detras de VPN. Nunca expuesto
+    a internet publico.
+  - Sin autenticacion compartida con la app publica: sesion propia,
+    credenciales propias, sin JWT del sistema principal.
+  - La BD que escribe es la misma de produccion, pero el acceso es
+    por tunel SSH o conexion privada, no por endpoint publico.
+
+Esta separacion garantiza que un ataque a la app del medico no puede
+escalar al plano de control, aunque la app este completamente
+comprometida. Es la leccion directa del breach de SingHealth (2018):
+un control privilegiado mal aislado sobre la misma superficie de
+ataque fue el vector de entrada.
+
+### Lo que el super-admin controla (cuando exista)
+
+  - Publicar / despublicar modulos en MODULES.
+  - Cambiar el rubro de un modulo (medico / erp / crm).
+  - Cambiar el estado de publicacion (en_desarrollo / publicado /
+    deprecado).
+  - Ver el catalogo completo de modulos (incluidos los no publicados,
+    invisibles para el admin comercial y para los tenants).
+
+Lo que el super-admin NO controla:
+  - Activacion por cuenta (eso es el admin comercial, ADR-0018).
+  - Datos clinicos o PHI de cualquier tipo.
+  - Usuarios medicos o sus sesiones.
+
+### Seed inicial en v1
+
+El rubro medico arranca con los siguientes modulos pre-publicados
+como seed en la migracion inicial de MODULES:
+
+  note           Notas clinicas (ya implementado)
+  prescription   Receta electronica (ADR-0011)
+  allergy        Alergias e intolerancias (ADR-0012)
+  diagnosis      Diagnosticos / lista de problemas (ADR-0013)
+  immunization   Inmunizaciones / vacunacion (ADR-0014)
+  lab_result     Resultados de laboratorio (ADR-0015)
+
+Todos los demas modulos (rubros ERP, CRM, notarial) se publicaran
+cuando existan y esten listos, por migracion.
+
+## Dependencias
+
+  - ADR-0016: el super-admin define los tipos de contenido que el
+              Shader puede interpretar del blob opaco.
+  - ADR-0017: el super-admin es el unico escritor de MODULES (plano
+              de control); el admin comercial solo escribe en
+              TENANT_CAPABILITIES (plano de datos).
+  - ADR-0018: el panel de toggles opera sobre lo publicado por el
+              super-admin; no puede publicar modulos nuevos.
+
+## Estado de implementacion
+
+  Diferido. No se construye en v1.
+  En v1: seed de MODULES por migracion (rubro medico, 6 modulos).
+  Futuro: app interna aislada (localhost/VPN) cuando el volumen
+  de modulos o rubros haga inmanejable la gestion por migraciones.
+  Requiere su propio ADR de implementacion cuando se construya.
+
+## Consecuencias
+
+  El plano de control tiene superficie de ataque cero en la web en v1.
+  Toda publicacion de modulos es auditada en git como migracion.
+  El diferimiento ahorra desarrollo que hoy no se necesita.
+  Cuando se construya, la separacion en app interna aislada garantiza
+  que un ataque a la app publica no puede escalar al plano de control.
+  El seed inicial deja listos los 6 modulos del rubro medico para
+  que el admin comercial pueda activarlos por cuenta desde el dia uno.
