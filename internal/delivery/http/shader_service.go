@@ -47,7 +47,7 @@ func (s *ShaderService) Export(
 		TenantID:  tenantID,
 		ActorID:   actorID,
 		Operation: shaders.OperationExport,
-		SubjectID: evidenceID,
+		SubjectRef: evidenceID,
 	}
 	data := shaders.ExportData{
 		EvidenceID: evidenceID,
@@ -78,7 +78,7 @@ func (s *ShaderService) CreateDraft(
 		TenantID:  tenantID,
 		ActorID:   actorID,
 		Operation: shaders.OperationCreate,
-		SubjectID: subjectID,
+		SubjectRef: subjectID,
 	}
 	decision := s.medical.Evaluate(ctx)
 	if decision.Result != shaders.DecisionAllow {

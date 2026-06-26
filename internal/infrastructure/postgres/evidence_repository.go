@@ -20,10 +20,10 @@ func NewEvidenceRepository(pool *pgxpool.Pool) *EvidenceRepository {
 
 func (r *EvidenceRepository) Create(e evidence.Evidence) error {
 	sql := `
-		INSERT INTO evidence (id, tenant_id, subject_id, notes, state, created_at, issued_at, voided_at, replaced_by_id)
+		INSERT INTO evidence (id, tenant_id, subject_ref, content, state, created_at, issued_at, voided_at, replaced_by_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 	_, err := r.pool.Exec(context.Background(), sql,
-		e.ID, e.TenantID, e.SubjectID, e.Notes, string(e.State),
+		e.ID, e.TenantID, e.SubjectRef, e.Content, string(e.State),
 		e.CreatedAt, e.IssuedAt, e.VoidedAt, e.ReplacedByID,
 	)
 	if err != nil {
@@ -34,13 +34,13 @@ func (r *EvidenceRepository) Create(e evidence.Evidence) error {
 
 func (r *EvidenceRepository) FindByID(tenantID, id string) (evidence.Evidence, error) {
 	sql := `
-		SELECT id, tenant_id, subject_id, notes, state, created_at, issued_at, voided_at, replaced_by_id
+		SELECT id, tenant_id, subject_ref, content, state, created_at, issued_at, voided_at, replaced_by_id
 		FROM evidence WHERE id = $1 AND tenant_id = $2`
 	row := r.pool.QueryRow(context.Background(), sql, id, tenantID)
 	var e evidence.Evidence
 	var state string
 	err := row.Scan(
-		&e.ID, &e.TenantID, &e.SubjectID, &e.Notes, &state,
+		&e.ID, &e.TenantID, &e.SubjectRef, &e.Content, &state,
 		&e.CreatedAt, &e.IssuedAt, &e.VoidedAt, &e.ReplacedByID,
 	)
 	if err != nil {
@@ -90,7 +90,7 @@ func (r *EvidenceRepository) UpdateForVoid(tenantID string, e evidence.Evidence)
 
 func (r *EvidenceRepository) FindAll(tenantID string) ([]evidence.Evidence, error) {
 	sql := `
-		SELECT id, tenant_id, subject_id, notes, state, created_at, issued_at, voided_at, replaced_by_id
+		SELECT id, tenant_id, subject_ref, content, state, created_at, issued_at, voided_at, replaced_by_id
 		FROM evidence WHERE tenant_id = $1 ORDER BY created_at DESC`
 	rows, err := r.pool.Query(context.Background(), sql, tenantID)
 	if err != nil {
@@ -102,7 +102,7 @@ func (r *EvidenceRepository) FindAll(tenantID string) ([]evidence.Evidence, erro
 		var e evidence.Evidence
 		var state string
 		if err := rows.Scan(
-			&e.ID, &e.TenantID, &e.SubjectID, &e.Notes, &state,
+			&e.ID, &e.TenantID, &e.SubjectRef, &e.Content, &state,
 			&e.CreatedAt, &e.IssuedAt, &e.VoidedAt, &e.ReplacedByID,
 		); err != nil {
 			return nil, fmt.Errorf("error al escanear evidencia: %w", err)

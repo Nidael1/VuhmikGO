@@ -30,12 +30,12 @@ func handleECENuevo(w http.ResponseWriter, r *http.Request) {
 
 		tenantID := r.Header.Get("X-Tenant-ID")
 		actorID := r.Header.Get("X-Actor-ID")
-		subjectID := r.FormValue("subject_id")
+		subjectID := r.FormValue("subject_ref")
 		notes := r.FormValue("notes")
 
 		// Validaciones UX — solo presencia y formato
 		v := &UXValidator{}
-		v.Required("subject_id", subjectID)
+		v.Required("subject_ref", subjectID)
 		v.Required("notes", notes)
 		v.MaxLength("notes", notes, 2000)
 
@@ -79,11 +79,11 @@ func handleECEDraftGuardar(w http.ResponseWriter, r *http.Request) {
 	}
 	tenantID := r.Header.Get("X-Tenant-ID")
 	actorID := r.Header.Get("X-Actor-ID")
-	subjectID := r.FormValue("subject_id")
+	subjectID := r.FormValue("subject_ref")
 	notes := r.FormValue("notes")
 
 	v := &UXValidator{}
-	v.Required("subject_id", subjectID)
+	v.Required("subject_ref", subjectID)
 	v.Required("notes", notes)
 	v.MaxLength("notes", notes, 2000)
 	if !v.Valid() {

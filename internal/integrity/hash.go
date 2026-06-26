@@ -15,8 +15,8 @@ import (
 type EvidenceHashInput struct {
 	EvidenceID   string  `json:"evidence_id"`
 	TenantID     string  `json:"tenant_id"`
-	SubjectID    string  `json:"subject_id"`
-	Notes        string  `json:"notes"`
+	SubjectRef   string  `json:"subject_ref"`
+	Content      string  `json:"content"`
 	State        string  `json:"state"`
 	CreatedAt    string  `json:"created_at"`
 	IssuedAt     *string `json:"issued_at"`

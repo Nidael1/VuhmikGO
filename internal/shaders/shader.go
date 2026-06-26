@@ -21,7 +21,7 @@ const (
 type ShaderContext struct {
 	TenantID  string    // obligatorio
 	Operation Operation // obligatorio
-	SubjectID string    // opcional según operación
+	SubjectRef string    // opcional segun operacion
 	ActorID   string    // obligatorio
 	Country   string    // opcional
 }

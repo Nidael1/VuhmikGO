@@ -18,8 +18,8 @@ var evidenceStore = inmemory.NewEvidenceRepository()
 
 // EvidenceItem es el DTO de respuesta para evidencia.
 type EvidenceItem struct {
-	SubjectID    string     `json:"subject_id"`
-	Notes        string     `json:"notes"`
+	SubjectRef   string     `json:"subject_ref"`
+	Content      string     `json:"content"`
 	ID           string     `json:"id"`
 	TenantID     string     `json:"tenant_id"`
 	State        string     `json:"state"`
@@ -33,8 +33,8 @@ func toItem(e evidence.Evidence) EvidenceItem {
 	return EvidenceItem{
 		ID:           e.ID,
 		TenantID:     e.TenantID,
-		SubjectID:    e.SubjectID,
-		Notes:        e.Notes,
+		SubjectRef:   e.SubjectRef,
+		Content:      e.Content,
 		State:        string(e.State),
 		CreatedAt:    e.CreatedAt,
 		IssuedAt:     e.IssuedAt,
@@ -96,8 +96,8 @@ func HandleEvidenceDetail(w http.ResponseWriter, r *http.Request) {
 
 // DraftRequest es el payload para crear un borrador.
 type DraftRequest struct {
-	SubjectID string `json:"subject_id"`
-	Notes     string `json:"notes"`
+	SubjectRef string `json:"subject_ref"`
+	Content  string `json:"content"`
 }
 
 // HandleEvidenceDraft crea un nuevo registro de evidencia en estado draft.
@@ -119,11 +119,11 @@ func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
 		return
 	}
-	if strings.TrimSpace(req.SubjectID) == "" {
+	if strings.TrimSpace(req.SubjectRef) == "" {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "subject_id es obligatorio")
 		return
 	}
-	if strings.TrimSpace(req.Notes) == "" {
+	if strings.TrimSpace(req.Content) == "" {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "notes es obligatorio")
 		return
 	}
@@ -132,8 +132,8 @@ func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
 	e := evidence.Evidence{
 		ID:        id,
 		TenantID:  tenantID,
-		SubjectID: req.SubjectID,
-		Notes:     req.Notes,
+		SubjectRef: req.SubjectRef,
+		Content:   req.Content,
 		State:     evidence.StateDraft,
 		CreatedAt: now,
 	}
@@ -354,13 +354,13 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 		TenantID:  tenantID,
 		ActorID:   actorID,
 		Operation: shaders.OperationExport,
-		SubjectID: id,
+		SubjectRef: id,
 	}
 	data := shaders.ExportData{
 		EvidenceID:   e.ID,
 		TenantID:     e.TenantID,
-		SubjectID:    e.SubjectID,
-		Notes:        e.Notes,
+		SubjectRef:   e.SubjectRef,
+		Content:      e.Content,
 		State:        string(e.State),
 		CreatedAt:    e.CreatedAt,
 		IssuedAt:     e.IssuedAt,
@@ -381,8 +381,8 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 	hashInput := integrity.EvidenceHashInput{
 		EvidenceID: e.ID,
 		TenantID:   e.TenantID,
-		SubjectID:  e.SubjectID,
-		Notes:      e.Notes,
+		SubjectRef: e.SubjectRef,
+		Content:     e.Content,
 		State:      string(e.State),
 		CreatedAt:  e.CreatedAt.Format(time.RFC3339Nano),
 		IssuedAt:   func() *string { if issuedStr == "" { return nil }; return &issuedStr }(),
@@ -395,8 +395,8 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 	// Construir respuesta final con hash y contenido completo
 	var exportMap map[string]any
 	if err := json.Unmarshal(exportBytes, &exportMap); err == nil {
-		exportMap["subject_id"] = e.SubjectID
-		exportMap["notes"] = e.Notes
+		exportMap["subject_ref"] = e.SubjectRef
+		exportMap["content"] = e.Content
 		exportMap["hash"] = contentHash
 		exportMap["exported_at"] = time.Now().UTC().Format(time.RFC3339Nano)
 		if finalBytes, err := json.Marshal(exportMap); err == nil {
@@ -429,7 +429,7 @@ func buildExportShader() shaders.ExportShader {
 }
 // EditRequest es el payload para edicion fluida (ADR-0006).
 type EditRequest struct {
-	Notes string `json:"notes"`
+	Content string `json:"content"`
 }
 
 
@@ -487,8 +487,8 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 	repl := evidence.Evidence{
 		ID:        newID,
 		TenantID:  tenantID,
-		SubjectID: orig.SubjectID,
-		Notes:     req.Notes,
+		SubjectRef: orig.SubjectRef,
+		Content:   req.Content,
 		State:     evidence.StateDraft,
 		CreatedAt: now,
 	}

@@ -96,7 +96,7 @@ func GenerateExportXML(data ExportData, hash string) ([]byte, error) {
 		Confidence: CDConfidential{Code: "N"},
 		Record: CDRecordTarget{
 			PatientRole: CDPatientRole{
-				ID: CDDocumentID{Root: data.SubjectID},
+				ID: CDDocumentID{Root: data.SubjectRef},
 			},
 		},
 		Author: CDAuthor{
@@ -112,7 +112,7 @@ func GenerateExportXML(data ExportData, hash string) ([]byte, error) {
 				Component: CDBodyComponent{
 					Section: CDSection{
 						Title: "Nota clinica",
-						Text:  data.Notes,
+						Text:  data.Content,
 						State: data.State,
 					},
 				},
