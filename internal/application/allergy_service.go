@@ -30,7 +30,7 @@ func NewAllergyService(repo ports.EvidenceRepository, caps ports.CapabilityRepos
 }
 
 // Create crea un registro de alergia inmutable en el Core.
-func (s *AllergyService) Create(tenantID, actorID string, content shaders.AllergyContent) (evidence.Evidence, error) {
+func (s *AllergyService) Create(tenantID, actorID, patientID string, content shaders.AllergyContent) (evidence.Evidence, error) {
 	inner := shaders.NewAllergyShader()
 	guard := shaders.NewCapabilityGuard(inner, s.caps, "allergy", s.rubro)
 
@@ -58,7 +58,7 @@ func (s *AllergyService) Create(tenantID, actorID string, content shaders.Allerg
 	e := evidence.Evidence{
 		ID:         id,
 		TenantID:   tenantID,
-		SubjectRef: content.Agente,
+		SubjectRef: patientID,
 		Content:    blob,
 		State:      evidence.StateDraft,
 		CreatedAt:  now,

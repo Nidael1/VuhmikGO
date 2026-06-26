@@ -82,7 +82,7 @@ func HandleAllergyCreate(w http.ResponseWriter, r *http.Request) {
 		Notas:        req.Notas,
 	}
 
-	e, err := deps.AllergyService.Create(tenantID, actorID, content)
+	e, err := deps.AllergyService.Create(tenantID, actorID, patientID, content)
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "ALLERGY_ERROR", err.Error())
 		return
