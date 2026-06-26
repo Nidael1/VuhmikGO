@@ -3,8 +3,8 @@ export type EvidenceState = 'draft' | 'issued' | 'locked' | 'voided'
 export interface Evidence {
   id: string
   tenant_id: string
-  subject_id: string
-  notes: string
+  subject_ref: string
+  content: string
   state: EvidenceState
   created_at: string
   issued_at: string | null

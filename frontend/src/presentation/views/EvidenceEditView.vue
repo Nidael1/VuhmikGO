@@ -21,9 +21,9 @@ const error = ref('')
 onMounted(async () => {
   try {
     const ev = await evidenceRepository.get(id)
-    notes.value = ev.notes
-    if (ev.subject_id) {
-      try { patient.value = await patientRepository.get(ev.subject_id) }
+    notes.value = ev.content
+    if (ev.subject_ref) {
+      try { patient.value = await patientRepository.get(ev.subject_ref) }
       catch { /* paciente no encontrado, no es error critico */ }
     }
   } catch (e: any) { error.value = e.message }

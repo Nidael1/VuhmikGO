@@ -6,6 +6,8 @@ import { patientRepository } from '@/infrastructure/repositories/patientReposito
 import { evidenceRepository } from '@/infrastructure/repositories/evidenceRepository'
 import type { Patient } from '@/domain/types/patient'
 import type { Evidence } from '@/domain/types/evidence'
+import type { Allergy } from '@/domain/types/allergy'
+import { allergyRepository } from '@/infrastructure/repositories/allergyRepository'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,21 +18,30 @@ const allNotes = ref<Evidence[]>([])
 const loading = ref(true)
 const error = ref('')
 
+// Alergias
+const allergies = ref<Allergy[]>([])
+const showAllergyForm = ref(false)
+const allergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza: '' })
+const allergyLoading = ref(false)
+const allergyError = ref('')
+
 onMounted(async () => {
   try {
-    const [p, notes] = await Promise.all([
+    const [p, notes, algs] = await Promise.all([
       patientRepository.get(id),
       evidenceRepository.list(),
+      allergyRepository.list(id),
     ])
     patient.value = p
     allNotes.value = notes
+    allergies.value = algs
   } catch (e: any) { error.value = e.message }
   finally { loading.value = false }
 })
 
 const activeNotes = computed(() =>
   allNotes.value.filter(n =>
-    n.subject_id === id &&
+    n.subject_ref === id &&
     n.state !== 'voided' &&
     n.state !== 'draft'
   ).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -52,6 +63,32 @@ function formatDate(d: string) {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     hour: '2-digit', minute: '2-digit'
   })
+}
+
+function parseNoteContent(raw: string): string {
+  try {
+    const obj = JSON.parse(raw)
+    return obj.text || raw
+  } catch { return raw }
+}
+
+async function createAllergy() {
+  if (!allergyForm.value.agente.trim() || !allergyForm.value.tipo_reaccion.trim()) {
+    allergyError.value = 'Agente y tipo de reacción son obligatorios'
+    return
+  }
+  allergyLoading.value = true
+  allergyError.value = ''
+  try {
+    const a = await allergyRepository.create(id, allergyForm.value)
+    allergies.value.push(a)
+    showAllergyForm.value = false
+    allergyForm.value = { agente: '', tipo_reaccion: '', criticidad: '', certeza: '' }
+  } catch (e: any) {
+    allergyError.value = e.message
+  } finally {
+    allergyLoading.value = false
+  }
 }
 
 async function exportNote(noteId: string) {
@@ -92,6 +129,76 @@ async function exportNote(noteId: string) {
           <span class="mono">{{ patient.num_expediente }}</span>
         </div>
 
+
+        <!-- Barra de seguridad: alergias activas -->
+        <div v-if="allergies.length > 0" class="safety-bar">
+          <span class="safety-label">⚠ Alergias:</span>
+          <span v-for="a in allergies" :key="a.id" class="allergy-chip">
+            {{ a.agente }}
+          </span>
+        </div>
+
+        <!-- Sección de alergias -->
+        <div class="seccion">
+          <div class="seccion-header">
+            <h3>Alergias e intolerancias</h3>
+            <button class="btn-primary" @click="showAllergyForm = !showAllergyForm">
+              {{ showAllergyForm ? 'Cancelar' : '+ Nueva alergia' }}
+            </button>
+          </div>
+
+          <!-- Formulario nueva alergia -->
+          <div v-if="showAllergyForm" class="allergy-form">
+            <div class="alert-error" v-if="allergyError">{{ allergyError }}</div>
+            <div class="form-row">
+              <label>Agente *</label>
+              <input v-model="allergyForm.agente" placeholder="p. ej. penicilina" class="input" />
+            </div>
+            <div class="form-row">
+              <label>Tipo de reacción *</label>
+              <input v-model="allergyForm.tipo_reaccion" placeholder="p. ej. rash, anafilaxia" class="input" />
+            </div>
+            <div class="form-row">
+              <label>Criticidad</label>
+              <select v-model="allergyForm.criticidad" class="input">
+                <option value="">— opcional —</option>
+                <option value="leve">Leve</option>
+                <option value="moderada">Moderada</option>
+                <option value="grave">Grave</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Certeza</label>
+              <select v-model="allergyForm.certeza" class="input">
+                <option value="">— opcional —</option>
+                <option value="confirmada">Confirmada</option>
+                <option value="sospecha">Sospecha</option>
+                <option value="descartada">Descartada</option>
+              </select>
+            </div>
+            <button class="btn-primary" @click="createAllergy" :disabled="allergyLoading">
+              {{ allergyLoading ? 'Guardando...' : 'Registrar alergia' }}
+            </button>
+          </div>
+
+          <!-- Lista de alergias -->
+          <div v-if="allergies.length === 0 && !showAllergyForm" class="state-empty-sm">
+            Sin alergias registradas.
+          </div>
+          <div v-else class="allergy-list">
+            <div v-for="a in allergies" :key="a.id" class="allergy-item">
+              <div class="allergy-main">
+                <span class="allergy-agente">{{ a.agente }}</span>
+                <span v-if="a.criticidad" class="allergy-badge" :class="a.criticidad">
+                  {{ a.criticidad }}
+                </span>
+              </div>
+              <div class="allergy-sub">{{ a.tipo_reaccion }}</div>
+              <div v-if="a.certeza" class="allergy-certeza">Certeza: {{ a.certeza }}</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Expediente clínico — hoja continua -->
         <div class="expediente">
           <div class="expediente-header">
@@ -125,7 +232,7 @@ async function exportNote(noteId: string) {
                 </div>
               </div>
               <div class="nota-contenido">
-                {{ note.notes || 'Sin contenido.' }}
+                {{ parseNoteContent(note.content) }}
               </div>
             </div>
           </div>
@@ -218,4 +325,54 @@ async function exportNote(noteId: string) {
 .state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); }
 .state-empty-sm { color: var(--text-secondary); font-size: 14px; padding: var(--space-6); }
 .alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); }
+
+.safety-bar {
+  display: flex; align-items: center; gap: var(--space-2);
+  background: #FFF7ED; border: 1px solid #FED7AA;
+  border-radius: var(--radius-md); padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4); font-size: 13px;
+}
+.safety-label { font-weight: 700; color: #C2410C; }
+.allergy-chip {
+  background: #FEF3C7; border: 1px solid #FDE68A;
+  border-radius: 999px; padding: 2px 10px;
+  font-size: 12px; font-weight: 600; color: #92400E;
+}
+.seccion {
+  background: var(--app-surface); border: 1px solid #E2E8F0;
+  border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--space-4);
+}
+.seccion-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-4) var(--space-6); border-bottom: 1px solid #E2E8F0;
+  background: #FAFBFC;
+}
+.allergy-form {
+  padding: var(--space-4) var(--space-6); border-bottom: 1px solid #E2E8F0;
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+.form-row { display: flex; flex-direction: column; gap: 4px; }
+.form-row label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.input {
+  font-family: var(--font-body); font-size: 14px;
+  border: 1.5px solid #E2E8F0; border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3); color: var(--text-primary);
+  background: var(--app-surface); outline: none;
+}
+.input:focus { border-color: var(--color-turquoise); }
+.allergy-list { padding: var(--space-2) 0; }
+.allergy-item {
+  padding: var(--space-3) var(--space-6); border-bottom: 1px solid #F1F5F9;
+}
+.allergy-item:last-child { border-bottom: none; }
+.allergy-main { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 2px; }
+.allergy-agente { font-weight: 600; font-size: 14px; color: var(--text-primary); }
+.allergy-badge {
+  font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px;
+}
+.allergy-badge.leve { background: #DCFCE7; color: #166534; }
+.allergy-badge.moderada { background: #FEF9C3; color: #854D0E; }
+.allergy-badge.grave { background: #FEE2E2; color: #991B1B; }
+.allergy-sub { font-size: 13px; color: var(--text-secondary); }
+.allergy-certeza { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 </style>
