@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	delivery "github.com/Nidael1/VuhmikGO/internal/delivery/http"
+	"github.com/Nidael1/VuhmikGO/internal/application"
 	"github.com/Nidael1/VuhmikGO/internal/delivery/http/api"
 	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
 	infraredis "github.com/Nidael1/VuhmikGO/internal/infrastructure/redis"
@@ -39,12 +40,15 @@ func main() {
 	observability.Logger.Info("redis conectado")
 
 	// Inyectar dependencias
+	capabilityRepo := postgres.NewCapabilityRepository(pool)
 	api.InitDeps(api.Deps{
 		EvidenceRepo:     postgres.NewEvidenceRepository(pool),
 		UserRepo:         postgres.NewUserRepository(pool),
 		PatientRepo:      postgres.NewPatientRepository(pool),
 		RefreshTokenRepo: postgres.NewRefreshTokenRepository(pool),
 		RedisClient:      redisClient,
+		CapabilityRepo:   capabilityRepo,
+		AllergyService:   application.NewAllergyService(postgres.NewEvidenceRepository(pool), capabilityRepo),
 	})
 
 	mux := http.NewServeMux()

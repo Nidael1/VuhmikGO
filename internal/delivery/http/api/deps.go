@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/Nidael1/VuhmikGO/internal/application"
 	"github.com/Nidael1/VuhmikGO/internal/application/ports"
 	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
 	infraredis "github.com/Nidael1/VuhmikGO/internal/infrastructure/redis"
@@ -13,6 +14,8 @@ type Deps struct {
 	PatientRepo      *postgres.PatientRepository
 	RefreshTokenRepo *postgres.RefreshTokenRepository
 	RedisClient      *infraredis.Client
+	CapabilityRepo   ports.CapabilityRepository
+	AllergyService   *application.AllergyService
 }
 
 var deps Deps

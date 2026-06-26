@@ -27,6 +27,7 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/evidence/", JWTMiddleware(evidenceDispatcher))
 	mux.HandleFunc("/api/v1/patients", JWTMiddleware(patientsBaseDispatcher))
 	mux.HandleFunc("/api/v1/patients/", JWTMiddleware(patientDispatcher))
+	mux.HandleFunc("/api/v1/allergies/", JWTMiddleware(allergyDispatcher))
 }
 
 // evidenceDispatcher enruta requests con ID dinamico en el path.
@@ -97,7 +98,20 @@ func patientDispatcher(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+	// Subrutas: /patients/:id/allergies
+	switch parts[1] {
+	case "allergies":
+		switch r.Method {
+		case http.MethodGet:
+			HandleAllergyList(w, r)
+		case http.MethodPost:
+			HandleAllergyCreate(w, r)
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		}
+	default:
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+	}
 }
 
 // patientsBaseDispatcher maneja GET (lista) y POST (crear) en /api/v1/patients.
@@ -110,4 +124,16 @@ func patientsBaseDispatcher(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
 	}
+}
+
+// allergyDispatcher enruta requests de alergias con ID dinamico.
+// Soporta: /api/v1/allergies/:id/void
+func allergyDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/allergies/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 2 && parts[1] == "void" {
+		HandleAllergyVoid(w, r)
+		return
+	}
+	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
 }
