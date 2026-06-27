@@ -120,6 +120,36 @@ async function createAllergy() {
   }
 }
 
+async function editAllergy(a: Allergy) {
+  const nuevoAgente = prompt('Agente:', a.agente)
+  if (!nuevoAgente || nuevoAgente.trim() === a.agente) return
+  const nuevaTipoReaccion = prompt('Tipo de reacción:', a.tipo_reaccion)
+  if (nuevaTipoReaccion === null) return
+  try {
+    await allergyRepository.void(a.id)
+    const nueva = await allergyRepository.create(id, {
+      agente: nuevoAgente.trim(),
+      tipo_reaccion: nuevaTipoReaccion.trim() || a.tipo_reaccion,
+      criticidad: a.criticidad,
+      certeza: a.certeza,
+      notas: a.notas,
+    })
+    const idx = allergies.value.findIndex(x => x.id === a.id)
+    if (idx !== -1) allergies.value.splice(idx, 1, nueva)
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
+
+async function quitarAllergy(a: Allergy) {
+  try {
+    await allergyRepository.void(a.id)
+    allergies.value = allergies.value.filter(x => x.id !== a.id)
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
+
 async function exportNote(noteId: string) {
   try {
     const blob = await evidenceRepository.export(noteId)
@@ -238,11 +268,17 @@ async function exportNote(noteId: string) {
           </div>
           <div v-else class="allergy-list">
             <div v-for="a in allergies" :key="a.id" class="allergy-item">
-              <div class="allergy-main">
-                <span class="allergy-agente">{{ a.agente }}</span>
-                <span v-if="a.criticidad" class="allergy-badge" :class="a.criticidad">
-                  {{ a.criticidad }}
-                </span>
+              <div class="allergy-meta">
+                <div class="allergy-main">
+                  <span class="allergy-agente">{{ a.agente }}</span>
+                  <span v-if="a.criticidad" class="allergy-badge" :class="a.criticidad">
+                    {{ a.criticidad }}
+                  </span>
+                </div>
+                <div class="allergy-acciones">
+                  <button class="btn-accion" @click="editAllergy(a)">Editar</button>
+                  <button class="btn-accion" @click="quitarAllergy(a)">Quitar</button>
+                </div>
               </div>
               <div class="allergy-sub">{{ a.tipo_reaccion }}</div>
               <div v-if="a.certeza" class="allergy-certeza">Certeza: {{ a.certeza }}</div>
@@ -416,6 +452,8 @@ async function exportNote(noteId: string) {
   padding: var(--space-3) var(--space-6); border-bottom: 1px solid #F1F5F9;
 }
 .allergy-item:last-child { border-bottom: none; }
+.allergy-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.allergy-acciones { display: flex; gap: var(--space-2); flex-shrink: 0; }
 .allergy-main { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 2px; }
 .allergy-agente { font-weight: 600; font-size: 14px; color: var(--text-primary); }
 .allergy-badge {
