@@ -33,8 +33,13 @@ async function logout() {
           <span class="nav-icon">👥</span>
           <span>Pacientes</span>
         </RouterLink>
+
       </nav>
       <div class="sidebar-footer">
+        <RouterLink to="/profile" class="nav-item-profile">
+          <span class="nav-icon">👤</span>
+          <span>Mi perfil</span>
+        </RouterLink>
         <div class="user-info" v-if="auth.profile">
           <span class="user-actor">{{ auth.profile.actor_id }}</span>
         </div>
@@ -61,5 +66,7 @@ async function logout() {
 .user-actor { font-size: 12px; color: var(--text-on-dark); opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn-logout { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-on-dark); padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; text-align: left; transition: all 0.15s; }
 .btn-logout:hover { border-color: var(--color-error); color: var(--color-error); }
+.nav-item-profile { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); color: var(--text-on-dark); opacity: 0.6; text-decoration: none; font-size: 13px; transition: all 0.15s; }
+.nav-item-profile:hover, .nav-item-profile.router-link-active { opacity: 1; color: var(--color-turquoise); }
 .main-content { flex: 1; margin-left: 240px; padding: var(--space-8); min-height: 100vh; }
 </style>
