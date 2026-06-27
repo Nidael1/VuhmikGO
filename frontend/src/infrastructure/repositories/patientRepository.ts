@@ -22,7 +22,7 @@ export const patientRepository = {
   },
 
   async update(id: string, payload: PatientRequest): Promise<Patient> {
-    const res = await http.post<ApiResponse<Patient>>(`/patients/${id}`, payload)
+    const res = await http.put<ApiResponse<Patient>>(`/patients/${id}`, payload)
     if (res.error) throw new Error(res.error.message)
     return res.data!
   },
