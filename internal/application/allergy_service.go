@@ -1,6 +1,7 @@
 package application
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -83,9 +84,18 @@ func (s *AllergyService) ListByPatient(tenantID, patientID string) ([]evidence.E
 	}
 	var result []evidence.Evidence
 	for _, e := range all {
-		if e.SubjectRef == patientID && e.State == evidence.StateIssued {
-			result = append(result, e)
+		if e.SubjectRef != patientID || e.State != evidence.StateIssued {
+			continue
 		}
+		// Filtrar solo registros de tipo "allergy" (ADR-0016 — Core agnostico)
+		var blob map[string]any
+		if err := json.Unmarshal([]byte(e.Content), &blob); err != nil {
+			continue
+		}
+		if t, ok := blob["type"].(string); !ok || t != "allergy" {
+			continue
+		}
+		result = append(result, e)
 	}
 	return result, nil
 }

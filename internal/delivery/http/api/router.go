@@ -101,6 +101,8 @@ func patientDispatcher(w http.ResponseWriter, r *http.Request) {
 	}
 	// Subrutas: /patients/:id/allergies
 	switch parts[1] {
+	case "export":
+		HandlePatientExport(w, r)
 	case "allergies":
 		switch r.Method {
 		case http.MethodGet:

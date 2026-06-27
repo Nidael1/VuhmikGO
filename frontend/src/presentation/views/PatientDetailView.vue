@@ -29,6 +29,10 @@ const allergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza
 const allergyLoading = ref(false)
 const allergyError = ref('')
 
+// Edición inline de alergia
+const editingAllergyId = ref<string | null>(null)
+const editAllergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza: '' })
+
 onMounted(async () => {
   try {
     const [p, notes, algs] = await Promise.all([
@@ -69,11 +73,14 @@ async function saveName() {
 }
 
 const activeNotes = computed(() =>
-  allNotes.value.filter(n =>
-    n.subject_ref === id &&
-    n.state !== 'voided' &&
-    n.state !== 'draft'
-  ).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  allNotes.value.filter(n => {
+    if (n.subject_ref !== id) return false
+    if (n.state === 'voided' || n.state === 'draft') return false
+    try {
+      const blob = JSON.parse(n.content)
+      return blob.type === 'note'
+    } catch { return false }
+  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 )
 
 const sexoLabel: Record<string, string> = { M: 'Masculino', F: 'Femenino', I: 'Indeterminado' }
@@ -120,22 +127,35 @@ async function createAllergy() {
   }
 }
 
-async function editAllergy(a: Allergy) {
-  const nuevoAgente = prompt('Agente:', a.agente)
-  if (!nuevoAgente || nuevoAgente.trim() === a.agente) return
-  const nuevaTipoReaccion = prompt('Tipo de reacción:', a.tipo_reaccion)
-  if (nuevaTipoReaccion === null) return
+function startEditAllergy(a: Allergy) {
+  editingAllergyId.value = a.id
+  editAllergyForm.value = {
+    agente: a.agente,
+    tipo_reaccion: a.tipo_reaccion,
+    criticidad: a.criticidad ?? '',
+    certeza: a.certeza ?? '',
+  }
+}
+
+function cancelEditAllergy() {
+  editingAllergyId.value = null
+}
+
+async function saveEditAllergy(a: Allergy) {
+  const form = editAllergyForm.value
+  if (!form.agente.trim() || !form.tipo_reaccion.trim()) return
   try {
     await allergyRepository.void(a.id)
     const nueva = await allergyRepository.create(id, {
-      agente: nuevoAgente.trim(),
-      tipo_reaccion: nuevaTipoReaccion.trim() || a.tipo_reaccion,
-      criticidad: a.criticidad,
-      certeza: a.certeza,
+      agente: form.agente.trim(),
+      tipo_reaccion: form.tipo_reaccion.trim(),
+      criticidad: form.criticidad,
+      certeza: form.certeza,
       notas: a.notas,
     })
     const idx = allergies.value.findIndex(x => x.id === a.id)
     if (idx !== -1) allergies.value.splice(idx, 1, nueva)
+    editingAllergyId.value = null
   } catch (e: any) {
     error.value = e.message
   }
@@ -150,13 +170,19 @@ async function quitarAllergy(a: Allergy) {
   }
 }
 
-async function exportNote(noteId: string) {
+async function exportExpediente() {
   try {
-    const blob = await evidenceRepository.export(noteId)
+    const res = await fetch(`/api/v1/patients/${id}/export`, {
+      headers: {
+        'Authorization': `Bearer ${(await import('@/app/stores/auth')).useAuthStore().token}`,
+      }
+    })
+    if (!res.ok) throw new Error('Error al exportar expediente')
+    const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `nota_${noteId}.json`
+    a.download = `expediente_${patient.value?.num_expediente ?? id}.json`
     a.click()
     URL.revokeObjectURL(url)
   } catch (e: any) { error.value = e.message }
@@ -197,7 +223,10 @@ async function exportNote(noteId: string) {
                 </svg>
               </button>
             </div>
-            <p class="page-sub">Expediente {{ patient.num_expediente }}</p>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <p class="page-sub" style="margin:0;">Expediente {{ patient.num_expediente }}</p>
+              <button class="btn-accion" @click="exportExpediente">Descargar</button>
+            </div>
           </div>
           <RouterLink to="/patients" class="btn-back">← Pacientes</RouterLink>
         </div>
@@ -268,20 +297,46 @@ async function exportNote(noteId: string) {
           </div>
           <div v-else class="allergy-list">
             <div v-for="a in allergies" :key="a.id" class="allergy-item">
-              <div class="allergy-meta">
-                <div class="allergy-main">
-                  <span class="allergy-agente">{{ a.agente }}</span>
-                  <span v-if="a.criticidad" class="allergy-badge" :class="a.criticidad">
-                    {{ a.criticidad }}
-                  </span>
+              <!-- Modo edición inline -->
+              <template v-if="editingAllergyId === a.id">
+                <div class="allergy-edit-form">
+                  <input v-model="editAllergyForm.agente" class="input" placeholder="Agente" autofocus />
+                  <input v-model="editAllergyForm.tipo_reaccion" class="input" placeholder="Tipo de reacción" />
+                  <select v-model="editAllergyForm.criticidad" class="input">
+                    <option value="">— criticidad —</option>
+                    <option value="leve">Leve</option>
+                    <option value="moderada">Moderada</option>
+                    <option value="grave">Grave</option>
+                  </select>
+                  <select v-model="editAllergyForm.certeza" class="input">
+                    <option value="">— certeza —</option>
+                    <option value="confirmada">Confirmada</option>
+                    <option value="sospecha">Sospecha</option>
+                    <option value="descartada">Descartada</option>
+                  </select>
+                  <div class="allergy-edit-acciones">
+                    <button class="btn-primary" @click="saveEditAllergy(a)">Guardar</button>
+                    <button class="btn-accion" @click="cancelEditAllergy">Cancelar</button>
+                  </div>
                 </div>
-                <div class="allergy-acciones">
-                  <button class="btn-accion" @click="editAllergy(a)">Editar</button>
-                  <button class="btn-accion" @click="quitarAllergy(a)">Quitar</button>
+              </template>
+              <!-- Modo lectura -->
+              <template v-else>
+                <div class="allergy-meta">
+                  <div class="allergy-main">
+                    <span class="allergy-agente">{{ a.agente }}</span>
+                    <span v-if="a.criticidad" class="allergy-badge" :class="a.criticidad">
+                      {{ a.criticidad }}
+                    </span>
+                  </div>
+                  <div class="allergy-acciones">
+                    <button class="btn-accion" @click="startEditAllergy(a)">Editar</button>
+                    <button class="btn-accion" @click="quitarAllergy(a)">Quitar</button>
+                  </div>
                 </div>
-              </div>
-              <div class="allergy-sub">{{ a.tipo_reaccion }}</div>
-              <div v-if="a.certeza" class="allergy-certeza">Certeza: {{ a.certeza }}</div>
+                <div class="allergy-sub">{{ a.tipo_reaccion }}</div>
+                <div v-if="a.certeza" class="allergy-certeza">Certeza: {{ a.certeza }}</div>
+              </template>
             </div>
           </div>
         </div>
@@ -313,9 +368,6 @@ async function exportNote(noteId: string) {
                   <RouterLink :to="`/evidence/${note.id}/editar`" class="btn-accion">
                     Editar
                   </RouterLink>
-                  <button class="btn-accion" @click="exportNote(note.id)">
-                    Descargar
-                  </button>
                 </div>
               </div>
               <div class="nota-contenido">
@@ -464,4 +516,6 @@ async function exportNote(noteId: string) {
 .allergy-badge.grave { background: #FEE2E2; color: #991B1B; }
 .allergy-sub { font-size: 13px; color: var(--text-secondary); }
 .allergy-certeza { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.allergy-edit-form { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) 0; }
+.allergy-edit-acciones { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
 </style>

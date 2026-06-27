@@ -7,14 +7,9 @@ import (
 	"time"
 
 	"github.com/Nidael1/VuhmikGO/internal/core/evidence"
-	"github.com/Nidael1/VuhmikGO/internal/infrastructure/inmemory"
 	"github.com/Nidael1/VuhmikGO/internal/integrity"
 	"github.com/Nidael1/VuhmikGO/internal/shaders"
 )
-
-// evidenceStore es el repositorio en memoria compartido para demo.
-// Sera reemplazado por inyeccion de dependencias en iteracion posterior.
-var evidenceStore = inmemory.NewEvidenceRepository()
 
 // EvidenceItem es el DTO de respuesta para evidencia.
 type EvidenceItem struct {
@@ -56,7 +51,7 @@ func HandleEvidenceList(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
 		return
 	}
-	items, err := evidenceStore.FindAll(tenantID)
+	items, err := deps.EvidenceRepo.FindAll(tenantID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al listar evidencias")
 		return
@@ -86,7 +81,7 @@ func HandleEvidenceDetail(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "id requerido")
 		return
 	}
-	e, err := evidenceStore.FindByID(tenantID, id)
+	e, err := deps.EvidenceRepo.FindByID(tenantID, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
 		return
@@ -137,7 +132,7 @@ func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
 		State:     evidence.StateDraft,
 		CreatedAt: now,
 	}
-	if err := evidenceStore.Create(e); err != nil {
+	if err := deps.EvidenceRepo.Create(e); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear borrador")
 		return
 	}
@@ -178,7 +173,7 @@ func HandleEvidenceEmit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "id requerido")
 		return
 	}
-	e, err := evidenceStore.FindByID(tenantID, id)
+	e, err := deps.EvidenceRepo.FindByID(tenantID, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
 		return
@@ -218,7 +213,7 @@ func HandleEvidenceVoid(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "reason_code es obligatorio")
 		return
 	}
-	e, err := evidenceStore.FindByID(tenantID, id)
+	e, err := deps.EvidenceRepo.FindByID(tenantID, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
 		return
@@ -228,7 +223,7 @@ func HandleEvidenceVoid(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
-	if err := evidenceStore.UpdateForVoid(tenantID, voided); err != nil {
+	if err := deps.EvidenceRepo.UpdateForVoid(tenantID, voided); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
@@ -258,7 +253,7 @@ func HandleEvidenceReplace(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "reason_code y replacement_id son obligatorios")
 		return
 	}
-	orig, err := evidenceStore.FindByID(tenantID, id)
+	orig, err := deps.EvidenceRepo.FindByID(tenantID, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
 		return
@@ -274,11 +269,11 @@ func HandleEvidenceReplace(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
-	if err := evidenceStore.UpdateForVoid(tenantID, voided); err != nil {
+	if err := deps.EvidenceRepo.UpdateForVoid(tenantID, voided); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
-	if err := evidenceStore.Create(issued); err != nil {
+	if err := deps.EvidenceRepo.Create(issued); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear reemplazo")
 		return
 	}
@@ -303,7 +298,7 @@ func transitionTo(e *evidence.Evidence, next evidence.State, tenantID string, no
 	if next == evidence.StateIssued {
 		e.IssuedAt = &now
 	}
-	return evidenceStore.Update(tenantID, *e)
+	return deps.EvidenceRepo.Update(tenantID, *e)
 }
 
 // mapCoreError mapea errores del Core a codigos de la API.
@@ -343,7 +338,7 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "id requerido")
 		return
 	}
-	e, err := evidenceStore.FindByID(tenantID, id)
+	e, err := deps.EvidenceRepo.FindByID(tenantID, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
 		return
@@ -455,7 +450,7 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orig, err := evidenceStore.FindByID(tenantID, id)
+	orig, err := deps.EvidenceRepo.FindByID(tenantID, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
 		return
@@ -503,11 +498,11 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := evidenceStore.UpdateForVoid(tenantID, voided); err != nil {
+	if err := deps.EvidenceRepo.UpdateForVoid(tenantID, voided); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
-	if err := evidenceStore.Create(issued); err != nil {
+	if err := deps.EvidenceRepo.Create(issued); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear version")
 		return
 	}
