@@ -28,6 +28,7 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/patients", JWTMiddleware(patientsBaseDispatcher))
 	mux.HandleFunc("/api/v1/patients/", JWTMiddleware(patientDispatcher))
 	mux.HandleFunc("/api/v1/allergies/", JWTMiddleware(allergyDispatcher))
+	mux.HandleFunc("/api/v1/profile", JWTMiddleware(profileDispatcher))
 }
 
 // evidenceDispatcher enruta requests con ID dinamico en el path.
@@ -121,6 +122,18 @@ func patientsBaseDispatcher(w http.ResponseWriter, r *http.Request) {
 		HandlePatientList(w, r)
 	case http.MethodPost:
 		HandlePatientCreate(w, r)
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+	}
+}
+
+// profileDispatcher enruta GET y PUT en /api/v1/profile.
+func profileDispatcher(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		HandleGetProfile(w, r)
+	case http.MethodPut:
+		HandleUpdateProfile(w, r)
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
 	}

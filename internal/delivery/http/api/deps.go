@@ -16,6 +16,7 @@ type Deps struct {
 	RedisClient      *infraredis.Client
 	CapabilityRepo   ports.CapabilityRepository
 	AllergyService   *application.AllergyService
+	ProfileRepo      ports.ProfileRepository
 }
 
 var deps Deps

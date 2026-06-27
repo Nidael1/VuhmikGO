@@ -49,6 +49,7 @@ func main() {
 		RedisClient:      redisClient,
 		CapabilityRepo:   capabilityRepo,
 		AllergyService:   application.NewAllergyService(postgres.NewEvidenceRepository(pool), capabilityRepo),
+		ProfileRepo:      postgres.NewProfileRepository(pool),
 	})
 
 	mux := http.NewServeMux()
