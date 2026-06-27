@@ -23,8 +23,11 @@ async function request<T>(
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers })
 
-  // Si el access token expiró, intentar renovar con refresh token
-  if (res.status === 401 && retry && auth.refreshToken) {
+  // Rutas de auth no deben redirigir — el caller maneja el error
+  const isAuthRoute = path.startsWith('/auth/')
+
+  // Si el access token expiró en ruta protegida, intentar renovar
+  if (res.status === 401 && retry && auth.refreshToken && !isAuthRoute) {
     const renewed = await tryRefresh(auth.refreshToken)
     if (renewed) {
       auth.setSession(renewed)
@@ -35,12 +38,13 @@ async function request<T>(
     throw new Error('SESSION_EXPIRED')
   }
 
-  if (!res.ok && res.status === 401) {
+  if (!res.ok && res.status === 401 && !isAuthRoute) {
     auth.clearSession()
     window.location.href = '/login'
     throw new Error('UNAUTHORIZED')
   }
 
+  // Para todos los demas casos retornar el JSON — el caller decide
   return res.json() as Promise<T>
 }
 
