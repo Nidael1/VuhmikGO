@@ -49,7 +49,7 @@ async function submit() {
           <input
             id="email"
             v-model="email"
-            type="email"
+            type="text"
             placeholder="doctor@ejemplo.com"
             required
             autocomplete="email"

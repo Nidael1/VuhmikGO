@@ -35,8 +35,8 @@ async function save() {
   loading.value = true
   try {
     const ev = await evidenceRepository.draft({
-      subject_id: patientId || patient.value!.id,
-      notes: notes.value,
+      subject_ref: patientId || patient.value!.id,
+      content: JSON.stringify({type:"note",text:notes.value}),
     })
     // Regresar al detalle del paciente si venimos de ahí
     if (patientId) {

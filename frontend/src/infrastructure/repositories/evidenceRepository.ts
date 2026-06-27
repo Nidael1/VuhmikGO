@@ -3,8 +3,8 @@ import type { ApiResponse } from '@/domain/types/evidence'
 import type { Evidence } from '@/domain/types/evidence'
 
 export interface DraftPayload {
-  subject_id: string
-  notes: string
+  subject_ref: string
+  content: string
 }
 
 export interface VoidPayload {

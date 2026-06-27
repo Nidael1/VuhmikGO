@@ -3,7 +3,7 @@ import type { Allergy } from '@/domain/types/allergy'
 
 export const allergyRepository = {
   async list(patientId: string): Promise<Allergy[]> {
-    const res = await http.get(`/api/v1/patients/${patientId}/allergies`) as any
+    const res = await http.get(`/patients/${patientId}/allergies`) as any
     return res.data?.items ?? []
   },
 
@@ -14,11 +14,11 @@ export const allergyRepository = {
     certeza?: string
     notas?: string
   }): Promise<Allergy> {
-    const res = await http.post(`/api/v1/patients/${patientId}/allergies`, data) as any
+    const res = await http.post(`/patients/${patientId}/allergies`, data) as any
     return res.data
   },
 
   async void(allergyId: string): Promise<void> {
-    await http.post(`/api/v1/allergies/${allergyId}/void`, {})
+    await http.post(`/allergies/${allergyId}/void`, {})
   }
 }

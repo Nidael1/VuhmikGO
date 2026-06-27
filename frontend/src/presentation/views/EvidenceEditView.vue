@@ -21,7 +21,7 @@ const error = ref('')
 onMounted(async () => {
   try {
     const ev = await evidenceRepository.get(id)
-    notes.value = ev.content
+    try { const blob = JSON.parse(ev.content); notes.value = blob.text || ev.content } catch { notes.value = ev.content }
     if (ev.subject_ref) {
       try { patient.value = await patientRepository.get(ev.subject_ref) }
       catch { /* paciente no encontrado, no es error critico */ }
@@ -41,7 +41,7 @@ async function save() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${auth.token || ''}`,
       },
-      body: JSON.stringify({ notes: notes.value }),
+      body: JSON.stringify({ content: JSON.stringify({type:'note',text:notes.value}) }),
     })
     const data = await res.json()
     if (data.error) { error.value = data.error.message; return }

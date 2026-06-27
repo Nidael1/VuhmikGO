@@ -110,6 +110,10 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:    time.Now().UTC(),
 	}
 	if err := deps.UserRepo.Create(u); err != nil {
+		if strings.Contains(err.Error(), "EMAIL_EXISTS") {
+			writeError(w, http.StatusConflict, "EMAIL_EXISTS", "el email ya esta registrado")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "DB_ERROR", "error al registrar usuario")
 		return
 	}
