@@ -30,7 +30,10 @@ func toPatientItem(p postgres.Patient) PatientItem {
 		FechaNacimiento: p.FechaNacimiento,
 		Sexo:            p.Sexo,
 		NumExpediente:   p.NumExpediente,
-		CURP:            p.CURP,
+		CURP: func() string {
+			if p.CURP == nil { return "" }
+			return *p.CURP
+		}(),
 		CreatedAt:       p.CreatedAt,
 		UpdatedAt:       p.UpdatedAt,
 	}
@@ -108,7 +111,11 @@ func HandlePatientCreate(w http.ResponseWriter, r *http.Request) {
 		FechaNacimiento: req.FechaNacimiento,
 		Sexo:            req.Sexo,
 		NumExpediente:   expediente,
-		CURP:            strings.ToUpper(strings.TrimSpace(req.CURP)),
+		CURP:            func() *string {
+			v := strings.ToUpper(strings.TrimSpace(req.CURP))
+			if v == "" { return nil }
+			return &v
+		}(),
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}

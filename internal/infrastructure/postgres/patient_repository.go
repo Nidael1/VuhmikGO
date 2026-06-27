@@ -10,7 +10,7 @@ import (
 
 // Patient representa un paciente del consultorio en PostgreSQL.
 type Patient struct {
-	CURP            string
+	CURP            *string
 	ID              string
 	TenantID        string
 	Nombre          string
