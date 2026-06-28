@@ -269,12 +269,14 @@ func HandleEvidenceReplace(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
-	if err := deps.EvidenceRepo.UpdateForVoid(tenantID, voided); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
-		return
-	}
+	// Orden FK crítico: primero Create(nuevo), luego UpdateForVoid(original)
+	// para no violar evidence_replaced_by_fk (ADR-0006)
 	if err := deps.EvidenceRepo.Create(issued); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear reemplazo")
+		return
+	}
+	if err := deps.EvidenceRepo.UpdateForVoid(tenantID, voided); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -498,12 +500,14 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := deps.EvidenceRepo.UpdateForVoid(tenantID, voided); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
-		return
-	}
+	// Orden FK crítico: primero Create(nuevo), luego UpdateForVoid(original)
+	// para no violar evidence_replaced_by_fk (ADR-0006)
 	if err := deps.EvidenceRepo.Create(issued); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear version")
+		return
+	}
+	if err := deps.EvidenceRepo.UpdateForVoid(tenantID, voided); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
 

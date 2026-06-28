@@ -48,7 +48,8 @@ func main() {
 		RefreshTokenRepo: postgres.NewRefreshTokenRepository(pool),
 		RedisClient:      redisClient,
 		CapabilityRepo:   capabilityRepo,
-		AllergyService:   application.NewAllergyService(postgres.NewEvidenceRepository(pool), capabilityRepo),
+		AllergyService:        application.NewAllergyService(postgres.NewEvidenceRepository(pool), postgres.NewAllergyProjectionRepository(pool), capabilityRepo),
+		AllergyProjectionRepo: postgres.NewAllergyProjectionRepository(pool),
 		ProfileRepo:      postgres.NewProfileRepository(pool),
 	})
 

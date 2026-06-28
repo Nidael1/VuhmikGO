@@ -1,7 +1,6 @@
 package application
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -17,17 +16,18 @@ import (
 //  2. AllergyService prepara la operacion.
 //  3. Core consulta politica al Shader (CapabilityGuard + AllergyShader).
 //  4. Shader responde allow/deny — no muta, no ejecuta.
-//  5. Core ejecuta o rechaza.
+//  5. Core ejecuta o rechaza + proyeccion se actualiza (ADR-0022).
 //  6. Asteroide muestra resultado.
 type AllergyService struct {
 	repo  ports.EvidenceRepository
+	proj  ports.AllergyProjectionRepository
 	caps  ports.CapabilityRepository
 	rubro string
 }
 
 // NewAllergyService retorna un AllergyService con sus dependencias.
-func NewAllergyService(repo ports.EvidenceRepository, caps ports.CapabilityRepository) *AllergyService {
-	return &AllergyService{repo: repo, caps: caps, rubro: "medico"}
+func NewAllergyService(repo ports.EvidenceRepository, proj ports.AllergyProjectionRepository, caps ports.CapabilityRepository) *AllergyService {
+	return &AllergyService{repo: repo, proj: proj, caps: caps, rubro: "medico"}
 }
 
 // Create crea un registro de alergia inmutable en el Core.
@@ -73,27 +73,54 @@ func (s *AllergyService) Create(tenantID, actorID, patientID string, content sha
 	if err := s.repo.Update(tenantID, e); err != nil {
 		return evidence.Evidence{}, fmt.Errorf("error al emitir alergia: %w", err)
 	}
+
+	// Escribir proyección de lectura (ADR-0022)
+	proj := ports.AllergyProjection{
+		EvidenceID:   e.ID,
+		TenantID:     tenantID,
+		PatientID:    patientID,
+		Agente:       content.Agente,
+		TipoReaccion: content.TipoReaccion,
+		Criticidad:   content.Criticidad,
+		Certeza:      content.Certeza,
+		FechaInicio:  content.FechaInicio,
+		Notas:        content.Notas,
+		State:        string(e.State),
+		CreatedAt:    now,
+		IssuedAt:     e.IssuedAt,
+	}
+	if err := s.proj.Upsert(proj); err != nil {
+		return evidence.Evidence{}, fmt.Errorf("error al proyectar alergia: %w", err)
+	}
 	return e, nil
 }
 
 // ListByPatient retorna todas las alergias activas de un paciente.
+// Lee de allergy_projections (ADR-0022) — O(log n), sin parseo de blobs.
 func (s *AllergyService) ListByPatient(tenantID, patientID string) ([]evidence.Evidence, error) {
-	all, err := s.repo.FindAll(tenantID)
+	projs, err := s.proj.ListByPatient(tenantID, patientID)
 	if err != nil {
 		return nil, err
 	}
-	var result []evidence.Evidence
-	for _, e := range all {
-		if e.SubjectRef != patientID || e.State != evidence.StateIssued {
-			continue
-		}
-		// Filtrar solo registros de tipo "allergy" (ADR-0016 — Core agnostico)
-		var blob map[string]any
-		if err := json.Unmarshal([]byte(e.Content), &blob); err != nil {
-			continue
-		}
-		if t, ok := blob["type"].(string); !ok || t != "allergy" {
-			continue
+	// Reconstruir evidence desde proyección para mantener compatibilidad con handlers
+	result := make([]evidence.Evidence, 0, len(projs))
+	for _, p := range projs {
+		blob, _ := shaders.BuildAllergyBlob(shaders.AllergyContent{
+			Agente:       p.Agente,
+			TipoReaccion: p.TipoReaccion,
+			Criticidad:   p.Criticidad,
+			Certeza:      p.Certeza,
+			FechaInicio:  p.FechaInicio,
+			Notas:        p.Notas,
+		})
+		e := evidence.Evidence{
+			ID:         p.EvidenceID,
+			TenantID:   p.TenantID,
+			SubjectRef: p.PatientID,
+			Content:    blob,
+			State:      evidence.State(p.State),
+			CreatedAt:  p.CreatedAt,
+			IssuedAt:   p.IssuedAt,
 		}
 		result = append(result, e)
 	}
@@ -112,6 +139,10 @@ func (s *AllergyService) Void(tenantID, actorID, allergyID string) (evidence.Evi
 	}
 	if err := s.repo.UpdateForVoid(tenantID, voided); err != nil {
 		return evidence.Evidence{}, err
+	}
+	// Actualizar estado en proyección (ADR-0022)
+	if err := s.proj.UpdateState(tenantID, allergyID, string(evidence.StateVoided)); err != nil {
+		return evidence.Evidence{}, fmt.Errorf("error al actualizar proyección: %w", err)
 	}
 	return voided, nil
 }

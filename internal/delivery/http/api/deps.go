@@ -15,7 +15,8 @@ type Deps struct {
 	RefreshTokenRepo *postgres.RefreshTokenRepository
 	RedisClient      *infraredis.Client
 	CapabilityRepo   ports.CapabilityRepository
-	AllergyService   *application.AllergyService
+	AllergyService        *application.AllergyService
+	AllergyProjectionRepo ports.AllergyProjectionRepository
 	ProfileRepo      ports.ProfileRepository
 }
 
