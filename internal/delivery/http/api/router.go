@@ -29,6 +29,8 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/patients/", JWTMiddleware(patientDispatcher))
 	mux.HandleFunc("/api/v1/allergies/", JWTMiddleware(allergyDispatcher))
 	mux.HandleFunc("/api/v1/profile", JWTMiddleware(profileDispatcher))
+	mux.HandleFunc("/api/v1/prescriptions", JWTMiddleware(HandlePrescriptionListAll))
+	mux.HandleFunc("/api/v1/prescriptions/", JWTMiddleware(prescriptionDispatcher))
 }
 
 // evidenceDispatcher enruta requests con ID dinamico en el path.
@@ -103,6 +105,15 @@ func patientDispatcher(w http.ResponseWriter, r *http.Request) {
 	switch parts[1] {
 	case "export":
 		HandlePatientExport(w, r)
+	case "prescriptions":
+		switch r.Method {
+		case http.MethodGet:
+			HandlePrescriptionListByPatient(w, r)
+		case http.MethodPost:
+			HandlePrescriptionCreate(w, r)
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		}
 	case "allergies":
 		switch r.Method {
 		case http.MethodGet:
@@ -139,6 +150,25 @@ func profileDispatcher(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
 	}
+}
+
+// prescriptionDispatcher enruta requests de recetas con ID dinamico.
+// Soporta: /api/v1/prescriptions/:id/emit y /api/v1/prescriptions/:id/void
+func prescriptionDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/prescriptions/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 2 {
+		switch parts[1] {
+		case "emit":
+			HandlePrescriptionEmit(w, r)
+		case "void":
+			HandlePrescriptionVoid(w, r)
+		default:
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+		}
+		return
+	}
+	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
 }
 
 // allergyDispatcher enruta requests de alergias con ID dinamico.
