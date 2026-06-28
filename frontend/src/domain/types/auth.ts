@@ -3,9 +3,11 @@ export interface AuthTokens {
   refresh_token: string
   tenant_id: string
   actor_id: string
+  is_admin: boolean
 }
 
 export interface UserProfile {
   actor_id: string
   tenant_id: string
+  is_admin: boolean
 }

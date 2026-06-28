@@ -79,3 +79,39 @@ func (r *UserRepository) FindByID(id string) (User, error) {
 	}
 	return u, nil
 }
+
+// FindAll retorna todos los usuarios del sistema (para el panel admin).
+func (r *UserRepository) FindAll() ([]User, error) {
+	sql := `
+		SELECT id, tenant_id, email, password_hash, curp, is_admin, is_suspended, created_at
+		FROM users ORDER BY created_at ASC`
+	rows, err := r.pool.Query(context.Background(), sql)
+	if err != nil {
+		return nil, fmt.Errorf("error al listar usuarios: %w", err)
+	}
+	defer rows.Close()
+	var result []User
+	for rows.Next() {
+		var u User
+		var curp *string
+		if err := rows.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash,
+			&curp, &u.IsAdmin, &u.IsSuspended, &u.CreatedAt); err != nil {
+			return nil, fmt.Errorf("error al escanear usuario: %w", err)
+		}
+		if curp != nil {
+			u.CURP = *curp
+		}
+		result = append(result, u)
+	}
+	return result, nil
+}
+
+// SetSuspended actualiza el estado de suspensión de un usuario.
+func (r *UserRepository) SetSuspended(userID string, suspended bool) error {
+	sql := `UPDATE users SET is_suspended = $1 WHERE id = $2`
+	_, err := r.pool.Exec(context.Background(), sql, suspended, userID)
+	if err != nil {
+		return fmt.Errorf("error al actualizar suspension: %w", err)
+	}
+	return nil
+}

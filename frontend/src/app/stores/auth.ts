@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
   const profile = ref<UserProfile | null>(null)
 
   const isAuthenticated = computed(() => token.value !== null)
+  const isAdmin = computed(() => profile.value?.is_admin ?? false)
 
   function setSession(tokens: AuthTokens) {
     token.value = tokens.token
@@ -15,6 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value = {
       actor_id: tokens.actor_id,
       tenant_id: tokens.tenant_id,
+      is_admin: tokens.is_admin ?? false,
     }
   }
 
@@ -24,5 +26,5 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value = null
   }
 
-  return { token, refreshToken, profile, isAuthenticated, setSession, clearSession }
+  return { token, refreshToken, profile, isAuthenticated, isAdmin, setSession, clearSession }
 })

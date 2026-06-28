@@ -50,6 +50,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/presentation/views/AdminView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/prescriptions/new',
       name: 'prescription-new',
       component: () => import('@/presentation/views/PrescriptionNewView.vue'),
@@ -80,6 +86,13 @@ router.beforeEach((to) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login' }
+  }
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return { name: 'patient-list' }
+  }
+  // Redirigir al médico que intenta entrar a /admin
+  if (to.path.startsWith('/admin') && auth.isAuthenticated && !auth.isAdmin) {
+    return { name: 'patient-list' }
   }
 })
 
