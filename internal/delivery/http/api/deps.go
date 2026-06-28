@@ -20,7 +20,9 @@ type Deps struct {
 	ProfileRepo           ports.ProfileRepository
 	NoteProjectionRepo         ports.NoteProjectionRepository
 	PrescriptionService       *application.PrescriptionService
-	PrescriptionProjectionRepo ports.PrescriptionProjectionRepository
+	PrescriptionProjectionRepo   ports.PrescriptionProjectionRepository
+	ConsultationService          *application.ConsultationService
+	ConsultationProjectionRepo   ports.ConsultationProjectionRepository
 }
 
 var deps Deps

@@ -32,6 +32,8 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/tenants", JWTMiddleware(AdminMiddleware(HandleAdminTenants)))
 	mux.HandleFunc("/api/v1/admin/capabilities", JWTMiddleware(AdminMiddleware(HandleAdminCapabilityToggle)))
 	mux.HandleFunc("/api/v1/admin/suspend", JWTMiddleware(AdminMiddleware(HandleAdminSuspend)))
+	mux.HandleFunc("/api/v1/consultations", JWTMiddleware(consultationBaseDispatcher))
+	mux.HandleFunc("/api/v1/consultations/", JWTMiddleware(consultationDispatcher))
 	mux.HandleFunc("/api/v1/prescriptions", JWTMiddleware(HandlePrescriptionListAll))
 	mux.HandleFunc("/api/v1/prescriptions/", JWTMiddleware(prescriptionDispatcher))
 }
@@ -108,6 +110,15 @@ func patientDispatcher(w http.ResponseWriter, r *http.Request) {
 	switch parts[1] {
 	case "export":
 		HandlePatientExport(w, r)
+	case "consultations":
+		switch r.Method {
+		case http.MethodGet:
+			HandleConsultationListByPatient(w, r)
+		case http.MethodPost:
+			HandleConsultationCreate(w, r)
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		}
 	case "prescriptions":
 		switch r.Method {
 		case http.MethodGet:
@@ -153,6 +164,22 @@ func profileDispatcher(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
 	}
+}
+
+// consultationBaseDispatcher maneja GET /api/v1/consultations
+func consultationBaseDispatcher(w http.ResponseWriter, r *http.Request) {
+	HandleConsultationListAll(w, r)
+}
+
+// consultationDispatcher enruta requests de consultas con ID dinamico.
+func consultationDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/consultations/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 1 {
+		HandleConsultationDetail(w, r)
+		return
+	}
+	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
 }
 
 // prescriptionDispatcher enruta requests de recetas con ID dinamico.
