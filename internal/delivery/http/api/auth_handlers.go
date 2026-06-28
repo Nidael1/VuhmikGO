@@ -33,11 +33,12 @@ type AuthResponse struct {
 	RefreshToken string `json:"refresh_token"`
 	TenantID     string `json:"tenant_id"`
 	ActorID      string `json:"actor_id"`
+	IsAdmin      bool   `json:"is_admin"`
 }
 
 func issueTokenPair(user postgres.User) (AuthResponse, error) {
 	// Access token — 15 minutos
-	accessToken, err := auth.GenerateToken(user.ID, user.TenantID)
+	accessToken, err := auth.GenerateToken(user.ID, user.TenantID, user.IsAdmin)
 	if err != nil {
 		return AuthResponse{}, fmt.Errorf("error al generar access token: %w", err)
 	}
@@ -65,6 +66,7 @@ func issueTokenPair(user postgres.User) (AuthResponse, error) {
 		RefreshToken: plain,
 		TenantID:     user.TenantID,
 		ActorID:      user.ID,
+		IsAdmin:      user.IsAdmin,
 	}, nil
 }
 
@@ -142,6 +144,10 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	u, err := deps.UserRepo.FindByEmail(req.Email)
 	if err != nil || !auth.CheckPassword(req.Password, u.PasswordHash) {
 		writeError(w, http.StatusUnauthorized, "INVALID_CREDENTIALS", "credenciales invalidas")
+		return
+	}
+	if u.IsSuspended {
+		writeError(w, http.StatusForbidden, "ACCOUNT_SUSPENDED", "cuenta suspendida, contacta al administrador")
 		return
 	}
 	resp, err := issueTokenPair(u)

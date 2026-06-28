@@ -22,6 +22,7 @@ import (
 type Claims struct {
 	TenantID string `json:"tenant_id"`
 	ActorID  string `json:"actor_id"`
+	IsAdmin  bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 
@@ -41,8 +42,8 @@ func CheckPassword(password, hash string) bool {
 }
 
 // GenerateToken genera un JWT firmado para el usuario dado.
-// Expira en 24 horas. Usa JWT_SECRET del entorno.
-func GenerateToken(userID, tenantID string) (string, error) {
+// Expira en 15 minutos. Usa JWT_SECRET del entorno.
+func GenerateToken(userID, tenantID string, isAdmin bool) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		return "", errors.New("JWT_SECRET no configurado")
@@ -50,6 +51,7 @@ func GenerateToken(userID, tenantID string) (string, error) {
 	claims := Claims{
 		TenantID: tenantID,
 		ActorID:  userID,
+		IsAdmin:  isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

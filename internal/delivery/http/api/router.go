@@ -171,6 +171,18 @@ func prescriptionDispatcher(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
 }
 
+// AdminMiddleware protege rutas de admin exigiendo is_admin = true en el JWT.
+func AdminMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := r.Context().Value(claimsKey{}).(*auth.Claims)
+		if !ok || claims == nil || !claims.IsAdmin {
+			writeError(w, http.StatusForbidden, "FORBIDDEN", "acceso restringido a administradores")
+			return
+		}
+		next(w, r)
+	}
+}
+
 // allergyDispatcher enruta requests de alergias con ID dinamico.
 // Soporta: /api/v1/allergies/:id/void
 func allergyDispatcher(w http.ResponseWriter, r *http.Request) {

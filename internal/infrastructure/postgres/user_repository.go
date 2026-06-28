@@ -16,6 +16,8 @@ type User struct {
 	TenantID     string
 	Email        string
 	PasswordHash string
+	IsAdmin      bool
+	IsSuspended  bool
 	CreatedAt    time.Time
 }
 
@@ -47,11 +49,11 @@ func (r *UserRepository) Create(u User) error {
 // Retorna error si no existe.
 func (r *UserRepository) FindByEmail(email string) (User, error) {
 	sql := `
-		SELECT id, tenant_id, email, password_hash, curp, created_at
+		SELECT id, tenant_id, email, password_hash, curp, is_admin, is_suspended, created_at
 		FROM users WHERE email = $1`
 	row := r.pool.QueryRow(context.Background(), sql, email)
 	var u User
-	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.CURP, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.CURP, &u.IsAdmin, &u.IsSuspended, &u.CreatedAt); err != nil {
 		return User{}, fmt.Errorf("usuario no encontrado: %w", err)
 	}
 	return u, nil
@@ -68,11 +70,11 @@ func (r *UserRepository) ExistsByEmail(email string) bool {
 // FindByID busca un usuario por su ID.
 func (r *UserRepository) FindByID(id string) (User, error) {
 	sql := `
-		SELECT id, tenant_id, email, password_hash, curp, created_at
+		SELECT id, tenant_id, email, password_hash, curp, is_admin, is_suspended, created_at
 		FROM users WHERE id = $1`
 	row := r.pool.QueryRow(context.Background(), sql, id)
 	var u User
-	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.CURP, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.CURP, &u.IsAdmin, &u.IsSuspended, &u.CreatedAt); err != nil {
 		return User{}, fmt.Errorf("usuario no encontrado: %w", err)
 	}
 	return u, nil
