@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Nidael1/VuhmikGO/internal/application/ports"
 	"github.com/Nidael1/VuhmikGO/internal/core/evidence"
 	"github.com/Nidael1/VuhmikGO/internal/integrity"
 	"github.com/Nidael1/VuhmikGO/internal/shaders"
@@ -141,6 +142,21 @@ func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
+
+	// Escribir proyección de nota (ADR-0022)
+	var noteBlob map[string]any
+	_ = json.Unmarshal([]byte(e.Content), &noteBlob)
+	noteText, _ := noteBlob["text"].(string)
+	_ = deps.NoteProjectionRepo.Upsert(ports.NoteProjection{
+		EvidenceID: e.ID,
+		TenantID:   tenantID,
+		PatientID:  req.SubjectRef,
+		Text:       noteText,
+		State:      string(e.State),
+		CreatedAt:  e.CreatedAt,
+		IssuedAt:   e.IssuedAt,
+	})
+
 	writeJSON(w, http.StatusCreated, map[string]any{"data": toItem(e), "error": nil})
 }
 
@@ -510,6 +526,21 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
 		return
 	}
+
+	// Actualizar proyección de nota (ADR-0022)
+	var noteBlob map[string]any
+	_ = json.Unmarshal([]byte(issued.Content), &noteBlob)
+	noteText, _ := noteBlob["text"].(string)
+	_ = deps.NoteProjectionRepo.UpdateState(tenantID, orig.ID, string(evidence.StateVoided))
+	_ = deps.NoteProjectionRepo.Upsert(ports.NoteProjection{
+		EvidenceID: issued.ID,
+		TenantID:   tenantID,
+		PatientID:  issued.SubjectRef,
+		Text:       noteText,
+		State:      string(issued.State),
+		CreatedAt:  issued.CreatedAt,
+		IssuedAt:   issued.IssuedAt,
+	})
 
 	// Retorna el nuevo registro como si fuera el mismo
 	// El medico no ve que hubo un void + replace

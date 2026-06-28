@@ -50,6 +50,7 @@ func main() {
 		CapabilityRepo:   capabilityRepo,
 		AllergyService:        application.NewAllergyService(postgres.NewEvidenceRepository(pool), postgres.NewAllergyProjectionRepository(pool), capabilityRepo),
 		AllergyProjectionRepo: postgres.NewAllergyProjectionRepository(pool),
+		NoteProjectionRepo:    postgres.NewNoteProjectionRepository(pool),
 		ProfileRepo:      postgres.NewProfileRepository(pool),
 	})
 
