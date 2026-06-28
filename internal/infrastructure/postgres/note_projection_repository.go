@@ -21,15 +21,24 @@ func NewNoteProjectionRepository(pool *pgxpool.Pool) *NoteProjectionRepository {
 func (r *NoteProjectionRepository) Upsert(p ports.NoteProjection) error {
 	sql := `
 		INSERT INTO note_projections
-			(evidence_id, tenant_id, patient_id, text, state, created_at, issued_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+			(evidence_id, tenant_id, patient_id, text, state, created_at, issued_at,
+			 ta, fc, fr, temp, peso, talla, sao2)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (evidence_id) DO UPDATE SET
 			text      = EXCLUDED.text,
 			state     = EXCLUDED.state,
-			issued_at = EXCLUDED.issued_at`
+			issued_at = EXCLUDED.issued_at,
+			ta        = EXCLUDED.ta,
+			fc        = EXCLUDED.fc,
+			fr        = EXCLUDED.fr,
+			temp      = EXCLUDED.temp,
+			peso      = EXCLUDED.peso,
+			talla     = EXCLUDED.talla,
+			sao2      = EXCLUDED.sao2`
 	_, err := r.pool.Exec(context.Background(), sql,
 		p.EvidenceID, p.TenantID, p.PatientID,
 		p.Text, p.State, p.CreatedAt, p.IssuedAt,
+		p.TA, p.FC, p.FR, p.Temp, p.Peso, p.Talla, p.SAO2,
 	)
 	if err != nil {
 		return fmt.Errorf("error al guardar proyección de nota: %w", err)
@@ -51,7 +60,8 @@ func (r *NoteProjectionRepository) UpdateState(tenantID, evidenceID, state strin
 
 func (r *NoteProjectionRepository) ListByPatient(tenantID, patientID string) ([]ports.NoteProjection, error) {
 	sql := `
-		SELECT evidence_id, tenant_id, patient_id, text, state, created_at, issued_at
+		SELECT evidence_id, tenant_id, patient_id, text, state, created_at, issued_at,
+		       ta, fc, fr, temp, peso, talla, sao2
 		FROM note_projections
 		WHERE tenant_id = $1 AND patient_id = $2 AND state = 'issued'
 		ORDER BY created_at DESC`
@@ -66,6 +76,7 @@ func (r *NoteProjectionRepository) ListByPatient(tenantID, patientID string) ([]
 		if err := rows.Scan(
 			&p.EvidenceID, &p.TenantID, &p.PatientID,
 			&p.Text, &p.State, &p.CreatedAt, &p.IssuedAt,
+			&p.TA, &p.FC, &p.FR, &p.Temp, &p.Peso, &p.Talla, &p.SAO2,
 		); err != nil {
 			return nil, fmt.Errorf("error al escanear proyección de nota: %w", err)
 		}

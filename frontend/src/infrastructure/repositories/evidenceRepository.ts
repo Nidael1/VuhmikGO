@@ -5,6 +5,13 @@ import type { Evidence } from '@/domain/types/evidence'
 export interface DraftPayload {
   subject_ref: string
   content: string
+  ta?: string
+  fc?: string
+  fr?: string
+  temp?: string
+  peso?: string
+  talla?: string
+  sao2?: string
 }
 
 export interface VoidPayload {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Nidael1/VuhmikGO/internal/auth"
 	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
+	"github.com/Nidael1/VuhmikGO/internal/observability"
 )
 
 // RegisterRequest es el payload de registro.
@@ -103,8 +104,9 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := "usr-" + strings.ReplaceAll(req.Email, "@", "-")
 	tenantID := "tenant-" + userID
+	curp := strings.ToUpper(strings.TrimSpace(req.CURP))
 	u := postgres.User{
-		CURP:         strings.ToUpper(strings.TrimSpace(req.CURP)),
+		CURP:         curp,
 		ID:           userID,
 		TenantID:     tenantID,
 		Email:        req.Email,
@@ -116,7 +118,8 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusConflict, "EMAIL_EXISTS", "el email ya esta registrado")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "DB_ERROR", "error al registrar usuario")
+		observability.Logger.Error("error al crear usuario", "error", err.Error())
+		writeError(w, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
 	resp, err := issueTokenPair(u)

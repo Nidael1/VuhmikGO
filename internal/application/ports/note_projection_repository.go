@@ -11,6 +11,14 @@ type NoteProjection struct {
 	State      string
 	CreatedAt  time.Time
 	IssuedAt   *time.Time
+	// Signos vitales (opcionales)
+	TA    string
+	FC    string
+	FR    string
+	Temp  string
+	Peso  string
+	Talla string
+	SAO2  string
 }
 
 // NoteProjectionRepository define el contrato de acceso a la proyección

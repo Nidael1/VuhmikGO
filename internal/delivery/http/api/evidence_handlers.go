@@ -93,7 +93,15 @@ func HandleEvidenceDetail(w http.ResponseWriter, r *http.Request) {
 // DraftRequest es el payload para crear un borrador.
 type DraftRequest struct {
 	SubjectRef string `json:"subject_ref"`
-	Content  string `json:"content"`
+	Content    string `json:"content"`
+	// Signos vitales opcionales
+	TA    string `json:"ta,omitempty"`
+	FC    string `json:"fc,omitempty"`
+	FR    string `json:"fr,omitempty"`
+	Temp  string `json:"temp,omitempty"`
+	Peso  string `json:"peso,omitempty"`
+	Talla string `json:"talla,omitempty"`
+	SAO2  string `json:"sao2,omitempty"`
 }
 
 // HandleEvidenceDraft crea un nuevo registro de evidencia en estado draft.
@@ -155,6 +163,13 @@ func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
 		State:      string(e.State),
 		CreatedAt:  e.CreatedAt,
 		IssuedAt:   e.IssuedAt,
+		TA:         req.TA,
+		FC:         req.FC,
+		FR:         req.FR,
+		Temp:       req.Temp,
+		Peso:       req.Peso,
+		Talla:      req.Talla,
+		SAO2:       req.SAO2,
 	})
 
 	writeJSON(w, http.StatusCreated, map[string]any{"data": toItem(e), "error": nil})
