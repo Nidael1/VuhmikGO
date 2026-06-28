@@ -56,6 +56,18 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: '/consultations',
+      name: 'consultation-list',
+      component: () => import('@/presentation/views/ConsultationListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/consultations/new',
+      name: 'consultation-new',
+      component: () => import('@/presentation/views/ConsultationNewView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/prescriptions/new',
       name: 'prescription-new',
       component: () => import('@/presentation/views/PrescriptionNewView.vue'),
