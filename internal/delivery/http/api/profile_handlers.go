@@ -39,6 +39,9 @@ type ProfileUpdateRequest struct {
 	NombreCompleto    string `json:"nombre_completo"`
 	CedulaProfesional string `json:"cedula_profesional"`
 	Especialidad      string `json:"especialidad"`
+	Universidad       string `json:"universidad"`
+	Direccion         string `json:"direccion"`
+	Telefono          string `json:"telefono"`
 }
 
 // HandleUpdateProfile actualiza el perfil profesional del actor autenticado.
@@ -66,6 +69,9 @@ func HandleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 		NombreCompleto:    strings.TrimSpace(req.NombreCompleto),
 		CedulaProfesional: strings.TrimSpace(req.CedulaProfesional),
 		Especialidad:      strings.TrimSpace(req.Especialidad),
+		Universidad:       strings.TrimSpace(req.Universidad),
+		Direccion:         strings.TrimSpace(req.Direccion),
+		Telefono:          strings.TrimSpace(req.Telefono),
 	}
 	if err := deps.ProfileRepo.Upsert(p); err != nil {
 		writeError(w, http.StatusInternalServerError, "DB_ERROR", "error al guardar perfil")

@@ -15,4 +15,7 @@ type Profile struct {
 	NombreCompleto    string
 	CedulaProfesional string
 	Especialidad      string
+	Universidad       string
+	Direccion         string
+	Telefono          string
 }
