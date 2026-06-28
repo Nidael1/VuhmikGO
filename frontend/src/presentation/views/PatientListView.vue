@@ -8,7 +8,7 @@ const patients = ref<Patient[]>([])
 const loading = ref(true)
 const error = ref('')
 const search = ref('')
-const sortBy = ref<'nombre' | 'expediente'>('nombre')
+const sortBy = ref<'nombre' | 'expediente' | 'reciente'>('nombre')
 
 onMounted(async () => {
   try { patients.value = await patientRepository.list() }
@@ -38,8 +38,10 @@ const filtered = computed(() => {
   }
   if (sortBy.value === 'nombre') {
     list.sort((a, b) => a.nombre.localeCompare(b.nombre))
-  } else {
+  } else if (sortBy.value === 'expediente') {
     list.sort((a, b) => a.num_expediente.localeCompare(b.num_expediente))
+  } else {
+    list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }
   return list
 })
@@ -73,11 +75,15 @@ const filtered = computed(() => {
             <button
               :class="['btn-sort', sortBy === 'nombre' && 'active']"
               @click="sortBy = 'nombre'"
-            >A–Z</button>
+            >Alfabético</button>
             <button
               :class="['btn-sort', sortBy === 'expediente' && 'active']"
               @click="sortBy = 'expediente'"
-            ># Exp</button>
+            >Antiguo</button>
+            <button
+              :class="['btn-sort', sortBy === 'reciente' && 'active']"
+              @click="sortBy = 'reciente'"
+            >Reciente</button>
           </div>
         </div>
 
@@ -114,7 +120,7 @@ const filtered = computed(() => {
 </template>
 
 <style scoped>
-.page { max-width: 800px; }
+.page { max-width: 780px; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-4); }
 .page-sub { color: var(--text-secondary); font-size: 13px; margin-top: var(--space-1); }
 .btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }

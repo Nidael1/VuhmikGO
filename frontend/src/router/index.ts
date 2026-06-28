@@ -50,6 +50,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/prescriptions/new',
+      name: 'prescription-new',
+      component: () => import('@/presentation/views/PrescriptionNewView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/prescriptions',
       name: 'prescription-list',
       component: () => import('@/presentation/views/PrescriptionListView.vue'),
