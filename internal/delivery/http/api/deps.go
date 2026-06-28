@@ -18,7 +18,9 @@ type Deps struct {
 	AllergyService        *application.AllergyService
 	AllergyProjectionRepo ports.AllergyProjectionRepository
 	ProfileRepo           ports.ProfileRepository
-	NoteProjectionRepo    ports.NoteProjectionRepository
+	NoteProjectionRepo         ports.NoteProjectionRepository
+	PrescriptionService       *application.PrescriptionService
+	PrescriptionProjectionRepo ports.PrescriptionProjectionRepository
 }
 
 var deps Deps
