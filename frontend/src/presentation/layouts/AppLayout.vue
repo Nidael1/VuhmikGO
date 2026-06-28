@@ -33,6 +33,10 @@ async function logout() {
           <span class="nav-icon">👥</span>
           <span>Pacientes</span>
         </RouterLink>
+        <RouterLink to="/prescriptions" class="nav-item">
+          <span class="nav-icon">📋</span>
+          <span>Recetas</span>
+        </RouterLink>
 
       </nav>
       <div class="sidebar-footer">

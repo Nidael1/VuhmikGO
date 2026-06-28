@@ -8,6 +8,8 @@ import type { Patient } from '@/domain/types/patient'
 import type { Evidence } from '@/domain/types/evidence'
 import type { Allergy } from '@/domain/types/allergy'
 import { allergyRepository } from '@/infrastructure/repositories/allergyRepository'
+import { prescriptionRepository } from '@/infrastructure/repositories/prescriptionRepository'
+import type { Prescription } from '@/domain/types/prescription'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,6 +26,13 @@ const nameValue = ref('')
 
 // Alergias
 const allergies = ref<Allergy[]>([])
+
+// Recetas
+const prescriptions = ref<Prescription[]>([])
+const showRxForm = ref(false)
+const rxForm = ref({ medicamento_generico: '', dosis: '', diagnostico: '', indicaciones: '', seguimiento: '' })
+const rxLoading = ref(false)
+const rxError = ref('')
 const showAllergyForm = ref(false)
 const allergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza: '' })
 const allergyLoading = ref(false)
@@ -35,15 +44,17 @@ const editAllergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', cer
 
 onMounted(async () => {
   try {
-    const [p, notes, algs] = await Promise.all([
+    const [p, notes, algs, rxs] = await Promise.all([
       patientRepository.get(id),
       evidenceRepository.list(),
       allergyRepository.list(id),
+      prescriptionRepository.listByPatient(id),
     ])
     patient.value = p
     nameValue.value = p.nombre
     allNotes.value = notes
     allergies.value = algs
+    prescriptions.value = rxs
   } catch (e: any) { error.value = e.message }
   finally { loading.value = false }
 })
@@ -167,6 +178,29 @@ async function quitarAllergy(a: Allergy) {
     allergies.value = allergies.value.filter(x => x.id !== a.id)
   } catch (e: any) {
     error.value = e.message
+  }
+}
+
+async function createPrescription() {
+  if (!rxForm.value.medicamento_generico.trim() || !rxForm.value.dosis.trim()) {
+    rxError.value = 'Medicamento y dosis son obligatorios'
+    return
+  }
+  rxLoading.value = true
+  rxError.value = ''
+  try {
+    const draft = await prescriptionRepository.create(id, rxForm.value)
+    const emitted = await prescriptionRepository.emit(draft.id)
+    if (emitted) {
+      const updated = await prescriptionRepository.listByPatient(id)
+      prescriptions.value = updated
+      showRxForm.value = false
+      rxForm.value = { medicamento_generico: '', dosis: '', diagnostico: '', indicaciones: '', seguimiento: '' }
+    }
+  } catch (e: any) {
+    rxError.value = e.message
+  } finally {
+    rxLoading.value = false
   }
 }
 
@@ -337,6 +371,60 @@ async function exportExpediente() {
                 <div class="allergy-sub">{{ a.tipo_reaccion }}</div>
                 <div v-if="a.certeza" class="allergy-certeza">Certeza: {{ a.certeza }}</div>
               </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección de recetas electrónicas -->
+        <div class="seccion">
+          <div class="seccion-header">
+            <h3>Recetas electrónicas</h3>
+            <button class="btn-primary" @click="showRxForm = !showRxForm">
+              {{ showRxForm ? 'Cancelar' : '+ Nueva receta' }}
+            </button>
+          </div>
+
+          <!-- Formulario nueva receta -->
+          <div v-if="showRxForm" class="allergy-form">
+            <div class="alert-error" v-if="rxError">{{ rxError }}</div>
+            <div class="form-row">
+              <label>Medicamento genérico *</label>
+              <input v-model="rxForm.medicamento_generico" class="input" placeholder="p. ej. Paracetamol" />
+            </div>
+            <div class="form-row">
+              <label>Dosis *</label>
+              <input v-model="rxForm.dosis" class="input" placeholder="p. ej. 500mg cada 8h por 3 días" />
+            </div>
+            <div class="form-row">
+              <label>Diagnóstico</label>
+              <input v-model="rxForm.diagnostico" class="input" placeholder="p. ej. Faringitis aguda" />
+            </div>
+            <div class="form-row">
+              <label>Indicaciones</label>
+              <input v-model="rxForm.indicaciones" class="input" placeholder="p. ej. Reposo e hidratación" />
+            </div>
+            <div class="form-row">
+              <label>Seguimiento</label>
+              <input v-model="rxForm.seguimiento" class="input" placeholder="p. ej. Control en 7 días" />
+            </div>
+            <button class="btn-primary" @click="createPrescription" :disabled="rxLoading">
+              {{ rxLoading ? 'Emitiendo...' : 'Emitir receta' }}
+            </button>
+          </div>
+
+          <!-- Lista de recetas -->
+          <div v-if="prescriptions.length === 0 && !showRxForm" class="state-empty-sm">
+            Sin recetas emitidas.
+          </div>
+          <div v-else class="allergy-list">
+            <div v-for="rx in prescriptions" :key="rx.id" class="allergy-item">
+              <div class="allergy-meta">
+                <div class="allergy-main">
+                  <span class="allergy-agente">{{ rx.medicamento_generico }}</span>
+                </div>
+              </div>
+              <div class="allergy-sub">{{ rx.dosis }}</div>
+              <div v-if="rx.diagnostico" class="allergy-certeza">Dx: {{ rx.diagnostico }}</div>
             </div>
           </div>
         </div>
