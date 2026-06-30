@@ -494,11 +494,6 @@ async function exportExpediente() {
                 })!.content) : 'sin nota' }}
               </div>
 
-              <div v-if="prescriptions.find(rx => rx.consultation_id === con.id)" class="rx-chip">
-                <span class="rx-chip-label">Rx</span>
-                <span>{{ prescriptions.find(rx => rx.consultation_id === con.id)?.medicamento_generico }}</span>
-                <span class="rx-dosis">{{ prescriptions.find(rx => rx.consultation_id === con.id)?.dosis }}</span>
-              </div>
             </div>
           </div>
         </div>
