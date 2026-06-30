@@ -24,6 +24,7 @@ type PrescriptionItem struct {
 	State               string     `json:"state"`
 	CreatedAt           time.Time  `json:"created_at"`
 	IssuedAt            *time.Time `json:"issued_at,omitempty"`
+	ConsultationID      string     `json:"consultation_id,omitempty"`
 }
 
 func toPrescriptionItem(p ports.PrescriptionProjection) PrescriptionItem {
@@ -38,6 +39,7 @@ func toPrescriptionItem(p ports.PrescriptionProjection) PrescriptionItem {
 		Seguimiento:         p.Seguimiento,
 		State:               p.State,
 		CreatedAt:           p.CreatedAt,
+		ConsultationID:      p.ConsultationID,
 		IssuedAt:            p.IssuedAt,
 	}
 }
@@ -49,6 +51,7 @@ type PrescriptionRequest struct {
 	Diagnostico         string `json:"diagnostico,omitempty"`
 	Indicaciones        string `json:"indicaciones,omitempty"`
 	Seguimiento         string `json:"seguimiento,omitempty"`
+	ConsultationID      string `json:"consultation_id,omitempty"`
 }
 
 // HandlePrescriptionCreate crea un borrador de receta para un paciente.
@@ -94,7 +97,7 @@ func HandlePrescriptionCreate(w http.ResponseWriter, r *http.Request) {
 		Seguimiento:         req.Seguimiento,
 	}
 
-	e, err := deps.PrescriptionService.CreateDraft(tenantID, actorID, patientID, content)
+	e, err := deps.PrescriptionService.CreateDraft(tenantID, actorID, patientID, req.ConsultationID, content)
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "PRESCRIPTION_ERROR", err.Error())
 		return

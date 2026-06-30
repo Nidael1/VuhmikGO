@@ -38,7 +38,7 @@ func NewPrescriptionService(
 }
 
 // CreateDraft crea un borrador de receta. No tiene validez legal hasta Emit.
-func (s *PrescriptionService) CreateDraft(tenantID, actorID, patientID string, content shaders.PrescriptionContent) (evidence.Evidence, error) {
+func (s *PrescriptionService) CreateDraft(tenantID, actorID, patientID, consultationID string, content shaders.PrescriptionContent) (evidence.Evidence, error) {
 	inner := shaders.NewPrescriptionShader()
 	guard := shaders.NewCapabilityGuard(inner, s.caps, "prescription", s.rubro)
 
@@ -83,6 +83,7 @@ func (s *PrescriptionService) CreateDraft(tenantID, actorID, patientID string, c
 		Seguimiento:         content.Seguimiento,
 		State:               string(e.State),
 		CreatedAt:           now,
+		ConsultationID:      consultationID,
 	})
 
 	return e, nil
@@ -95,6 +96,9 @@ func (s *PrescriptionService) Emit(tenantID, actorID, prescriptionID string, pro
 	if err != nil {
 		return evidence.Evidence{}, fmt.Errorf("receta no encontrada: %w", err)
 	}
+
+	// Preservar consultation_id ya guardado en la proyeccion (no vive en el blob)
+	existingProj, _ := s.proj.FindByID(tenantID, prescriptionID)
 
 	// Parsear blob para validar + enriquecer con datos del perfil
 	var content shaders.PrescriptionContent
@@ -143,6 +147,7 @@ func (s *PrescriptionService) Emit(tenantID, actorID, prescriptionID string, pro
 		State:               string(e.State),
 		CreatedAt:           e.CreatedAt,
 		IssuedAt:            e.IssuedAt,
+		ConsultationID:      existingProj.ConsultationID,
 	})
 
 	return e, nil
