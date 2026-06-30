@@ -4,11 +4,13 @@ import { useRoute } from 'vue-router'
 import AppLayout from '@/presentation/layouts/AppLayout.vue'
 import { prescriptionRepository } from '@/infrastructure/repositories/prescriptionRepository'
 import { patientRepository } from '@/infrastructure/repositories/patientRepository'
+import { useAuthStore } from '@/app/stores/auth'
 import type { Prescription } from '@/domain/types/prescription'
 import type { Patient } from '@/domain/types/patient'
 
 const route = useRoute()
 const id = route.params.id as string
+const auth = useAuthStore()
 
 const prescription = ref<Prescription | null>(null)
 const patient = ref<Patient | null>(null)
@@ -32,6 +34,11 @@ function formatDate(d: string) {
     year: 'numeric', month: 'long', day: 'numeric',
     hour: '2-digit', minute: '2-digit'
   })
+}
+
+function reimprimir() {
+  if (!prescription.value || !auth.token) return
+  window.open(`/api/v1/prescriptions/${prescription.value.id}/print?token=${auth.token}`, '_blank')
 }
 </script>
 
@@ -61,7 +68,17 @@ function formatDate(d: string) {
               </svg>
               <h3>Detalle de receta</h3>
             </div>
-            <span class="rx-estado">{{ prescription.state === 'issued' ? 'emitida' : prescription.state }}</span>
+            <div class="seccion-acciones">
+              <span class="rx-estado">{{ prescription.state === 'issued' ? 'emitida' : prescription.state }}</span>
+              <button class="btn-reimprimir" @click="reimprimir">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                Reimprimir
+              </button>
+            </div>
           </div>
 
           <div class="detalle-grid">
@@ -127,6 +144,12 @@ function formatDate(d: string) {
 .seccion-titulo h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .seccion-icono { display: flex; align-items: center; color: var(--text-secondary); flex-shrink: 0; }
 
+.seccion-acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .seccion--recetas .seccion-header {
   background: #F5F8FF;
   border-left: 3px solid var(--color-clinical-blue, #3B82F6);
@@ -140,6 +163,27 @@ function formatDate(d: string) {
   border-radius: 999px;
   padding: 2px 10px;
 }
+
+.btn-reimprimir {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-clinical-blue, #3B82F6);
+  background: transparent;
+  border: 1.5px solid var(--color-clinical-blue, #3B82F6);
+  border-radius: var(--radius-md);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-reimprimir:hover {
+  background: var(--color-clinical-blue, #3B82F6);
+  color: #fff;
+}
+.btn-reimprimir svg { flex-shrink: 0; }
 
 .detalle-grid {
   display: flex;

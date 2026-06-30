@@ -10,6 +10,7 @@ export interface Prescription {
   state: string
   created_at: string
   issued_at?: string
+  consultation_id?: string
 }
 
 export interface PrescriptionRequest {
