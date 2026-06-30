@@ -22,8 +22,8 @@ func (r *PrescriptionProjectionRepository) Upsert(p ports.PrescriptionProjection
 	sql := `
 		INSERT INTO prescription_projections
 			(evidence_id, tenant_id, patient_id, medicamento_generico, dosis,
-			 diagnostico, indicaciones, seguimiento, state, created_at, issued_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			 diagnostico, indicaciones, seguimiento, state, created_at, issued_at, consultation_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (evidence_id) DO UPDATE SET
 			medicamento_generico = EXCLUDED.medicamento_generico,
 			dosis                = EXCLUDED.dosis,
@@ -31,12 +31,13 @@ func (r *PrescriptionProjectionRepository) Upsert(p ports.PrescriptionProjection
 			indicaciones         = EXCLUDED.indicaciones,
 			seguimiento          = EXCLUDED.seguimiento,
 			state                = EXCLUDED.state,
-			issued_at            = EXCLUDED.issued_at`
+			issued_at            = EXCLUDED.issued_at,
+			consultation_id      = EXCLUDED.consultation_id`
 	_, err := r.pool.Exec(context.Background(), sql,
 		p.EvidenceID, p.TenantID, p.PatientID,
 		p.MedicamentoGenerico, p.Dosis,
 		p.Diagnostico, p.Indicaciones, p.Seguimiento,
-		p.State, p.CreatedAt, p.IssuedAt,
+		p.State, p.CreatedAt, p.IssuedAt, p.ConsultationID,
 	)
 	if err != nil {
 		return fmt.Errorf("error al guardar proyección de receta: %w", err)
@@ -56,7 +57,8 @@ func (r *PrescriptionProjectionRepository) UpdateState(tenantID, evidenceID, sta
 func (r *PrescriptionProjectionRepository) ListByPatient(tenantID, patientID string) ([]ports.PrescriptionProjection, error) {
 	sql := `
 		SELECT evidence_id, tenant_id, patient_id, medicamento_generico, dosis,
-		       diagnostico, indicaciones, seguimiento, state, created_at, issued_at
+		       diagnostico, indicaciones, seguimiento, state, created_at, issued_at,
+		       COALESCE(consultation_id, '') AS consultation_id
 		FROM prescription_projections
 		WHERE tenant_id = $1 AND patient_id = $2 AND state = 'issued'
 		ORDER BY created_at DESC`
@@ -66,7 +68,8 @@ func (r *PrescriptionProjectionRepository) ListByPatient(tenantID, patientID str
 func (r *PrescriptionProjectionRepository) ListAll(tenantID string) ([]ports.PrescriptionProjection, error) {
 	sql := `
 		SELECT evidence_id, tenant_id, patient_id, medicamento_generico, dosis,
-		       diagnostico, indicaciones, seguimiento, state, created_at, issued_at
+		       diagnostico, indicaciones, seguimiento, state, created_at, issued_at,
+		       COALESCE(consultation_id, '') AS consultation_id
 		FROM prescription_projections
 		WHERE tenant_id = $1 AND state = 'issued'
 		ORDER BY created_at DESC`
@@ -76,7 +79,8 @@ func (r *PrescriptionProjectionRepository) ListAll(tenantID string) ([]ports.Pre
 func (r *PrescriptionProjectionRepository) FindByID(tenantID, evidenceID string) (ports.PrescriptionProjection, error) {
 	sql := `
 		SELECT evidence_id, tenant_id, patient_id, medicamento_generico, dosis,
-		      diagnostico, indicaciones, seguimiento, state, created_at, issued_at
+		      diagnostico, indicaciones, seguimiento, state, created_at, issued_at,
+		      COALESCE(consultation_id, '') AS consultation_id
 		FROM prescription_projections
 		WHERE evidence_id = $1 AND tenant_id = $2`
 	var p ports.PrescriptionProjection
@@ -84,7 +88,7 @@ func (r *PrescriptionProjectionRepository) FindByID(tenantID, evidenceID string)
 		&p.EvidenceID, &p.TenantID, &p.PatientID,
 		&p.MedicamentoGenerico, &p.Dosis,
 		&p.Diagnostico, &p.Indicaciones, &p.Seguimiento,
-		&p.State, &p.CreatedAt, &p.IssuedAt,
+		&p.State, &p.CreatedAt, &p.IssuedAt, &p.ConsultationID,
 	)
 	if err != nil {
 		return ports.PrescriptionProjection{}, fmt.Errorf("receta no encontrada: %w", err)
@@ -105,7 +109,7 @@ func (r *PrescriptionProjectionRepository) scan(sql string, args ...any) ([]port
 			&p.EvidenceID, &p.TenantID, &p.PatientID,
 			&p.MedicamentoGenerico, &p.Dosis,
 			&p.Diagnostico, &p.Indicaciones, &p.Seguimiento,
-			&p.State, &p.CreatedAt, &p.IssuedAt,
+			&p.State, &p.CreatedAt, &p.IssuedAt, &p.ConsultationID,
 		); err != nil {
 			return nil, fmt.Errorf("error al escanear proyección de receta: %w", err)
 		}

@@ -15,6 +15,7 @@ type PrescriptionProjection struct {
 	State               string
 	CreatedAt           time.Time
 	IssuedAt            *time.Time
+	ConsultationID      string
 }
 
 // PrescriptionProjectionRepository define el contrato de acceso a la
