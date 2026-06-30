@@ -19,4 +19,5 @@ export interface PrescriptionRequest {
   diagnostico?: string
   indicaciones?: string
   seguimiento?: string
+  consultation_id?: string
 }
