@@ -24,4 +24,5 @@ type PrescriptionProjectionRepository interface {
 	UpdateState(tenantID, evidenceID, state string) error
 	ListByPatient(tenantID, patientID string) ([]PrescriptionProjection, error)
 	ListAll(tenantID string) ([]PrescriptionProjection, error)
+	FindByID(tenantID, evidenceID string) (PrescriptionProjection, error)
 }

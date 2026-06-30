@@ -246,5 +246,32 @@ func HandlePrescriptionListAll(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandlePrescriptionDetail retorna el detalle de una receta.
+//
+// GET /api/v1/prescriptions/:id
+func HandlePrescriptionDetail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := TenantIDFromContext(r)
+	if tenantID == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+
+	id := strings.TrimPrefix(r.URL.Path, "/api/v1/prescriptions/")
+	p, err := deps.PrescriptionService.FindByID(tenantID, id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "receta no encontrada")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"data":  toPrescriptionItem(p),
+		"error": nil,
+	})
+}
+
 // claimsKey ya definida en context.go — no redefinir aquí
 var _ = auth.Claims{}
