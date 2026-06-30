@@ -44,8 +44,11 @@ async function request<T>(
     throw new Error('UNAUTHORIZED')
   }
 
-  // Para todos los demas casos retornar el JSON — el caller decide
-  return res.json() as Promise<T>
+  const json = await res.json()
+  if (!res.ok) {
+    throw new Error(json?.error?.message || json?.error?.code || `HTTP ${res.status}`)
+  }
+  return json as T
 }
 
 async function tryRefresh(refreshToken: string) {
