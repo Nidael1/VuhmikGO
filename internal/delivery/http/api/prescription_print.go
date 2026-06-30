@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/Nidael1/VuhmikGO/internal/auth"
 )
 
 // HandlePrescriptionPrint genera HTML imprimible de la receta (NOM-024).
@@ -12,13 +14,34 @@ import (
 // de guerra — sin costo de storage adicional en el VPS).
 //
 // GET /api/v1/prescriptions/:id/print
+//
+// Esta ruta acepta el token por header Authorization o por query param
+// "token", porque se abre típicamente en una pestaña nueva del navegador
+// (window.open) donde no es posible adjuntar headers personalizados.
 func HandlePrescriptionPrint(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	tenantID := TenantIDFromContext(r)
-	actorID := ActorIDFromContext(r)
+
+	tokenStr := ""
+	header := r.Header.Get("Authorization")
+	if len(header) >= 8 && header[:7] == "Bearer " {
+		tokenStr = header[7:]
+	} else if q := r.URL.Query().Get("token"); q != "" {
+		tokenStr = q
+	}
+	if tokenStr == "" {
+		http.Error(w, "token requerido", http.StatusUnauthorized)
+		return
+	}
+	claims, err := auth.ValidateToken(tokenStr)
+	if err != nil {
+		http.Error(w, "token invalido o expirado", http.StatusUnauthorized)
+		return
+	}
+	tenantID := claims.TenantID
+	actorID := claims.ActorID
 	if tenantID == "" {
 		http.Error(w, "no autenticado", http.StatusUnauthorized)
 		return
