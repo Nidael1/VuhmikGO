@@ -10,6 +10,8 @@ import type { Allergy } from '@/domain/types/allergy'
 import { allergyRepository } from '@/infrastructure/repositories/allergyRepository'
 import { prescriptionRepository } from '@/infrastructure/repositories/prescriptionRepository'
 import type { Prescription } from '@/domain/types/prescription'
+import { consultationRepository } from '@/infrastructure/repositories/consultationRepository'
+import type { Consultation } from '@/domain/types/consultation'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,15 +22,12 @@ const allNotes = ref<Evidence[]>([])
 const loading = ref(true)
 const error = ref('')
 
-// Edición inline del nombre
 const editingName = ref(false)
 const nameValue = ref('')
 
-// Alergias
 const allergies = ref<Allergy[]>([])
-
-// Recetas
 const prescriptions = ref<Prescription[]>([])
+const consultations = ref<Consultation[]>([])
 const showRxForm = ref(false)
 const rxForm = ref({ medicamento_generico: '', dosis: '', diagnostico: '', indicaciones: '', seguimiento: '' })
 const rxLoading = ref(false)
@@ -38,23 +37,24 @@ const allergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza
 const allergyLoading = ref(false)
 const allergyError = ref('')
 
-// Edición inline de alergia
 const editingAllergyId = ref<string | null>(null)
 const editAllergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza: '' })
 
 onMounted(async () => {
   try {
-    const [p, notes, algs, rxs] = await Promise.all([
+    const [p, notes, algs, rxs, cons] = await Promise.all([
       patientRepository.get(id),
       evidenceRepository.list(),
       allergyRepository.list(id),
       prescriptionRepository.listByPatient(id),
+      consultationRepository.listByPatient(id),
     ])
     patient.value = p
     nameValue.value = p.nombre
     allNotes.value = notes
     allergies.value = algs
     prescriptions.value = rxs
+    consultations.value = cons
   } catch (e: any) { error.value = e.message }
   finally { loading.value = false }
 })
@@ -276,22 +276,33 @@ async function exportExpediente() {
 
         <!-- Barra de seguridad: alergias activas -->
         <div v-if="allergies.length > 0" class="safety-bar">
-          <span class="safety-label">⚠ Alergias:</span>
+          <svg class="safety-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span class="safety-label">Alergias:</span>
           <span v-for="a in allergies" :key="a.id" class="allergy-chip">
             {{ a.agente }}
           </span>
         </div>
 
-        <!-- Sección de alergias -->
-        <div class="seccion">
+        <!-- SECCIÓN: Alergias e intolerancias -->
+        <div class="seccion seccion--alergias">
           <div class="seccion-header">
-            <h3>Alergias e intolerancias</h3>
+            <div class="seccion-titulo">
+              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <h3>Alergias e intolerancias</h3>
+            </div>
             <button class="btn-primary" @click="showAllergyForm = !showAllergyForm">
               {{ showAllergyForm ? 'Cancelar' : '+ Nueva alergia' }}
             </button>
           </div>
 
-          <!-- Formulario nueva alergia -->
           <div v-if="showAllergyForm" class="allergy-form">
             <div class="alert-error" v-if="allergyError">{{ allergyError }}</div>
             <div class="form-row">
@@ -325,13 +336,11 @@ async function exportExpediente() {
             </button>
           </div>
 
-          <!-- Lista de alergias -->
           <div v-if="allergies.length === 0 && !showAllergyForm" class="state-empty-sm">
             Sin alergias registradas.
           </div>
           <div v-else class="allergy-list">
             <div v-for="a in allergies" :key="a.id" class="allergy-item">
-              <!-- Modo edición inline -->
               <template v-if="editingAllergyId === a.id">
                 <div class="allergy-edit-form">
                   <input v-model="editAllergyForm.agente" class="input" placeholder="Agente" autofocus />
@@ -354,7 +363,6 @@ async function exportExpediente() {
                   </div>
                 </div>
               </template>
-              <!-- Modo lectura -->
               <template v-else>
                 <div class="allergy-meta">
                   <div class="allergy-main">
@@ -375,16 +383,24 @@ async function exportExpediente() {
           </div>
         </div>
 
-        <!-- Sección de recetas electrónicas -->
-        <div class="seccion">
+        <!-- SECCIÓN: Recetas electrónicas -->
+        <div class="seccion seccion--recetas">
           <div class="seccion-header">
-            <h3>Recetas electrónicas</h3>
+            <div class="seccion-titulo">
+              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 2v4"/><path d="M16 2v4"/>
+                <rect x="3" y="6" width="18" height="16" rx="2"/>
+                <line x1="9" y1="13" x2="15" y2="13"/>
+                <line x1="9" y1="17" x2="15" y2="17"/>
+              </svg>
+              <h3>Recetas electrónicas</h3>
+              <span class="seccion-count">{{ prescriptions.length }}</span>
+            </div>
             <button class="btn-primary" @click="showRxForm = !showRxForm">
               {{ showRxForm ? 'Cancelar' : '+ Nueva receta' }}
             </button>
           </div>
 
-          <!-- Formulario nueva receta -->
           <div v-if="showRxForm" class="allergy-form">
             <div class="alert-error" v-if="rxError">{{ rxError }}</div>
             <div class="form-row">
@@ -412,58 +428,81 @@ async function exportExpediente() {
             </button>
           </div>
 
-          <!-- Lista de recetas -->
           <div v-if="prescriptions.length === 0 && !showRxForm" class="state-empty-sm">
             Sin recetas emitidas.
           </div>
-          <div v-else class="allergy-list">
-            <div v-for="rx in prescriptions" :key="rx.id" class="allergy-item">
-              <div class="allergy-meta">
-                <div class="allergy-main">
-                  <span class="allergy-agente">{{ rx.medicamento_generico }}</span>
-                </div>
+          <div v-else class="rx-grid">
+            <div v-for="rx in prescriptions" :key="rx.id" class="rx-card">
+              <div class="rx-card-header">
+                <span class="rx-medicamento">{{ rx.medicamento_generico }}</span>
+                <span class="rx-estado">emitida</span>
               </div>
-              <div class="allergy-sub">{{ rx.dosis }}</div>
-              <div v-if="rx.diagnostico" class="allergy-certeza">Dx: {{ rx.diagnostico }}</div>
+              <div class="rx-dosis-text">{{ rx.dosis }}</div>
+              <div v-if="rx.diagnostico" class="rx-dx">Dx: {{ rx.diagnostico }}</div>
             </div>
           </div>
         </div>
 
-        <!-- Expediente clínico — hoja continua -->
-        <div class="expediente">
-          <div class="expediente-header">
-            <h3>Expediente clínico</h3>
-            <RouterLink :to="`/evidence/new?patient=${id}`" class="btn-primary">
-              + Nueva nota
+        <!-- SECCIÓN: Consultas — cronología clínica -->
+        <div class="seccion seccion--consultas">
+          <div class="seccion-header">
+            <div class="seccion-titulo">
+              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 2v4"/><path d="M16 2v4"/>
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+                <path d="M9 16l2 2 4-4"/>
+              </svg>
+              <h3>Consultas</h3>
+              <span class="seccion-count">{{ consultations.length }}</span>
+            </div>
+            <RouterLink :to="`/consultations/new?patient=${id}`" class="btn-primary">
+              + Nueva consulta
             </RouterLink>
           </div>
 
-          <div v-if="activeNotes.length === 0" class="state-empty-sm">
-            Sin notas clínicas registradas para este paciente.
+          <div v-if="consultations.length === 0" class="state-empty-sm">
+            Sin consultas registradas para este paciente.
           </div>
 
-          <!-- Hoja continua de notas -->
           <div v-else class="hoja">
             <div
-              v-for="(note, index) in activeNotes"
-              :key="note.id"
+              v-for="(con, index) in consultations"
+              :key="con.id"
               class="nota-entrada"
               :class="{ 'primera': index === 0 }"
             >
               <div class="nota-meta">
-                <span class="nota-fecha">{{ formatDate(note.created_at) }}</span>
-                <div class="nota-acciones">
-                  <RouterLink :to="`/evidence/${note.id}/editar`" class="btn-accion">
-                    Editar
-                  </RouterLink>
-                </div>
+                <span class="nota-fecha">{{ formatDate(con.issued_at ?? con.created_at) }}</span>
               </div>
+
+              <div v-if="con.ta || con.fc || con.fr || con.temp || con.peso || con.talla || con.sao2" class="vitals-row">
+                <span v-if="con.ta" class="vital-chip"><strong>T/A</strong> {{ con.ta }} mmHg</span>
+                <span v-if="con.fc" class="vital-chip"><strong>FC</strong> {{ con.fc }} lpm</span>
+                <span v-if="con.fr" class="vital-chip"><strong>FR</strong> {{ con.fr }} rpm</span>
+                <span v-if="con.temp" class="vital-chip"><strong>Temp</strong> {{ con.temp }}°C</span>
+                <span v-if="con.peso" class="vital-chip"><strong>Peso</strong> {{ con.peso }} kg</span>
+                <span v-if="con.talla" class="vital-chip"><strong>Talla</strong> {{ con.talla }} m</span>
+                <span v-if="con.sao2" class="vital-chip"><strong>SAO2</strong> {{ con.sao2 }}%</span>
+              </div>
+
               <div class="nota-contenido">
-                {{ parseNoteContent(note.content) }}
+                {{ activeNotes.find(n => {
+                  try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
+                })?.content ? parseNoteContent(activeNotes.find(n => {
+                  try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
+                })!.content) : 'sin nota' }}
+              </div>
+
+              <div v-if="prescriptions.find(rx => rx.consultation_id === con.id)" class="rx-chip">
+                <span class="rx-chip-label">Rx</span>
+                <span>{{ prescriptions.find(rx => rx.consultation_id === con.id)?.medicamento_generico }}</span>
+                <span class="rx-dosis">{{ prescriptions.find(rx => rx.consultation_id === con.id)?.dosis }}</span>
               </div>
             </div>
           </div>
         </div>
+
       </template>
     </div>
   </AppLayout>
@@ -488,18 +527,112 @@ async function exportExpediente() {
 .sep { color: #CBD5E1; }
 .mono { font-family: monospace; }
 
-.expediente { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); overflow: hidden; }
+/* Sección base */
+.seccion {
+  background: var(--app-surface);
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
 
-.expediente-header {
+.seccion-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid #E2E8F0;
-  background: #FAFBFC;
 }
 
-.btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.seccion-titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.seccion-titulo h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.seccion-icono {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.seccion-count {
+  font-size: 12px;
+  font-weight: 600;
+  background: #F1F5F9;
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.seccion--alergias .seccion-header {
+  background: #FFFBF5;
+  border-left: 3px solid #F97316;
+}
+
+.seccion--recetas .seccion-header {
+  background: #F5F8FF;
+  border-left: 3px solid var(--color-clinical-blue, #3B82F6);
+}
+
+.seccion--consultas .seccion-header {
+  background: #F2FDFB;
+  border-left: 3px solid var(--color-turquoise, #00DFA2);
+}
+
+.rx-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.rx-card {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.rx-card:last-child { border-bottom: none; }
+
+.rx-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.rx-medicamento {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.rx-estado {
+  font-size: 11px;
+  font-weight: 600;
+  background: #DCFCE7;
+  color: #166534;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.rx-dosis-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.rx-dx {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
 
 .hoja { padding: 0; }
 
@@ -523,25 +656,6 @@ async function exportExpediente() {
   text-transform: capitalize;
 }
 
-.nota-acciones {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.btn-accion {
-  font-size: 12px;
-  color: var(--color-clinical-blue);
-  text-decoration: none;
-  background: transparent;
-  border: 1px solid #E2E8F0;
-  padding: 2px 10px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: border-color 0.15s;
-  font-family: var(--font-body);
-}
-.btn-accion:hover { border-color: var(--color-clinical-blue); }
-
 .nota-contenido {
   font-size: 15px;
   color: var(--text-primary);
@@ -549,9 +663,40 @@ async function exportExpediente() {
   white-space: pre-wrap;
 }
 
-.state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); }
-.state-empty-sm { color: var(--text-secondary); font-size: 14px; padding: var(--space-6); }
-.alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); }
+.vitals-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-2); }
+.vital-chip {
+  font-size: 12px;
+  background: #EEF9F7;
+  color: var(--color-turquoise);
+  border: 1px solid #C3EDE8;
+  border-radius: 20px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+.vital-chip strong { font-weight: 700; }
+
+.rx-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: #F8F4FF;
+  border: 1px solid #E5D9FF;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  margin-top: var(--space-2);
+  width: fit-content;
+}
+.rx-dosis { color: var(--text-secondary); font-size: 12px; }
+.rx-chip-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-clinical-blue, #3B82F6);
+  background: #E8EFFF;
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+}
 
 .safety-bar {
   display: flex; align-items: center; gap: var(--space-2);
@@ -560,22 +705,16 @@ async function exportExpediente() {
   margin-bottom: var(--space-4); font-size: 13px;
 }
 .safety-label { font-weight: 700; color: #C2410C; }
+.safety-icon { color: #C2410C; flex-shrink: 0; }
 .allergy-chip {
   background: #FEF3C7; border: 1px solid #FDE68A;
   border-radius: 999px; padding: 2px 10px;
   font-size: 12px; font-weight: 600; color: #92400E;
 }
-.seccion {
-  background: var(--app-surface); border: 1px solid #E2E8F0;
-  border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--space-4);
-}
-.seccion-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: var(--space-4) var(--space-6); border-bottom: 1px solid #E2E8F0;
-  background: #FAFBFC;
-}
+
 .allergy-form {
-  padding: var(--space-4) var(--space-6); border-bottom: 1px solid #E2E8F0;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid #E2E8F0;
   display: flex; flex-direction: column; gap: var(--space-3);
 }
 .form-row { display: flex; flex-direction: column; gap: 4px; }
@@ -587,18 +726,18 @@ async function exportExpediente() {
   background: var(--app-surface); outline: none;
 }
 .input:focus { border-color: var(--color-turquoise); }
+
 .allergy-list { padding: var(--space-2) 0; }
 .allergy-item {
-  padding: var(--space-3) var(--space-6); border-bottom: 1px solid #F1F5F9;
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid #F1F5F9;
 }
 .allergy-item:last-child { border-bottom: none; }
 .allergy-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
 .allergy-acciones { display: flex; gap: var(--space-2); flex-shrink: 0; }
 .allergy-main { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 2px; }
 .allergy-agente { font-weight: 600; font-size: 14px; color: var(--text-primary); }
-.allergy-badge {
-  font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px;
-}
+.allergy-badge { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; }
 .allergy-badge.leve { background: #DCFCE7; color: #166534; }
 .allergy-badge.moderada { background: #FEF9C3; color: #854D0E; }
 .allergy-badge.grave { background: #FEE2E2; color: #991B1B; }
@@ -606,4 +745,32 @@ async function exportExpediente() {
 .allergy-certeza { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .allergy-edit-form { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) 0; }
 .allergy-edit-acciones { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
+
+.btn-primary {
+  font-family: var(--font-brand);
+  background: var(--action-primary-bg);
+  color: var(--action-primary-text);
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; text-decoration: none;
+}
+.btn-accion {
+  font-size: 12px; color: var(--color-clinical-blue);
+  text-decoration: none; background: transparent;
+  border: 1px solid #E2E8F0;
+  padding: 2px 10px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: border-color 0.15s;
+  font-family: var(--font-body);
+}
+.btn-accion:hover { border-color: var(--color-clinical-blue); }
+
+.state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); }
+.state-empty-sm { color: var(--text-secondary); font-size: 14px; padding: var(--space-6); }
+.alert-error {
+  background: #FFF0F3; border: 1px solid var(--color-error);
+  border-radius: var(--radius-sm); padding: var(--space-3);
+  font-size: 14px; color: var(--color-error);
+}
 </style>
