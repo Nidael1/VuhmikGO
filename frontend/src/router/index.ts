@@ -62,6 +62,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/consultations/:id',
+      name: 'consultation-detail',
+      component: () => import('@/presentation/views/ConsultationDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/consultations/new',
       name: 'consultation-new',
       component: () => import('@/presentation/views/ConsultationNewView.vue'),
@@ -77,6 +83,12 @@ const router = createRouter({
       path: '/prescriptions',
       name: 'prescription-list',
       component: () => import('@/presentation/views/PrescriptionListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/prescriptions/:id',
+      name: 'prescription-detail',
+      component: () => import('@/presentation/views/PrescriptionDetailView.vue'),
       meta: { requiresAuth: true },
     },
     {
