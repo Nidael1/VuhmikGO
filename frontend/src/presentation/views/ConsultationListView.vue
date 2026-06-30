@@ -92,7 +92,7 @@ function formatDate(d: string) {
           <RouterLink
             v-for="c in sorted"
             :key="c.id"
-            :to="`/patients/${c.patient_id}`"
+            :to="`/consultations/${c.id}`"
             class="consultation-card"
           >
             <div class="con-header">

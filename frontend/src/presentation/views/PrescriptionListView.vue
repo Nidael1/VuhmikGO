@@ -71,8 +71,8 @@ function formatDate(d: string) {
   })
 }
 
-function goToPatient(patientId: string) {
-  router.push(`/patients/${patientId}`)
+function goToPrescription(prescriptionId: string) {
+  router.push(`/prescriptions/${prescriptionId}`)
 }
 </script>
 
@@ -111,7 +111,7 @@ function goToPatient(patientId: string) {
           v-for="rx in sorted"
           :key="rx.id"
           class="rx-item"
-          @click="goToPatient(rx.patient_id)"
+          @click="goToPrescription(rx.id)"
         >
           <div class="rx-header">
             <span class="rx-paciente">

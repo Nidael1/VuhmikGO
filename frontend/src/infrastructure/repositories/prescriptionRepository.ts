@@ -12,6 +12,11 @@ export const prescriptionRepository = {
     return res.data?.items ?? []
   },
 
+  async get(id: string): Promise<Prescription> {
+    const res = await http.get(`/prescriptions/${id}`) as any
+    return res.data
+  },
+
   async create(patientId: string, data: PrescriptionRequest): Promise<{ id: string; state: string }> {
     const res = await http.post(`/patients/${patientId}/prescriptions`, data) as any
     return res.data
