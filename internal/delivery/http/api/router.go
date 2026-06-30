@@ -35,7 +35,7 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/consultations", JWTMiddleware(consultationBaseDispatcher))
 	mux.HandleFunc("/api/v1/consultations/", JWTMiddleware(consultationDispatcher))
 	mux.HandleFunc("/api/v1/prescriptions", JWTMiddleware(HandlePrescriptionListAll))
-	mux.HandleFunc("/api/v1/prescriptions/", JWTMiddleware(prescriptionDispatcher))
+	mux.HandleFunc("/api/v1/prescriptions/", prescriptionAuthDispatcher)
 }
 
 // evidenceDispatcher enruta requests con ID dinamico en el path.
@@ -182,8 +182,22 @@ func consultationDispatcher(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
 }
 
+// prescriptionAuthDispatcher decide el modo de autenticacion antes de
+// delegar a prescriptionDispatcher. La sub-ruta /print no exige el header
+// JWT estricto porque se abre en pestana nueva (window.open) y valida el
+// token por su cuenta (header o query) dentro del propio handler.
+func prescriptionAuthDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/prescriptions/")
+	if strings.HasSuffix(path, "/print") {
+		prescriptionDispatcher(w, r)
+		return
+	}
+	JWTMiddleware(prescriptionDispatcher)(w, r)
+}
+
 // prescriptionDispatcher enruta requests de recetas con ID dinamico.
-// Soporta: /api/v1/prescriptions/:id/emit y /api/v1/prescriptions/:id/void
+// Soporta: /api/v1/prescriptions/:id/emit, /api/v1/prescriptions/:id/void
+// y /api/v1/prescriptions/:id/print
 func prescriptionDispatcher(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/prescriptions/")
 	parts := strings.SplitN(path, "/", 2)
@@ -197,6 +211,8 @@ func prescriptionDispatcher(w http.ResponseWriter, r *http.Request) {
 			HandlePrescriptionEmit(w, r)
 		case "void":
 			HandlePrescriptionVoid(w, r)
+		case "print":
+			HandlePrescriptionPrint(w, r)
 		default:
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
 		}
