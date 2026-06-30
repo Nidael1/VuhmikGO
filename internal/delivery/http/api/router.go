@@ -187,6 +187,10 @@ func consultationDispatcher(w http.ResponseWriter, r *http.Request) {
 func prescriptionDispatcher(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/prescriptions/")
 	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 1 {
+		HandlePrescriptionDetail(w, r)
+		return
+	}
 	if len(parts) == 2 {
 		switch parts[1] {
 		case "emit":

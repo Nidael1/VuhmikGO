@@ -73,6 +73,25 @@ func (r *PrescriptionProjectionRepository) ListAll(tenantID string) ([]ports.Pre
 	return r.scan(sql, tenantID)
 }
 
+func (r *PrescriptionProjectionRepository) FindByID(tenantID, evidenceID string) (ports.PrescriptionProjection, error) {
+	sql := `
+		SELECT evidence_id, tenant_id, patient_id, medicamento_generico, dosis,
+		      diagnostico, indicaciones, seguimiento, state, created_at, issued_at
+		FROM prescription_projections
+		WHERE evidence_id = $1 AND tenant_id = $2`
+	var p ports.PrescriptionProjection
+	err := r.pool.QueryRow(context.Background(), sql, evidenceID, tenantID).Scan(
+		&p.EvidenceID, &p.TenantID, &p.PatientID,
+		&p.MedicamentoGenerico, &p.Dosis,
+		&p.Diagnostico, &p.Indicaciones, &p.Seguimiento,
+		&p.State, &p.CreatedAt, &p.IssuedAt,
+	)
+	if err != nil {
+		return ports.PrescriptionProjection{}, fmt.Errorf("receta no encontrada: %w", err)
+	}
+	return p, nil
+}
+
 func (r *PrescriptionProjectionRepository) scan(sql string, args ...any) ([]ports.PrescriptionProjection, error) {
 	rows, err := r.pool.Query(context.Background(), sql, args...)
 	if err != nil {

@@ -171,6 +171,11 @@ func (s *PrescriptionService) ListByPatient(tenantID, patientID string) ([]ports
 	return s.proj.ListByPatient(tenantID, patientID)
 }
 
+// FindByID retorna el detalle de una receta por su ID.
+func (s *PrescriptionService) FindByID(tenantID, id string) (ports.PrescriptionProjection, error) {
+	return s.proj.FindByID(tenantID, id)
+}
+
 // ListAll retorna todas las recetas emitidas del tenant.
 // Para la vista global de recetas en el sidebar.
 func (s *PrescriptionService) ListAll(tenantID string) ([]ports.PrescriptionProjection, error) {
