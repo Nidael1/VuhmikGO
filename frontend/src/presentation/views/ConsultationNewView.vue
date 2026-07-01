@@ -146,18 +146,18 @@ async function save() {
             <div class="vital-row">
               <label>T/A</label>
               <div class="vital-ta">
-                <input :value="vitals.ta_s" @input="onlyNum('ta_s', $event)" class="input-field vital-half" placeholder="120" inputmode="numeric" maxlength="3" />
+                <input v-model="vitals.ta_s" class="input-field vital-half" placeholder="120" inputmode="numeric" maxlength="3" />
                 <span class="vital-sep">/</span>
-                <input :value="vitals.ta_d" @input="onlyNum('ta_d', $event)" class="input-field vital-half" placeholder="80" inputmode="numeric" maxlength="3" />
+                <input v-model="vitals.ta_d" class="input-field vital-half" placeholder="80" inputmode="numeric" maxlength="3" />
               </div>
             </div>
             <div class="vital-row">
               <label>FC</label>
-              <input :value="vitals.fc" @input="onlyNum('fc', $event)" class="input-field" placeholder="72" inputmode="numeric" maxlength="3" />
+              <input v-model="vitals.fc" class="input-field" placeholder="72" inputmode="numeric" maxlength="3" />
             </div>
             <div class="vital-row">
               <label>FR</label>
-              <input :value="vitals.fr" @input="onlyNum('fr', $event)" class="input-field" placeholder="16" inputmode="numeric" maxlength="3" />
+              <input v-model="vitals.fr" class="input-field" placeholder="16" inputmode="numeric" maxlength="3" />
             </div>
             <div class="vital-row">
               <label>Temp</label>
@@ -165,7 +165,7 @@ async function save() {
             </div>
             <div class="vital-row">
               <label>Peso</label>
-              <input :value="vitals.peso" @input="onlyNum('peso', $event)" class="input-field" placeholder="70" inputmode="numeric" maxlength="3" />
+              <input v-model="vitals.peso" class="input-field" placeholder="70" inputmode="numeric" maxlength="3" />
             </div>
             <div class="vital-row">
               <label>Talla</label>
@@ -173,7 +173,7 @@ async function save() {
             </div>
             <div class="vital-row">
               <label>SAO2</label>
-              <input :value="vitals.sao2" @input="onlyNum('sao2', $event)" class="input-field" placeholder="98" inputmode="numeric" maxlength="3" />
+              <input v-model="vitals.sao2" class="input-field" placeholder="98" inputmode="numeric" maxlength="3" />
             </div>
           </div>
         </div>
