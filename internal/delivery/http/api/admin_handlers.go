@@ -3,6 +3,13 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
+	"time"
+
+	"github.com/Nidael1/VuhmikGO/internal/application/ports"
+	"github.com/Nidael1/VuhmikGO/internal/auth"
+	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
+	"github.com/Nidael1/VuhmikGO/internal/observability"
 )
 
 // --- DTOs admin ---
@@ -126,4 +133,149 @@ func HandleAdminSuspend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]bool{"ok": true}, "error": nil})
+}
+
+// AdminCreateUserRequest es el payload para crear un médico desde el panel admin.
+// Todos los campos de perfil son obligatorios para cumplir NOM-024-SSA3-2012.
+type AdminCreateUserRequest struct {
+	Email             string `json:"email"`
+	Password          string `json:"password"`
+	NombreCompleto    string `json:"nombre_completo"`
+	CedulaProfesional string `json:"cedula_profesional"`
+	Especialidad      string `json:"especialidad"`
+	Universidad       string `json:"universidad"`
+	Direccion         string `json:"direccion"`
+	Telefono          string `json:"telefono"`
+	CURP              string `json:"curp,omitempty"`
+}
+
+// HandleAdminCreateUser crea un médico completo desde el panel admin:
+// 1. Crea el usuario (credenciales + tenant)
+// 2. Crea el perfil profesional (NOM-024)
+// 3. Activa los módulos clínicos estándar
+//
+// POST /api/v1/admin/users
+// Requiere AdminMiddleware.
+func HandleAdminCreateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+
+	var req AdminCreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
+		return
+	}
+
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	req.NombreCompleto = strings.TrimSpace(req.NombreCompleto)
+	req.CedulaProfesional = strings.TrimSpace(req.CedulaProfesional)
+	req.Especialidad = strings.TrimSpace(req.Especialidad)
+	req.Universidad = strings.TrimSpace(req.Universidad)
+	req.Direccion = strings.TrimSpace(req.Direccion)
+	req.Telefono = strings.TrimSpace(req.Telefono)
+
+	switch {
+	case req.Email == "":
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "email es obligatorio")
+		return
+	case req.Password == "":
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "password es obligatorio")
+		return
+	case len(req.Password) < 8:
+		writeError(w, http.StatusBadRequest, "PASSWORD_TOO_SHORT", "password minimo 8 caracteres")
+		return
+	case req.NombreCompleto == "":
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "nombre_completo es obligatorio")
+		return
+	case req.CedulaProfesional == "":
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "cedula_profesional es obligatoria (NOM-024)")
+		return
+	case req.Especialidad == "":
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "especialidad es obligatoria (NOM-024)")
+		return
+	case req.Universidad == "":
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "universidad es obligatoria")
+		return
+	case req.Direccion == "":
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "direccion es obligatoria")
+		return
+	case req.Telefono == "":
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "telefono es obligatorio")
+		return
+	}
+
+	if deps.UserRepo.ExistsByEmail(req.Email) {
+		writeError(w, http.StatusConflict, "EMAIL_EXISTS", "el email ya esta registrado")
+		return
+	}
+
+	hash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "HASH_ERROR", "error al procesar password")
+		return
+	}
+
+	userID := "usr-" + strings.ReplaceAll(req.Email, "@", "-")
+	tenantID := "tenant-" + userID
+	curp := strings.ToUpper(strings.TrimSpace(req.CURP))
+
+	u := postgres.User{
+		CURP:         curp,
+		ID:           userID,
+		TenantID:     tenantID,
+		Email:        req.Email,
+		PasswordHash: hash,
+		CreatedAt:    time.Now().UTC(),
+	}
+	if err := deps.UserRepo.Create(u); err != nil {
+		if strings.Contains(err.Error(), "EMAIL_EXISTS") {
+			writeError(w, http.StatusConflict, "EMAIL_EXISTS", "el email ya esta registrado")
+			return
+		}
+		observability.Logger.Error("admin: error al crear usuario", "error", err.Error())
+		writeError(w, http.StatusInternalServerError, "DB_ERROR", "error al crear usuario")
+		return
+	}
+
+	profile := ports.Profile{
+		UserID:            userID,
+		TenantID:          tenantID,
+		Rubro:             "medico",
+		NombreCompleto:    req.NombreCompleto,
+		CedulaProfesional: req.CedulaProfesional,
+		Especialidad:      req.Especialidad,
+		Universidad:       req.Universidad,
+		Direccion:         req.Direccion,
+		Telefono:          req.Telefono,
+	}
+	if err := deps.ProfileRepo.Upsert(profile); err != nil {
+		observability.Logger.Error("admin: error al crear perfil profesional",
+			"user_id", userID, "error", err.Error())
+		writeError(w, http.StatusInternalServerError, "PROFILE_ERROR",
+			"usuario creado pero error al guardar perfil: "+err.Error())
+		return
+	}
+
+	modulosEstandar := []string{"allergy", "prescription", "note"}
+	modulosFallidos := []string{}
+	for _, mod := range modulosEstandar {
+		if err := deps.CapabilityRepo.Activate(tenantID, mod, "basico", 0); err != nil {
+			observability.Logger.Error("admin: error al activar modulo",
+				"tenant_id", tenantID, "module_id", mod, "error", err.Error())
+			modulosFallidos = append(modulosFallidos, mod)
+		}
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"data": map[string]any{
+			"user_id":          userID,
+			"tenant_id":        tenantID,
+			"email":            req.Email,
+			"modulos_activos":  modulosEstandar,
+			"modulos_fallidos": modulosFallidos,
+		},
+		"error": nil,
+	})
 }
