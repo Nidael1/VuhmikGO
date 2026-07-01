@@ -12,6 +12,7 @@ export interface Consultation {
   state: string
   created_at: string
   issued_at?: string
+  tiene_receta?: boolean
 }
 
 export interface ConsultationRequest {
@@ -22,4 +23,5 @@ export interface ConsultationRequest {
   peso?: string
   talla?: string
   sao2?: string
+  tiene_receta?: boolean
 }
