@@ -29,6 +29,23 @@ const error = ref('')
 const search = ref('')
 const expandedTenants = ref<Set<string>>(new Set())
 
+// Formulario nuevo médico
+const showCreateForm = ref(false)
+const createLoading = ref(false)
+const createError = ref('')
+const createSuccess = ref('')
+const createForm = ref({
+  email: '',
+  password: '',
+  nombre_completo: '',
+  cedula_profesional: '',
+  especialidad: '',
+  universidad: '',
+  direccion: '',
+  telefono: '',
+  curp: '',
+})
+
 const filtered = computed(() => {
   const q = search.value.toLowerCase().trim()
   if (!q) return tenants.value
@@ -46,10 +63,30 @@ function toggleExpand(tenantId: string) {
   }
 }
 
+function resetCreateForm() {
+  createForm.value = {
+    email: '',
+    password: '',
+    nombre_completo: '',
+    cedula_profesional: '',
+    especialidad: '',
+    universidad: '',
+    direccion: '',
+    telefono: '',
+    curp: '',
+  }
+  createError.value = ''
+  createSuccess.value = ''
+}
+
+async function loadTenants() {
+  const res = await http.get<any>('/admin/tenants')
+  tenants.value = res.data?.items ?? []
+}
+
 onMounted(async () => {
   try {
-    const res = await http.get<any>('/admin/tenants')
-    tenants.value = res.data?.items ?? []
+    await loadTenants()
   } catch (e: any) {
     error.value = e.message
   } finally {
@@ -64,11 +101,39 @@ async function toggleModule(tenantId: string, moduleId: string, active: boolean)
       module_id: moduleId,
       active: !active,
     })
-    // Recargar
-    const res = await http.get<any>('/admin/tenants')
-    tenants.value = res.data?.items ?? []
+    await loadTenants()
   } catch (e: any) {
     error.value = e.message
+  }
+}
+
+async function createMedico() {
+  createError.value = ''
+  createSuccess.value = ''
+  createLoading.value = true
+  try {
+    const payload: Record<string, string> = {
+      email: createForm.value.email.trim(),
+      password: createForm.value.password,
+      nombre_completo: createForm.value.nombre_completo.trim(),
+      cedula_profesional: createForm.value.cedula_profesional.trim(),
+      especialidad: createForm.value.especialidad.trim(),
+      universidad: createForm.value.universidad.trim(),
+      direccion: createForm.value.direccion.trim(),
+      telefono: createForm.value.telefono.trim(),
+    }
+    if (createForm.value.curp.trim()) {
+      payload.curp = createForm.value.curp.trim()
+    }
+    const res = await http.post<any>('/admin/users', payload)
+    createSuccess.value = `Médico creado: ${res.data?.email} — Módulos activos: ${res.data?.modulos_activos?.join(', ')}`
+    await loadTenants()
+    resetCreateForm()
+    showCreateForm.value = false
+  } catch (e: any) {
+    createError.value = e.message
+  } finally {
+    createLoading.value = false
   }
 }
 
@@ -103,8 +168,81 @@ async function logout() {
 
     <main class="admin-main">
       <div class="admin-page">
-        <h2>Panel de control</h2>
-        <p class="page-sub">Módulos activos por médico</p>
+        <div class="page-header">
+          <div>
+            <h2>Panel de control</h2>
+            <p class="page-sub">Gestión de médicos y módulos activos</p>
+          </div>
+          <button class="btn-primary" @click="showCreateForm = !showCreateForm">
+            {{ showCreateForm ? 'Cancelar' : '+ Nuevo médico' }}
+          </button>
+        </div>
+
+        <!-- Mensaje de éxito -->
+        <div v-if="createSuccess" class="alert-success">{{ createSuccess }}</div>
+
+        <!-- Formulario alta de médico -->
+        <div v-if="showCreateForm" class="create-form-card">
+          <h3 class="form-title">Alta de médico</h3>
+          <p class="form-subtitle">Todos los campos son obligatorios para cumplir NOM-024-SSA3-2012, excepto CURP.</p>
+
+          <div class="alert-error" v-if="createError">{{ createError }}</div>
+
+          <div class="form-grid">
+            <div class="form-group form-group--full">
+              <label>Nombre completo *</label>
+              <input v-model="createForm.nombre_completo" class="input-field" placeholder="DR. JUAN PÉREZ GARCÍA" />
+            </div>
+            <div class="form-group">
+              <label>Correo electrónico *</label>
+              <input v-model="createForm.email" class="input-field" type="email" placeholder="dr.juan@ejemplo.com" />
+            </div>
+            <div class="form-group">
+              <label>Contraseña inicial *</label>
+              <input v-model="createForm.password" class="input-field" type="password" placeholder="Mínimo 8 caracteres" />
+            </div>
+            <div class="form-group">
+              <label>Cédula profesional *</label>
+              <input v-model="createForm.cedula_profesional" class="input-field" placeholder="12345678" />
+            </div>
+            <div class="form-group">
+              <label>Especialidad *</label>
+              <input v-model="createForm.especialidad" class="input-field" placeholder="Medicina General" />
+            </div>
+            <div class="form-group">
+              <label>Universidad *</label>
+              <input v-model="createForm.universidad" class="input-field" placeholder="UNAM" />
+            </div>
+            <div class="form-group">
+              <label>Teléfono *</label>
+              <input v-model="createForm.telefono" class="input-field" placeholder="5512345678" />
+            </div>
+            <div class="form-group form-group--full">
+              <label>Dirección del consultorio *</label>
+              <input v-model="createForm.direccion" class="input-field" placeholder="Av. Insurgentes 123, Col. Roma, CDMX" />
+            </div>
+            <div class="form-group">
+              <label>CURP <span class="optional">(opcional)</span></label>
+              <input v-model="createForm.curp" class="input-field" placeholder="XXXXX000000XXXXXX00" maxlength="18" style="text-transform:uppercase" />
+            </div>
+          </div>
+
+          <div class="form-modules-note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Se activarán automáticamente los módulos: Alergias, Recetas y Notas clínicas.
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-secondary" @click="showCreateForm = false; resetCreateForm()">Cancelar</button>
+            <button class="btn-primary" @click="createMedico" :disabled="createLoading">
+              {{ createLoading ? 'Creando...' : 'Crear médico' }}
+            </button>
+          </div>
+        </div>
 
         <div v-if="loading" class="state-empty">Cargando...</div>
         <div v-else-if="error" class="alert-error">{{ error }}</div>
@@ -163,7 +301,64 @@ async function logout() {
 .btn-logout:hover { border-color: var(--color-error); color: var(--color-error); }
 .admin-main { flex: 1; margin-left: 240px; padding: var(--space-8); }
 .admin-page { max-width: 780px; }
-.page-sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; margin-bottom: var(--space-6); }
+
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-4); }
+.page-sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+
+/* Formulario alta */
+.create-form-card {
+  background: var(--app-surface);
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.form-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-1) 0; }
+.form-subtitle { font-size: 13px; color: var(--text-secondary); margin: 0 0 var(--space-4) 0; }
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group--full { grid-column: 1 / -1; }
+.form-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.optional { font-weight: 400; }
+.input-field {
+  font-family: var(--font-body);
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--app-bg);
+  outline: none;
+}
+.input-field:focus { border-color: var(--color-turquoise); }
+
+.form-modules-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.form-actions { display: flex; gap: var(--space-3); justify-content: flex-end; }
+.btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-2) var(--space-5); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-secondary { font-family: var(--font-brand); background: transparent; color: var(--text-primary); border: 1.5px solid #E2E8F0; padding: var(--space-2) var(--space-5); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-secondary:hover { border-color: var(--color-turquoise); }
+
+.alert-success { background: #F0FDF4; border: 1px solid #86EFAC; border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: #166534; margin-bottom: var(--space-4); }
+
+/* Lista tenants */
 .tenant-list { display: flex; flex-direction: column; gap: var(--space-4); }
 .tenant-card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); overflow: hidden; }
 .tenant-header { display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-6); background: #FAFBFC; border-bottom: 1px solid #E2E8F0; }
@@ -183,5 +378,5 @@ async function logout() {
 .tenant-expand { font-size: 12px; color: var(--text-secondary); width: 14px; }
 .badge-suspended { font-size: 11px; font-weight: 700; background: #FEE2E2; color: #991B1B; border-radius: 4px; padding: 1px 6px; }
 .badge-admin { font-size: 11px; font-weight: 700; background: #FEF9C3; color: #854D0E; border-radius: 4px; padding: 1px 6px; }
-.alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); }
+.alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); margin-bottom: var(--space-4); }
 </style>
