@@ -20,22 +20,23 @@ func (r *ConsultationProjectionRepository) Upsert(p ports.ConsultationProjection
 	sql := `
 		INSERT INTO consultation_projections
 			(evidence_id, tenant_id, patient_id, ta, fc, fr, temp, peso, talla, sao2,
-			 state, created_at, issued_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			state, created_at, issued_at, tiene_receta)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (evidence_id) DO UPDATE SET
-			ta        = EXCLUDED.ta,
-			fc        = EXCLUDED.fc,
-			fr        = EXCLUDED.fr,
-			temp      = EXCLUDED.temp,
-			peso      = EXCLUDED.peso,
-			talla     = EXCLUDED.talla,
-			sao2      = EXCLUDED.sao2,
-			state     = EXCLUDED.state,
-			issued_at = EXCLUDED.issued_at`
+			ta           = EXCLUDED.ta,
+			fc           = EXCLUDED.fc,
+			fr           = EXCLUDED.fr,
+			temp         = EXCLUDED.temp,
+			peso         = EXCLUDED.peso,
+			talla        = EXCLUDED.talla,
+			sao2         = EXCLUDED.sao2,
+			state        = EXCLUDED.state,
+			issued_at    = EXCLUDED.issued_at,
+			tiene_receta = EXCLUDED.tiene_receta`
 	_, err := r.pool.Exec(context.Background(), sql,
 		p.EvidenceID, p.TenantID, p.PatientID,
 		p.TA, p.FC, p.FR, p.Temp, p.Peso, p.Talla, p.SAO2,
-		p.State, p.CreatedAt, p.IssuedAt,
+		p.State, p.CreatedAt, p.IssuedAt, p.TieneReceta,
 	)
 	return err
 }
@@ -49,14 +50,14 @@ func (r *ConsultationProjectionRepository) UpdateState(tenantID, evidenceID, sta
 func (r *ConsultationProjectionRepository) FindByID(tenantID, evidenceID string) (ports.ConsultationProjection, error) {
 	sql := `
 		SELECT evidence_id, tenant_id, patient_id, ta, fc, fr, temp, peso, talla, sao2,
-		       state, created_at, issued_at
+		       state, created_at, issued_at, tiene_receta
 		FROM consultation_projections
 		WHERE evidence_id = $1 AND tenant_id = $2`
 	var p ports.ConsultationProjection
 	err := r.pool.QueryRow(context.Background(), sql, evidenceID, tenantID).Scan(
 		&p.EvidenceID, &p.TenantID, &p.PatientID,
 		&p.TA, &p.FC, &p.FR, &p.Temp, &p.Peso, &p.Talla, &p.SAO2,
-		&p.State, &p.CreatedAt, &p.IssuedAt,
+		&p.State, &p.CreatedAt, &p.IssuedAt, &p.TieneReceta,
 	)
 	if err != nil {
 		return ports.ConsultationProjection{}, fmt.Errorf("consulta no encontrada: %w", err)
@@ -67,7 +68,7 @@ func (r *ConsultationProjectionRepository) FindByID(tenantID, evidenceID string)
 func (r *ConsultationProjectionRepository) ListByPatient(tenantID, patientID string) ([]ports.ConsultationProjection, error) {
 	sql := `
 		SELECT evidence_id, tenant_id, patient_id, ta, fc, fr, temp, peso, talla, sao2,
-		       state, created_at, issued_at
+		       state, created_at, issued_at, tiene_receta
 		FROM consultation_projections
 		WHERE tenant_id = $1 AND patient_id = $2 AND state = 'issued'
 		ORDER BY created_at DESC`
@@ -77,7 +78,7 @@ func (r *ConsultationProjectionRepository) ListByPatient(tenantID, patientID str
 func (r *ConsultationProjectionRepository) ListAll(tenantID string) ([]ports.ConsultationProjection, error) {
 	sql := `
 		SELECT evidence_id, tenant_id, patient_id, ta, fc, fr, temp, peso, talla, sao2,
-		       state, created_at, issued_at
+		       state, created_at, issued_at, tiene_receta
 		FROM consultation_projections
 		WHERE tenant_id = $1 AND state = 'issued'
 		ORDER BY created_at DESC`
@@ -96,7 +97,7 @@ func (r *ConsultationProjectionRepository) scanAll(sql string, args ...any) ([]p
 		if err := rows.Scan(
 			&p.EvidenceID, &p.TenantID, &p.PatientID,
 			&p.TA, &p.FC, &p.FR, &p.Temp, &p.Peso, &p.Talla, &p.SAO2,
-			&p.State, &p.CreatedAt, &p.IssuedAt,
+			&p.State, &p.CreatedAt, &p.IssuedAt, &p.TieneReceta,
 		); err != nil {
 			return nil, fmt.Errorf("error al escanear consulta: %w", err)
 		}

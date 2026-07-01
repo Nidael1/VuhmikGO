@@ -14,9 +14,10 @@ type ConsultationProjection struct {
 	Peso       string
 	Talla      string
 	SAO2       string
-	State      string
-	CreatedAt  time.Time
-	IssuedAt   *time.Time
+	State       string
+	CreatedAt   time.Time
+	IssuedAt    *time.Time
+	TieneReceta bool
 }
 
 // ConsultationProjectionRepository define el contrato de acceso a proyecciones
