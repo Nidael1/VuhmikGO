@@ -12,6 +12,7 @@ import { prescriptionRepository } from '@/infrastructure/repositories/prescripti
 import type { Prescription } from '@/domain/types/prescription'
 import { consultationRepository } from '@/infrastructure/repositories/consultationRepository'
 import type { Consultation } from '@/domain/types/consultation'
+import { useAuthStore } from '@/app/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,6 +40,7 @@ const allergyError = ref('')
 
 const editingAllergyId = ref<string | null>(null)
 const editAllergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza: '' })
+const auth = useAuthStore()
 
 onMounted(async () => {
   try {
@@ -117,6 +119,11 @@ function parseNoteContent(raw: string): string {
     const obj = JSON.parse(raw)
     return obj.text || raw
   } catch { return raw }
+}
+
+function reimprimirRx(rxId: string) {
+  if (!auth.token) return
+  window.open(`/api/v1/prescriptions/${rxId}/print?token=${auth.token}`, '_blank')
 }
 
 async function createAllergy() {
@@ -435,7 +442,17 @@ async function exportExpediente() {
             <div v-for="rx in prescriptions" :key="rx.id" class="rx-card">
               <div class="rx-card-header">
                 <span class="rx-medicamento">{{ rx.medicamento_generico }}</span>
-                <span class="rx-estado">emitida</span>
+                <div class="rx-card-acciones">
+                  <span class="rx-estado">emitida</span>
+                  <button class="btn-reimprimir-sm" @click="reimprimirRx(rx.id)">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 6 2 18 2 18 9"/>
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                      <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    Imprimir
+                  </button>
+                </div>
               </div>
               <div class="rx-dosis-text">{{ rx.dosis }}</div>
               <div v-if="rx.diagnostico" class="rx-dx">Dx: {{ rx.diagnostico }}</div>
@@ -609,6 +626,11 @@ async function exportExpediente() {
   color: var(--text-primary);
 }
 
+.rx-card-acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
 .rx-estado {
   font-size: 11px;
   font-weight: 600;
@@ -616,6 +638,25 @@ async function exportExpediente() {
   color: #166534;
   border-radius: 999px;
   padding: 1px 8px;
+}
+.btn-reimprimir-sm {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-clinical-blue, #3B82F6);
+  background: transparent;
+  border: 1px solid var(--color-clinical-blue, #3B82F6);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-reimprimir-sm:hover {
+  background: var(--color-clinical-blue, #3B82F6);
+  color: #fff;
 }
 
 .rx-dosis-text {
