@@ -12,48 +12,51 @@ import (
 
 // ConsultationItem es el DTO de respuesta para una consulta.
 type ConsultationItem struct {
-	ID        string     `json:"id"`
-	TenantID  string     `json:"tenant_id"`
-	PatientID string     `json:"patient_id"`
-	TA        string     `json:"ta,omitempty"`
-	FC        string     `json:"fc,omitempty"`
-	FR        string     `json:"fr,omitempty"`
-	Temp      string     `json:"temp,omitempty"`
-	Peso      string     `json:"peso,omitempty"`
-	Talla     string     `json:"talla,omitempty"`
-	SAO2      string     `json:"sao2,omitempty"`
-	State     string     `json:"state"`
-	CreatedAt time.Time  `json:"created_at"`
-	IssuedAt  *time.Time `json:"issued_at,omitempty"`
+	ID          string     `json:"id"`
+	TenantID    string     `json:"tenant_id"`
+	PatientID   string     `json:"patient_id"`
+	TA          string     `json:"ta,omitempty"`
+	FC          string     `json:"fc,omitempty"`
+	FR          string     `json:"fr,omitempty"`
+	Temp        string     `json:"temp,omitempty"`
+	Peso        string     `json:"peso,omitempty"`
+	Talla       string     `json:"talla,omitempty"`
+	SAO2        string     `json:"sao2,omitempty"`
+	State       string     `json:"state"`
+	CreatedAt   time.Time  `json:"created_at"`
+	IssuedAt    *time.Time `json:"issued_at,omitempty"`
+	TieneReceta bool       `json:"tiene_receta"`
 }
 
 func toConsultationItem(p ports.ConsultationProjection) ConsultationItem {
 	return ConsultationItem{
-		ID:        p.EvidenceID,
-		TenantID:  p.TenantID,
-		PatientID: p.PatientID,
-		TA:        p.TA,
-		FC:        p.FC,
-		FR:        p.FR,
-		Temp:      p.Temp,
-		Peso:      p.Peso,
-		Talla:     p.Talla,
-		SAO2:      p.SAO2,
-		State:     p.State,
-		CreatedAt: p.CreatedAt,
-		IssuedAt:  p.IssuedAt,
+		ID:          p.EvidenceID,
+		TenantID:    p.TenantID,
+		PatientID:   p.PatientID,
+		TA:          p.TA,
+		FC:          p.FC,
+		FR:          p.FR,
+		Temp:        p.Temp,
+		Peso:        p.Peso,
+		Talla:       p.Talla,
+		SAO2:        p.SAO2,
+		State:       p.State,
+		CreatedAt:   p.CreatedAt,
+		IssuedAt:    p.IssuedAt,
+		TieneReceta: p.TieneReceta,
 	}
 }
 
 // ConsultationRequest es el payload para crear una consulta.
 type ConsultationRequest struct {
-	TA    string `json:"ta,omitempty"`
-	FC    string `json:"fc,omitempty"`
-	FR    string `json:"fr,omitempty"`
-	Temp  string `json:"temp,omitempty"`
-	Peso  string `json:"peso,omitempty"`
-	Talla string `json:"talla,omitempty"`
-	SAO2  string `json:"sao2,omitempty"`
+	TA          string `json:"ta,omitempty"`
+	FC          string `json:"fc,omitempty"`
+	FR          string `json:"fr,omitempty"`
+	Temp        string `json:"temp,omitempty"`
+	Peso        string `json:"peso,omitempty"`
+	Talla       string `json:"talla,omitempty"`
+	SAO2        string `json:"sao2,omitempty"`
+	TieneReceta bool   `json:"tiene_receta"`
 }
 
 // HandleConsultationCreate crea y emite una consulta para un paciente.
@@ -93,7 +96,7 @@ func HandleConsultationCreate(w http.ResponseWriter, r *http.Request) {
 		SAO2:  req.SAO2,
 	}
 
-	e, err := deps.ConsultationService.Create(tenantID, actorID, patientID, content)
+	e, err := deps.ConsultationService.Create(tenantID, actorID, patientID, content, req.TieneReceta)
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "CONSULTATION_ERROR", err.Error())
 		return

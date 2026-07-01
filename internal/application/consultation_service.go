@@ -24,7 +24,7 @@ func NewConsultationService(
 }
 
 // Create crea y emite una consulta en un solo paso.
-func (s *ConsultationService) Create(tenantID, actorID, patientID string, content shaders.ConsultationContent) (evidence.Evidence, error) {
+func (s *ConsultationService) Create(tenantID, actorID, patientID string, content shaders.ConsultationContent, tieneReceta bool) (evidence.Evidence, error) {
 	blob, err := shaders.BuildConsultationBlob(content)
 	if err != nil {
 		return evidence.Evidence{}, fmt.Errorf("error al construir blob: %w", err)
@@ -53,19 +53,20 @@ func (s *ConsultationService) Create(tenantID, actorID, patientID string, conten
 
 	// Proyección (ADR-0022)
 	_ = s.proj.Upsert(ports.ConsultationProjection{
-		EvidenceID: e.ID,
-		TenantID:   tenantID,
-		PatientID:  patientID,
-		TA:         content.TA,
-		FC:         content.FC,
-		FR:         content.FR,
-		Temp:       content.Temp,
-		Peso:       content.Peso,
-		Talla:      content.Talla,
-		SAO2:       content.SAO2,
-		State:      string(e.State),
-		CreatedAt:  now,
-		IssuedAt:   e.IssuedAt,
+		EvidenceID:  e.ID,
+		TenantID:    tenantID,
+		PatientID:   patientID,
+		TA:          content.TA,
+		FC:          content.FC,
+		FR:          content.FR,
+		Temp:        content.Temp,
+		Peso:        content.Peso,
+		Talla:       content.Talla,
+		SAO2:        content.SAO2,
+		State:       string(e.State),
+		CreatedAt:   now,
+		IssuedAt:    e.IssuedAt,
+		TieneReceta: tieneReceta,
 	})
 
 	return e, nil
