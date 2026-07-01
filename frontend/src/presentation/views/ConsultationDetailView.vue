@@ -5,9 +5,12 @@ import AppLayout from '@/presentation/layouts/AppLayout.vue'
 import { consultationRepository } from '@/infrastructure/repositories/consultationRepository'
 import { patientRepository } from '@/infrastructure/repositories/patientRepository'
 import { evidenceRepository } from '@/infrastructure/repositories/evidenceRepository'
+import { prescriptionRepository } from '@/infrastructure/repositories/prescriptionRepository'
+import { useAuthStore } from '@/app/stores/auth'
 import type { Consultation } from '@/domain/types/consultation'
 import type { Patient } from '@/domain/types/patient'
 import type { Evidence } from '@/domain/types/evidence'
+import type { Prescription } from '@/domain/types/prescription'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -15,18 +18,22 @@ const id = route.params.id as string
 const consultation = ref<Consultation | null>(null)
 const patient = ref<Patient | null>(null)
 const allNotes = ref<Evidence[]>([])
+const receta = ref<Prescription | null>(null)
 const loading = ref(true)
 const error = ref('')
+const auth = useAuthStore()
 
 onMounted(async () => {
   try {
-    const [con, notes] = await Promise.all([
+    const [con, notes, rxs] = await Promise.all([
       consultationRepository.get(id),
       evidenceRepository.list(),
+      prescriptionRepository.listAll(),
     ])
     consultation.value = con
     allNotes.value = notes
     patient.value = await patientRepository.get(con.patient_id)
+    receta.value = rxs.find((r: Prescription) => r.consultation_id === id) ?? null
   } catch (e: any) {
     error.value = e.message
   } finally {
@@ -47,6 +54,11 @@ const notaClinica = computed(() => {
     return obj.text || nota.content
   } catch { return nota.content }
 })
+
+function reimprimir() {
+  if (!receta.value || !auth.token) return
+  window.open(`/api/v1/prescriptions/${receta.value.id}/print?token=${auth.token}`, '_blank')
+}
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('es-MX', {
@@ -108,6 +120,25 @@ function formatDate(d: string) {
             <div class="detalle-item">
               <span class="detalle-label">Nota clínica</span>
               <span class="detalle-valor detalle-nota">{{ notaClinica || 'sin nota' }}</span>
+            </div>
+
+            <div v-if="receta" class="detalle-item">
+              <span class="detalle-label">Receta electrónica</span>
+              <div class="receta-row">
+                <div class="receta-info">
+                  <span class="receta-med">{{ receta.medicamento_generico }}</span>
+                  <span class="receta-dosis">{{ receta.dosis }}</span>
+                  <span v-if="receta.diagnostico" class="receta-dx">Dx: {{ receta.diagnostico }}</span>
+                </div>
+                <button class="btn-reimprimir-sm" @click="reimprimir">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9"/>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <rect x="6" y="14" width="12" height="8"/>
+                  </svg>
+                  Imprimir
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -199,6 +230,36 @@ function formatDate(d: string) {
 }
 .vital-chip strong { font-weight: 700; }
 
+.receta-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.receta-info { display: flex; flex-direction: column; gap: 2px; }
+.receta-med { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.receta-dosis { font-size: 13px; color: var(--text-secondary); }
+.receta-dx { font-size: 12px; color: var(--text-secondary); }
+.btn-reimprimir-sm {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-clinical-blue, #3B82F6);
+  background: transparent;
+  border: 1px solid var(--color-clinical-blue, #3B82F6);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.btn-reimprimir-sm:hover {
+  background: var(--color-clinical-blue, #3B82F6);
+  color: #fff;
+}
 .state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); }
 .alert-error {
   background: #FFF0F3; border: 1px solid var(--color-error);

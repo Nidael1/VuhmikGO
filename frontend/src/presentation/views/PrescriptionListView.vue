@@ -4,10 +4,12 @@ import { useRouter, RouterLink } from 'vue-router'
 import AppLayout from '@/presentation/layouts/AppLayout.vue'
 import { prescriptionRepository } from '@/infrastructure/repositories/prescriptionRepository'
 import { patientRepository } from '@/infrastructure/repositories/patientRepository'
+import { useAuthStore } from '@/app/stores/auth'
 import type { Prescription } from '@/domain/types/prescription'
 import type { Patient } from '@/domain/types/patient'
 
 const router = useRouter()
+const auth = useAuthStore()
 const prescriptions = ref<Prescription[]>([])
 const patients = ref<Record<string, Patient>>({})
 const loading = ref(true)
@@ -74,6 +76,11 @@ function formatDate(d: string) {
 function goToPrescription(prescriptionId: string) {
   router.push(`/prescriptions/${prescriptionId}`)
 }
+
+function imprimirRx(rxId: string) {
+  if (!auth.token) return
+  window.open(`/api/v1/prescriptions/${rxId}/print?token=${auth.token}`, '_blank')
+}
 </script>
 
 <template>
@@ -119,9 +126,21 @@ function goToPrescription(prescriptionId: string) {
             </span>
             <span class="rx-fecha">{{ formatDate(rx.issued_at ?? rx.created_at) }}</span>
           </div>
-          <div class="rx-medicamento">{{ rx.medicamento_generico }}</div>
-          <div class="rx-dosis">{{ rx.dosis }}</div>
-          <div v-if="rx.diagnostico" class="rx-diagnostico">Dx: {{ rx.diagnostico }}</div>
+          <div class="rx-med-row">
+            <div>
+              <div class="rx-medicamento">{{ rx.medicamento_generico }}</div>
+              <div class="rx-dosis">{{ rx.dosis }}</div>
+              <div v-if="rx.diagnostico" class="rx-diagnostico">Dx: {{ rx.diagnostico }}</div>
+            </div>
+            <button class="btn-reimprimir-sm" @click.stop="imprimirRx(rx.id)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+              </svg>
+              Imprimir
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -143,8 +162,29 @@ function goToPrescription(prescriptionId: string) {
 .rx-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); }
 .rx-paciente { font-weight: 600; font-size: 14px; color: var(--text-primary); }
 .rx-fecha { font-size: 12px; color: var(--text-secondary); }
+.rx-med-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-1); }
 .rx-medicamento { font-size: 15px; color: var(--text-primary); font-weight: 600; }
 .rx-dosis { font-size: 13px; color: var(--text-secondary); }
+.btn-reimprimir-sm {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-clinical-blue, #3B82F6);
+  background: transparent;
+  border: 1px solid var(--color-clinical-blue, #3B82F6);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.btn-reimprimir-sm:hover {
+  background: var(--color-clinical-blue, #3B82F6);
+  color: #fff;
+}
 .rx-diagnostico { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .controls { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); align-items: center; }
 .search-input { flex: 1; font-family: var(--font-body); padding: var(--space-3) var(--space-4); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); font-size: 15px; color: var(--text-primary); background: var(--app-surface); outline: none; }
