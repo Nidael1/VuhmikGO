@@ -125,3 +125,133 @@ git stash push -m "wip-issue-156-prescription-consultation-link"
 Y el archivo `prescription_print.go` (que no estaba trackeado por git) se apartó temporalmente en `/tmp/pending_issue156_real_2/` para no bloquear los builds de los issues de esta sesión, sin perderlo.
 
 Este trabajo pendiente corresponde, siguiendo la numeración interna de commits del proyecto, al **issue #158 o posterior** (siguiente disponible tras el cierre de #155, #156 y #157 en esta sesión). Queda pendiente de asignarse formalmente como su propio issue antes de retomarse — incluye: agregar `consultation_id` a `Prescription`/`PrescriptionProjection`, aplicar la migración `000017`, y reincorporar el endpoint de impresión de receta (`prescription_print.go`).
+
+---
+
+## Issue C1 (#158) — Backend: vincular receta a consulta (consultation_id)
+
+**Rama:** `issue/158-prescription-consultation-link`
+**Commit:** `24fb881`
+**Merge a main:** `3b0773f`
+**Capa:** Aplicación/Infraestructura. No toca Core ni Shaders.
+
+### Problema
+La receta no tenía vínculo con la consulta que la originó. Sin ese vínculo, el endpoint de impresión no podía recuperar los signos vitales de la consulta para incluirlos en el PDF.
+
+### Solución
+- Migración `000017_prescription_consultation_id.up.sql` — agrega columna `consultation_id TEXT` e índice a `prescription_projections` (ya aplicada en DB antes del issue, formalizada en git aquí).
+- `ports.PrescriptionProjection` — se agregó campo `ConsultationID string`.
+- `postgres.PrescriptionProjectionRepository` — se actualizaron `Upsert`, `ListAll`, `ListByPatient` y `FindByID` para incluir la columna. Se usó `COALESCE(consultation_id, '')` para manejar NULLs históricos.
+- `PrescriptionService.CreateDraft` — recibe `consultationID string` y lo persiste en la proyección. `Emit` preserva el valor leyendo la proyección existente antes de sobreescribir.
+- `prescription_handlers.go` — `PrescriptionRequest` y `PrescriptionItem` incluyen `consultation_id`. El handler pasa el valor al servicio.
+
+### Archivos involucrados
+- `database/migrations/000017_prescription_consultation_id.up.sql`
+- `internal/application/ports/prescription_projection_repository.go`
+- `internal/application/prescription_service.go`
+- `internal/delivery/http/api/prescription_handlers.go`
+- `internal/infrastructure/postgres/prescription_projection_repository.go`
+
+---
+
+## Issue C2 (#159) — Backend: endpoint de impresión de receta HTML bajo demanda
+
+**Rama:** `issue/159-prescription-print-endpoint`
+**Commit:** `8e01118`
+**Merge a main:** `2cef192`
+**Capa:** Delivery/HTTP. No toca Core ni Shaders.
+
+### Problema
+No existía endpoint para generar el PDF/HTML imprimible de una receta. El archivo `prescription_print.go` existía en el respaldo pero dependía de `consultation_id` y no estaba trackeado en git.
+
+### Solución
+Se reincorporó `prescription_print.go` con las siguientes mejoras:
+- Usa `PrescriptionService.FindByID` en vez de `ListAll` (más eficiente).
+- Valida el token internamente — acepta header `Authorization: Bearer` o query param `?token=` — porque se abre en pestaña nueva con `window.open` donde no se puede adjuntar headers custom.
+- Se actualizó `prescriptionAuthDispatcher` en `router.go` para que las peticiones a `/:id/print` no pasen por `JWTMiddleware` general (que solo acepta header), sino directamente al handler que hace su propia validación.
+- El PDF no se persiste: se genera bajo demanda en cada solicitud, sin costo de storage en el VPS.
+
+### Archivos involucrados
+- `internal/delivery/http/api/prescription_print.go` (nuevo)
+- `internal/delivery/http/api/router.go`
+
+---
+
+## Issue C3 (#160) — Frontend: botón "Reimprimir" en vista de detalle de receta
+
+**Rama:** `issue/160-prescription-reprint-button`
+**Commit:** `46db613`
+**Merge a main:** `d6ca46e`
+**Capa:** Asteroide `crm_ui`.
+
+### Solución
+- `PrescriptionDetailView.vue` — se agregó botón "Reimprimir" en el header de la sección, que llama a `window.open(/api/v1/prescriptions/:id/print?token=..., '_blank')`.
+- `frontend/src/domain/types/prescription.ts` — se agregó `consultation_id?: string` a `Prescription`.
+
+### Archivos involucrados
+- `frontend/src/presentation/views/PrescriptionDetailView.vue`
+- `frontend/src/domain/types/prescription.ts`
+
+---
+
+## Issue C4 (#161) — Frontend: manejo de errores HTTP en httpClient
+
+**Rama:** `issue/161-httpclient-error-handling`
+**Commit:** `16e0ea7`
+**Merge a main:** `fcd7397`
+**Capa:** Asteroide `crm_ui` / infraestructura frontend.
+
+### Problema
+El cliente HTTP devolvía el JSON tal cual aunque `res.ok` fuera false, dejando que el error llegara silencioso o mal formateado al caller.
+
+### Solución
+Se reemplazó el return final de `request()` para parsear el JSON primero, y si `!res.ok` lanzar un `Error` con el mensaje del servidor (`json?.error?.message || json?.error?.code || HTTP ${status}`).
+
+### Archivos involucrados
+- `frontend/src/infrastructure/api/httpClient.ts`
+
+---
+
+## Issue C5 (#162) — Frontend: nueva consulta con UX mejorado
+
+**Rama:** `issue/162-consultation-new-ux`
+**Commit:** `33fdae5`
+**Merge a main:** `6e65f11`
+**Capa:** Asteroide `crm_ui`.
+
+### Cambios
+- T/A separado en dos campos (sistólica/diastólica) para evitar errores de formato.
+- Auto-formato de Temperatura (365 → 36.5) y Talla (170 → 1.70) mientras se escribe.
+- Solo números en FC, FR, Peso, SAO2.
+- Modal de confirmación "¿Guardar sin receta?" antes de proceder si no se adjuntó receta.
+- La receta creada dentro de una consulta se vincula automáticamente vía `consultation_id`.
+- Si la consulta incluye receta, al guardar se abre el PDF en pestaña nueva automáticamente.
+- `PrescriptionRequest` incluye `consultation_id?: string`.
+
+### Archivos involucrados
+- `frontend/src/presentation/views/ConsultationNewView.vue`
+- `frontend/src/domain/types/prescription.ts`
+
+---
+
+## Issue #163 — Frontend: botón imprimir en todos los contextos
+
+**Rama:** `issue/163-reprint-button-all-contexts`
+**Commit:** `2c42b8d`
+**Merge a main:** `0886523`
+**Capa:** Asteroide `crm_ui`.
+
+### Problema
+El botón de imprimir solo existía en la vista de detalle de receta (`/prescriptions/:id`). El médico necesita poder imprimir desde cualquier contexto donde aparezca una receta.
+
+### Solución
+Se agregó botón "Imprimir" (SVG lineal de impresora, sin emojis) en tres contextos:
+- **Expediente del paciente** (`PatientDetailView.vue`) — en cada card de la sección "Recetas electrónicas".
+- **Detalle de consulta** (`ConsultationDetailView.vue`) — carga la receta vinculada vía `prescriptionRepository.listAll()` filtrando por `consultation_id`, y muestra botón si existe.
+- **Lista de recetas** (`PrescriptionListView.vue`) — botón con `@click.stop` para no interferir con la navegación al detalle.
+
+### Archivos involucrados
+- `frontend/src/presentation/views/PatientDetailView.vue`
+- `frontend/src/presentation/views/ConsultationDetailView.vue`
+- `frontend/src/presentation/views/PrescriptionListView.vue`
+
