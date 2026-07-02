@@ -47,8 +47,14 @@ const seccionesAbiertas = ref<Record<string, boolean>>({
   alergias: false,
   recetas: false,
   consultas: false,
-  notas: false,
 })
+
+// Panel lateral de notas generales — visible por defecto, toggle con doble clic
+const notasPanelAbierto = ref(true)
+
+function toggleNotasPanel() {
+  notasPanelAbierto.value = !notasPanelAbierto.value
+}
 
 function toggleSeccion(nombre: string) {
   seccionesAbiertas.value[nombre] = !seccionesAbiertas.value[nombre]
@@ -382,6 +388,10 @@ async function exportExpediente() {
           </span>
         </div>
 
+        <!-- LAYOUT DOS COLUMNAS: expediente (izq) + notas generales (der) -->
+        <div class="expediente-layout" :class="{ 'expediente-layout--collapsed': !notasPanelAbierto }">
+          <div class="expediente-main">
+
         <!-- SECCIÓN: Alergias e intolerancias -->
         <div class="seccion seccion--alergias">
           <div class="seccion-header">
@@ -609,75 +619,101 @@ async function exportExpediente() {
           </div>
         </div>
 
-      <!-- SECCIÓN: Notas clínicas del expediente -->
-        <div class="seccion seccion--notas">
-          <div class="seccion-header">
-            <div class="seccion-titulo" @click="toggleSeccion('notas')" style="cursor:pointer;flex:1;">
-              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-                <polyline points="10 9 9 9 8 9"/>
-              </svg>
-              <h3>Notas clínicas</h3>
-              <span class="seccion-count">{{ notasExpediente.length }}</span>
-            </div>
-            <button class="btn-primary" @click.stop="showNotaForm = !showNotaForm; notaError = ''">
-              {{ showNotaForm ? 'Cancelar' : '+ Nueva nota' }}
-            </button>
-          </div>
+          </div><!-- fin .expediente-main -->
 
-          <div v-show="seccionesAbiertas['notas']">
-          <div v-if="showNotaForm" class="allergy-form">
-            <div class="alert-error" v-if="notaError">{{ notaError }}</div>
-            <div class="form-row">
-              <label>Nota clínica</label>
-              <textarea
-                v-model="notaForm"
-                class="input"
-                rows="4"
-                placeholder="Observación clínica, seguimiento, nota de progreso..."
-                maxlength="2000"
-                style="resize:vertical;"
-              />
-              <span style="font-size:12px;color:var(--text-secondary);text-align:right">{{ notaForm.length }} / 2000</span>
-            </div>
-            <button class="btn-primary" @click="crearNota" :disabled="notaLoading">
-              {{ notaLoading ? 'Guardando...' : 'Guardar nota' }}
-            </button>
-          </div>
-
-          <div v-if="notasExpediente.length === 0 && !showNotaForm" class="state-empty-sm">
-            Sin notas clínicas registradas.
-          </div>
-
-          <div v-else class="hoja">
-            <div v-for="nota in notasExpediente" :key="nota.id" class="nota-entrada">
-              <div class="nota-meta">
-                <span class="nota-fecha">{{ formatDate(nota.issued_at ?? nota.created_at) }}</span>
-                <button v-if="editingNotaId !== nota.id" class="btn-accion" @click="startEditNota(nota)">Editar</button>
-              </div>
-              <template v-if="editingNotaId === nota.id">
-                <textarea
-                  v-model="editNotaForm"
-                  class="input"
-                  rows="4"
-                  style="resize:vertical;width:100%;margin-bottom:var(--space-2)"
-                  maxlength="2000"
-                />
-                <div style="display:flex;gap:var(--space-2)">
-                  <button class="btn-primary" @click="saveEditNota(nota)" :disabled="notaLoading">
-                    {{ notaLoading ? 'Guardando...' : 'Guardar' }}
-                  </button>
-                  <button class="btn-accion" @click="cancelEditNota">Cancelar</button>
+          <!-- PANEL LATERAL: Notas generales del paciente (consultation_id = NULL) -->
+          <div
+            v-if="notasPanelAbierto"
+            class="expediente-notas-panel"
+            @dblclick="toggleNotasPanel"
+            title="Doble clic para contraer"
+          >
+            <div class="notas-panel-inner">
+              <div class="notas-panel-header">
+                <div class="seccion-titulo">
+                  <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                  <h3>Notas generales</h3>
+                  <span class="seccion-count">{{ notasExpediente.length }}</span>
                 </div>
-              </template>
-              <div v-else class="nota-contenido">{{ parseNoteContent(nota.content) }}</div>
+                <button class="btn-primary" @click.stop="showNotaForm = !showNotaForm; notaError = ''">
+                  {{ showNotaForm ? 'Cancelar' : '+ Nueva nota' }}
+                </button>
+              </div>
+
+              <div v-if="showNotaForm" class="allergy-form">
+                <div class="alert-error" v-if="notaError">{{ notaError }}</div>
+                <div class="form-row">
+                  <label>Nota clínica</label>
+                  <textarea
+                    v-model="notaForm"
+                    class="input"
+                    rows="4"
+                    placeholder="Observación clínica, seguimiento, nota de progreso..."
+                    maxlength="2000"
+                    style="resize:vertical;"
+                  />
+                  <span style="font-size:12px;color:var(--text-secondary);text-align:right">{{ notaForm.length }} / 2000</span>
+                </div>
+                <button class="btn-primary" @click="crearNota" :disabled="notaLoading">
+                  {{ notaLoading ? 'Guardando...' : 'Guardar nota' }}
+                </button>
+              </div>
+
+              <div v-if="notasExpediente.length === 0 && !showNotaForm" class="state-empty-sm">
+                Sin notas generales registradas.
+              </div>
+
+              <div v-else class="hoja">
+                <div v-for="nota in notasExpediente" :key="nota.id" class="nota-entrada">
+                  <div class="nota-meta">
+                    <span class="nota-fecha">{{ formatDate(nota.issued_at ?? nota.created_at) }}</span>
+                    <button v-if="editingNotaId !== nota.id" class="btn-accion" @click.stop="startEditNota(nota)">Editar</button>
+                  </div>
+                  <template v-if="editingNotaId === nota.id">
+                    <textarea
+                      v-model="editNotaForm"
+                      class="input"
+                      rows="4"
+                      style="resize:vertical;width:100%;margin-bottom:var(--space-2)"
+                      maxlength="2000"
+                      @dblclick.stop
+                    />
+                    <div style="display:flex;gap:var(--space-2)">
+                      <button class="btn-primary" @click.stop="saveEditNota(nota)" :disabled="notaLoading">
+                        {{ notaLoading ? 'Guardando...' : 'Guardar' }}
+                      </button>
+                      <button class="btn-accion" @click.stop="cancelEditNota">Cancelar</button>
+                    </div>
+                  </template>
+                  <div v-else class="nota-contenido">{{ parseNoteContent(nota.content) }}</div>
+                </div>
+              </div>
             </div>
           </div>
+
+          <!-- Indicador para reabrir panel (cuando está contraído) -->
+          <div
+            v-else
+            class="expediente-notas-collapsed"
+            @dblclick="toggleNotasPanel"
+            title="Doble clic para expandir notas"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
           </div>
-        </div>
+
+        </div><!-- fin .expediente-layout -->
 
       </template>
     </div>
@@ -685,7 +721,99 @@ async function exportExpediente() {
 </template>
 
 <style scoped>
-.page { max-width: 780px; }
+.page { max-width: 1200px; }
+
+/* Layout dos columnas: expediente 65% + notas generales 35% (ADR-0026) */
+.expediente-layout {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-start;
+}
+
+.expediente-main {
+  flex: 0 0 65%;
+  min-width: 0;
+}
+
+.expediente-layout--collapsed .expediente-main {
+  flex: 1 1 100%;
+}
+
+.expediente-notas-panel {
+  flex: 0 0 33%;
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100vh - var(--space-8));
+  overflow-y: auto;
+  background: var(--app-surface);
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-lg);
+  user-select: none;
+}
+
+.expediente-notas-panel .allergy-form,
+.expediente-notas-panel .nota-entrada textarea,
+.expediente-notas-panel .nota-entrada button {
+  user-select: auto;
+}
+
+.notas-panel-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+.notas-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid #E2E8F0;
+  background: #F8F5FF;
+  border-left: 3px solid #8B5CF6;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.expediente-notas-collapsed {
+  flex: 0 0 32px;
+  position: sticky;
+  top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F8F5FF;
+  border: 1px solid #E2E8F0;
+  border-left: 3px solid #8B5CF6;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-2);
+  cursor: pointer;
+  color: #8B5CF6;
+  min-height: 60px;
+}
+
+.expediente-notas-collapsed:hover {
+  background: #F0ECFF;
+}
+
+/* Responsive: móvil apilado */
+@media (max-width: 768px) {
+  .expediente-layout {
+    flex-direction: column;
+  }
+  .expediente-main {
+    flex: 1 1 100%;
+  }
+  .expediente-notas-panel {
+    flex: 1 1 100%;
+    position: static;
+    max-height: none;
+  }
+  .expediente-notas-collapsed {
+    display: none;
+  }
+  .expediente-layout--collapsed .expediente-main {
+    flex: 1 1 100%;
+  }
+}
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-2); }
 .page-sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
 .btn-back { color: var(--color-clinical-blue); font-size: 14px; text-decoration: none; white-space: nowrap; }
@@ -998,11 +1126,6 @@ async function exportExpediente() {
   font-family: var(--font-body);
 }
 .btn-accion:hover { border-color: var(--color-clinical-blue); }
-
-.seccion--notas .seccion-header {
-  background: #F8F5FF;
-  border-left: 3px solid #8B5CF6;
-}
 
 .state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); }
 .state-empty-sm { color: var(--text-secondary); font-size: 14px; padding: var(--space-6); }
