@@ -42,6 +42,18 @@ const editingAllergyId = ref<string | null>(null)
 const editAllergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza: '' })
 const auth = useAuthStore()
 
+// Secciones colapsables — todas cerradas por defecto
+const seccionesAbiertas = ref<Record<string, boolean>>({
+  alergias: false,
+  recetas: false,
+  consultas: false,
+  notas: false,
+})
+
+function toggleSeccion(nombre: string) {
+  seccionesAbiertas.value[nombre] = !seccionesAbiertas.value[nombre]
+}
+
 // Notas clínicas del expediente
 const showNotaForm = ref(false)
 const notaForm = ref('')
@@ -238,11 +250,10 @@ async function crearNota() {
   notaLoading.value = true
   notaError.value = ''
   try {
-    const draft = await evidenceRepository.draft({
+    await evidenceRepository.draft({
       subject_ref: id,
       content: JSON.stringify({ type: 'note', text: notaForm.value.trim() }),
     })
-    await evidenceRepository.emit(draft.id)
     const notes = await evidenceRepository.list()
     allNotes.value = notes
     showNotaForm.value = false
@@ -273,11 +284,10 @@ async function saveEditNota(n: Evidence) {
   notaLoading.value = true
   try {
     await evidenceRepository.void(n.id, { reason_code: 'RC_VOID_CORRECTION' })
-    const draft = await evidenceRepository.draft({
+    await evidenceRepository.draft({
       subject_ref: id,
       content: JSON.stringify({ type: 'note', text: editNotaForm.value.trim() }),
     })
-    await evidenceRepository.emit(draft.id)
     const notes = await evidenceRepository.list()
     allNotes.value = notes
     editingNotaId.value = null
@@ -375,19 +385,21 @@ async function exportExpediente() {
         <!-- SECCIÓN: Alergias e intolerancias -->
         <div class="seccion seccion--alergias">
           <div class="seccion-header">
-            <div class="seccion-titulo">
+            <div class="seccion-titulo" @click="toggleSeccion('alergias')" style="cursor:pointer;flex:1;">
               <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                 <line x1="12" y1="9" x2="12" y2="13"/>
                 <line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
               <h3>Alergias e intolerancias</h3>
+              <span class="seccion-count">{{ allergies.length }}</span>
             </div>
-            <button class="btn-primary" @click="showAllergyForm = !showAllergyForm">
+            <button class="btn-primary" @click.stop="showAllergyForm = !showAllergyForm">
               {{ showAllergyForm ? 'Cancelar' : '+ Nueva alergia' }}
             </button>
           </div>
 
+          <div v-show="seccionesAbiertas['alergias']">
           <div v-if="showAllergyForm" class="allergy-form">
             <div class="alert-error" v-if="allergyError">{{ allergyError }}</div>
             <div class="form-row">
@@ -466,12 +478,13 @@ async function exportExpediente() {
               </template>
             </div>
           </div>
+          </div>
         </div>
 
         <!-- SECCIÓN: Recetas electrónicas -->
         <div class="seccion seccion--recetas">
           <div class="seccion-header">
-            <div class="seccion-titulo">
+            <div class="seccion-titulo" @click="toggleSeccion('recetas')" style="cursor:pointer;flex:1;">
               <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M8 2v4"/><path d="M16 2v4"/>
                 <rect x="3" y="6" width="18" height="16" rx="2"/>
@@ -481,11 +494,12 @@ async function exportExpediente() {
               <h3>Recetas electrónicas</h3>
               <span class="seccion-count">{{ prescriptions.length }}</span>
             </div>
-            <button class="btn-primary" @click="showRxForm = !showRxForm">
+            <button class="btn-primary" @click.stop="showRxForm = !showRxForm">
               {{ showRxForm ? 'Cancelar' : '+ Nueva receta' }}
             </button>
           </div>
 
+          <div v-show="seccionesAbiertas['recetas']">
           <div v-if="showRxForm" class="allergy-form">
             <div class="alert-error" v-if="rxError">{{ rxError }}</div>
             <div class="form-row">
@@ -536,12 +550,13 @@ async function exportExpediente() {
               <div v-if="rx.diagnostico" class="rx-dx">Dx: {{ rx.diagnostico }}</div>
             </div>
           </div>
+          </div>
         </div>
 
         <!-- SECCIÓN: Consultas — cronología clínica -->
         <div class="seccion seccion--consultas">
           <div class="seccion-header">
-            <div class="seccion-titulo">
+            <div class="seccion-titulo" @click="toggleSeccion('consultas')" style="cursor:pointer;flex:1;">
               <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M8 2v4"/><path d="M16 2v4"/>
                 <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -551,21 +566,21 @@ async function exportExpediente() {
               <h3>Consultas</h3>
               <span class="seccion-count">{{ consultations.length }}</span>
             </div>
-            <RouterLink :to="`/consultations/new?patient=${id}`" class="btn-primary">
+            <RouterLink :to="`/consultations/new?patient=${id}`" class="btn-primary" @click.stop>
               + Nueva consulta
             </RouterLink>
           </div>
 
+          <div v-show="seccionesAbiertas['consultas']">
           <div v-if="consultations.length === 0" class="state-empty-sm">
             Sin consultas registradas para este paciente.
           </div>
 
-          <div v-else class="hoja">
+          <div class="con-lista">
             <div
-              v-for="(con, index) in consultations"
+              v-for="con in consultations"
               :key="con.id"
-              class="nota-entrada"
-              :class="{ 'primera': index === 0 }"
+              class="con-card"
             >
               <div class="nota-meta">
                 <span class="nota-fecha">{{ formatDate(con.issued_at ?? con.created_at) }}</span>
@@ -591,12 +606,13 @@ async function exportExpediente() {
 
             </div>
           </div>
+          </div>
         </div>
 
       <!-- SECCIÓN: Notas clínicas del expediente -->
         <div class="seccion seccion--notas">
           <div class="seccion-header">
-            <div class="seccion-titulo">
+            <div class="seccion-titulo" @click="toggleSeccion('notas')" style="cursor:pointer;flex:1;">
               <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
@@ -607,11 +623,12 @@ async function exportExpediente() {
               <h3>Notas clínicas</h3>
               <span class="seccion-count">{{ notasExpediente.length }}</span>
             </div>
-            <button class="btn-primary" @click="showNotaForm = !showNotaForm; notaError = ''">
+            <button class="btn-primary" @click.stop="showNotaForm = !showNotaForm; notaError = ''">
               {{ showNotaForm ? 'Cancelar' : '+ Nueva nota' }}
             </button>
           </div>
 
+          <div v-show="seccionesAbiertas['notas']">
           <div v-if="showNotaForm" class="allergy-form">
             <div class="alert-error" v-if="notaError">{{ notaError }}</div>
             <div class="form-row">
@@ -659,6 +676,7 @@ async function exportExpediente() {
               <div v-else class="nota-contenido">{{ parseNoteContent(nota.content) }}</div>
             </div>
           </div>
+          </div>
         </div>
 
       </template>
@@ -700,6 +718,22 @@ async function exportExpediente() {
   justify-content: space-between;
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid #E2E8F0;
+}
+.seccion-header--clickable {
+  cursor: pointer;
+  user-select: none;
+}
+.seccion-header--clickable:hover {
+  background-color: rgba(0,0,0,0.02);
+}
+.seccion-chevron {
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+  margin-left: var(--space-2);
+}
+.seccion-chevron--open {
+  transform: rotate(90deg);
 }
 
 .seccion-titulo {
@@ -752,6 +786,23 @@ async function exportExpediente() {
   gap: 0;
 }
 
+.con-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+}
+.con-card {
+  background: var(--app-bg);
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.con-card:hover {
+  border-color: var(--color-turquoise);
+}
 .rx-card {
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid #F1F5F9;
