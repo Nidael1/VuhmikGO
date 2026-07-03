@@ -587,9 +587,10 @@ async function exportExpediente() {
           </div>
 
           <div class="con-lista">
-            <div
+            <RouterLink
               v-for="con in consultations"
               :key="con.id"
+              :to="`/consultations/${con.id}`"
               class="con-card"
             >
               <div class="nota-meta">
@@ -613,8 +614,7 @@ async function exportExpediente() {
                   try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
                 })!.content) : 'sin nota' }}
               </div>
-
-            </div>
+            </RouterLink>
           </div>
           </div>
         </div>
