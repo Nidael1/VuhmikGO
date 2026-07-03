@@ -541,12 +541,12 @@ async function exportExpediente() {
             Sin recetas emitidas.
           </div>
           <div v-else class="rx-grid">
-            <div v-for="rx in prescriptions" :key="rx.id" class="rx-card">
+            <RouterLink v-for="rx in prescriptions" :key="rx.id" :to="`/prescriptions/${rx.id}`" class="rx-card">
               <div class="rx-card-header">
                 <span class="rx-medicamento">{{ rx.medicamento_generico }}</span>
                 <div class="rx-card-acciones">
                   <span class="rx-estado">emitida</span>
-                  <button class="btn-reimprimir-sm" @click="reimprimirRx(rx.id)">
+                  <button class="btn-reimprimir-sm" @click.stop="reimprimirRx(rx.id)">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="6 9 6 2 18 2 18 9"/>
                       <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
@@ -558,7 +558,7 @@ async function exportExpediente() {
               </div>
               <div class="rx-dosis-text">{{ rx.dosis }}</div>
               <div v-if="rx.diagnostico" class="rx-dx">Dx: {{ rx.diagnostico }}</div>
-            </div>
+            </RouterLink>
           </div>
           </div>
         </div>
