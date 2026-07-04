@@ -10,6 +10,7 @@ import (
 	"github.com/Nidael1/VuhmikGO/internal/auth"
 	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
 	"github.com/Nidael1/VuhmikGO/internal/observability"
+	"github.com/Nidael1/VuhmikGO/internal/shaders"
 )
 
 // --- DTOs admin ---
@@ -189,12 +190,6 @@ func HandleAdminCreateUser(w http.ResponseWriter, r *http.Request) {
 	case req.NombreCompleto == "":
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "nombre_completo es obligatorio")
 		return
-	case req.CedulaProfesional == "":
-		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "cedula_profesional es obligatoria (NOM-024)")
-		return
-	case req.Especialidad == "":
-		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "especialidad es obligatoria (NOM-024)")
-		return
 	case req.Universidad == "":
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "universidad es obligatoria")
 		return
@@ -203,6 +198,16 @@ func HandleAdminCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	case req.Telefono == "":
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "telefono es obligatorio")
+		return
+	}
+
+	// Validación NOM-024 delegada al shader mx_medical (ADR-0002, issue #203).
+	// El handler es transporte puro; la regla de dominio vive en el Shader.
+	if err := shaders.ValidateMxMedicalProfile(shaders.MxMedicalProfile{
+		CedulaProfesional: req.CedulaProfesional,
+		Especialidad:      req.Especialidad,
+	}); err != nil {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", err.Error())
 		return
 	}
 
