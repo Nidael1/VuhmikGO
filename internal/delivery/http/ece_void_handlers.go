@@ -70,7 +70,7 @@ func handleECEVoid(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Evaluación vía Shader — operación void
-		svc := NewShaderService()
+		svc := NewShaderService(deliveryDeps.TenantRepo)
 		decision := svc.Authorize(tenantID, actorID, shaders.OperationVoid)
 
 		if decision.Result != shaders.DecisionAllow {

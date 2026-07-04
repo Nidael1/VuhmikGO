@@ -59,6 +59,9 @@ func main() {
 	})
 
 	mux := http.NewServeMux()
+	delivery.InitDeliveryDeps(delivery.DeliveryDeps{
+		TenantRepo: postgres.NewTenantRepository(pool),
+	})
 	delivery.RegisterRoutes(mux)
 	api.RegisterAPIRoutes(mux)
 	handler := delivery.Handler(mux)

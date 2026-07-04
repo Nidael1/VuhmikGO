@@ -1,0 +1,53 @@
+package postgres
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+
+	"github.com/Nidael1/VuhmikGO/internal/application/ports"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// TenantRepository implementa ports.TenantRepository sobre PostgreSQL.
+// Solo lectura — la configuración del tenant se gestiona desde el panel admin.
+type TenantRepository struct {
+	db *pgxpool.Pool
+}
+
+// NewTenantRepository retorna una instancia del repositorio de tenant.
+func NewTenantRepository(db *pgxpool.Pool) *TenantRepository {
+	return &TenantRepository{db: db}
+}
+
+// GetByID retorna la configuración del tenant por tenant_id.
+// Fail-closed: si el tenant no existe, retorna error.
+func (r *TenantRepository) GetByID(tenantID string) (ports.TenantConfig, error) {
+	const q = `
+		SELECT tenant_id, tenant_area, country_code,
+		       clinical_shader_key, export_shader_key
+		FROM tenants
+		WHERE tenant_id = $1
+		LIMIT 1`
+
+	var cfg ports.TenantConfig
+	var exportKey sql.NullString
+
+	err := r.db.QueryRow(context.Background(), q, tenantID).Scan(
+		&cfg.TenantID,
+		&cfg.TenantArea,
+		&cfg.CountryCode,
+		&cfg.ClinicalShaderKey,
+		&exportKey,
+	)
+	if err != nil {
+		return ports.TenantConfig{},
+			fmt.Errorf("tenant no encontrado: %s", tenantID)
+	}
+
+	if exportKey.Valid {
+		cfg.ExportShaderKey = exportKey.String
+	}
+
+	return cfg, nil
+}

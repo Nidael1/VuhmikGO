@@ -2,21 +2,24 @@ package delivery
 
 import (
 	"fmt"
+	"github.com/Nidael1/VuhmikGO/internal/application/ports"
 	"github.com/Nidael1/VuhmikGO/internal/shaders"
 )
 
 // ShaderService es la única vía de comunicación entre la capa de entrega
 // y los Shaders. Impide acceso directo al Core desde los handlers.
 type ShaderService struct {
-	medical shaders.Shader
-	export  shaders.ExportShader
+	medical  shaders.Shader
+	export   shaders.ExportShader
+	tenants  ports.TenantRepository
 }
 
 // NewShaderService construye el servicio con los Shaders autorizados.
-func NewShaderService() *ShaderService {
+func NewShaderService(tenants ports.TenantRepository) *ShaderService {
 	return &ShaderService{
-		medical: shaders.NewMedicalBasicShader(),
-		export:  shaders.NewLegalExportShader(),
+		medical:  shaders.NewMedicalBasicShader(), // fallback; Authorize resuelve dinámico
+		export:   shaders.NewLegalExportShader(),
+		tenants:  tenants,
 	}
 }
 
@@ -27,12 +30,27 @@ func (s *ShaderService) Authorize(
 	actorID string,
 	op shaders.Operation,
 ) shaders.ShaderDecision {
+	// Resolver shader dinámicamente por clinical_shader_key del tenant (ADR-0002, issue #204).
+	// Fail-closed: si el tenant no existe en la tabla tenants, deniega.
+	registry := shaders.NewShaderRegistry()
+	medical := s.medical // fallback seguro
+	if s.tenants != nil {
+		if cfg, err := s.tenants.GetByID(tenantID); err == nil {
+			medical = registry.Resolve(shaders.ShaderKey(cfg.ClinicalShaderKey))
+		} else {
+			return shaders.ShaderDecision{
+				Result:    shaders.DecisionDeny,
+				ErrorCode: "ER-SHADER-001",
+				Reason:    "tenant no encontrado: " + tenantID,
+			}
+		}
+	}
 	ctx := shaders.ShaderContext{
 		TenantID:  tenantID,
 		ActorID:   actorID,
 		Operation: op,
 	}
-	return s.medical.Evaluate(ctx)
+	return medical.Evaluate(ctx)
 }
 
 // Export genera un export legal en memoria vía LegalExportShader.
