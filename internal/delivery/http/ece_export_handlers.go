@@ -29,7 +29,7 @@ func handleECEExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svc := NewShaderService()
+	svc := NewShaderService(deliveryDeps.TenantRepo)
 	exportBytes, err := svc.Export(tenantID, actorID, evidenceID)
 	if err != nil {
 		renderShaderDeny(w, r, decisionFromError(err))

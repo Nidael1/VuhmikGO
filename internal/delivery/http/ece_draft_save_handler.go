@@ -37,7 +37,7 @@ func handleECEDraftSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svc := NewShaderService()
+	svc := NewShaderService(deliveryDeps.TenantRepo)
 	draft, err := svc.CreateDraft(tenantID, actorID, subjectID)
 	if err != nil {
 		renderShaderDeny(w, r, decisionFromError(err))

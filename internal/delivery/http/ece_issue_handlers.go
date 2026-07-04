@@ -28,7 +28,7 @@ func handleECEEmitir(w http.ResponseWriter, r *http.Request) {
 		actorID := r.Header.Get("X-Actor-ID")
 
 		// Evaluación vía Shader — acción de creación/emisión
-		svc := NewShaderService()
+		svc := NewShaderService(deliveryDeps.TenantRepo)
 		decision := svc.Authorize(tenantID, actorID, shaders.OperationCreate)
 
 		if decision.Result != shaders.DecisionAllow {

@@ -45,7 +45,7 @@ func handleECENuevo(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Evaluación vía Shader — única vía de acceso al Core
-		svc := NewShaderService()
+		svc := NewShaderService(deliveryDeps.TenantRepo)
 		decision := svc.Authorize(tenantID, actorID, shaders.OperationCreate)
 
 		if decision.Result != shaders.DecisionAllow {
@@ -91,7 +91,7 @@ func handleECEDraftGuardar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svc := NewShaderService()
+	svc := NewShaderService(deliveryDeps.TenantRepo)
 	decision := svc.Authorize(tenantID, actorID, "create")
 	if decision.Result != "allow" {
 		renderShaderDeny(w, r, decision)
