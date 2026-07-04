@@ -139,9 +139,13 @@ func HandlePrescriptionEmit(w http.ResponseWriter, r *http.Request) {
 			"completa tu perfil profesional antes de emitir una receta")
 		return
 	}
-	if profile.CedulaProfesional == "" || profile.Especialidad == "" {
-		writeError(w, http.StatusUnprocessableEntity, "PROFILE_INCOMPLETE",
-			"cedula_profesional y especialidad son obligatorias para emitir una receta (NOM-024)")
+	// Validación NOM-024 delegada al shader mx_medical (ADR-0002, issue #202).
+	// El handler es transporte puro; la regla de dominio vive en el Shader.
+	if err := shaders.ValidateMxMedicalProfile(shaders.MxMedicalProfile{
+		CedulaProfesional: profile.CedulaProfesional,
+		Especialidad:      profile.Especialidad,
+	}); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "PROFILE_INCOMPLETE", err.Error())
 		return
 	}
 
