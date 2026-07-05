@@ -23,6 +23,20 @@ const (
 // Fail-closed: key desconocido → MedicalBasicShader (fallback seguro).
 type ShaderRegistry struct{}
 
+// KnownShaderKeys contiene todos los keys de shader clínico válidos del catálogo.
+// Es la única fuente de verdad para validación de clinical_shader_key (ADR-0002 §2).
+var KnownShaderKeys = map[ShaderKey]bool{
+	ShaderGenericCRM: true,
+	ShaderMxMedical:  true,
+	// ShaderMxTelemedicine2026 no incluido — futuro no activo (ADR-0002 §5).
+}
+
+// IsKnownShaderKey verifica si un key está en el catálogo de shaders activos.
+// Retorna false para keys desconocidos, vacíos o reservados como futuro no activo.
+func IsKnownShaderKey(key ShaderKey) bool {
+	return KnownShaderKeys[key]
+}
+
 // NewShaderRegistry retorna una instancia del registry.
 func NewShaderRegistry() *ShaderRegistry {
 	return &ShaderRegistry{}

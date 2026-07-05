@@ -36,7 +36,17 @@ func (s *ShaderService) Authorize(
 	medical := s.medical // fallback seguro
 	if s.tenants != nil {
 		if cfg, err := s.tenants.GetByID(tenantID); err == nil {
-			medical = registry.Resolve(shaders.ShaderKey(cfg.ClinicalShaderKey))
+			key := shaders.ShaderKey(cfg.ClinicalShaderKey)
+			// Validar que el key esté en el catálogo (ADR-0002, issue #209).
+			// Fail-closed: key inválido o desconocido → deniega explícitamente.
+			if !shaders.IsKnownShaderKey(key) {
+				return shaders.ShaderDecision{
+					Result:    shaders.DecisionDeny,
+					ErrorCode: "ER-SHADER-002",
+					Reason:    "clinical_shader_key inválido para tenant: " + tenantID,
+				}
+			}
+			medical = registry.Resolve(key)
 		} else {
 			return shaders.ShaderDecision{
 				Result:    shaders.DecisionDeny,
