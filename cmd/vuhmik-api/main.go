@@ -56,6 +56,7 @@ func main() {
 		ConsultationService:          application.NewConsultationService(postgres.NewEvidenceRepository(pool), postgres.NewConsultationProjectionRepository(pool)),
 		PrescriptionService:        application.NewPrescriptionService(postgres.NewEvidenceRepository(pool), postgres.NewPrescriptionProjectionRepository(pool), capabilityRepo),
 		ProfileRepo:      postgres.NewProfileRepository(pool),
+		TenantRepo:       postgres.NewTenantRepository(pool),
 	})
 
 	mux := http.NewServeMux()

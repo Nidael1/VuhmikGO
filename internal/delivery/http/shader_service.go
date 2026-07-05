@@ -18,7 +18,7 @@ type ShaderService struct {
 func NewShaderService(tenants ports.TenantRepository) *ShaderService {
 	return &ShaderService{
 		medical:  shaders.NewMedicalBasicShader(), // fallback; Authorize resuelve dinámico
-		export:   shaders.NewLegalExportShader(),
+		export:   shaders.NewLegalExportShader(),  // fallback; Export resuelve dinámico
 		tenants:  tenants,
 	}
 }
@@ -61,10 +61,25 @@ func (s *ShaderService) Export(
 	actorID string,
 	evidenceID string,
 ) ([]byte, error) {
+	// Resolver export shader dinámicamente por export_shader_key del tenant (ADR-0002, issue #205).
+	// Fail-closed: key desconocido, vacío o export_none → deniega.
+	exportShader := s.export // fallback seguro
+	if s.tenants != nil {
+		if cfg, err := s.tenants.GetByID(tenantID); err == nil {
+			registry := shaders.NewExportShaderRegistry()
+			if resolved := registry.Resolve(shaders.ExportShaderKey(cfg.ExportShaderKey)); resolved != nil {
+				exportShader = resolved
+			} else {
+				return nil, fmt.Errorf("[ER-SHADER-003] export no autorizado para tenant: %s", tenantID)
+			}
+		} else {
+			return nil, fmt.Errorf("[ER-SHADER-001] tenant no encontrado: %s", tenantID)
+		}
+	}
 	ctx := shaders.ShaderContext{
-		TenantID:  tenantID,
-		ActorID:   actorID,
-		Operation: shaders.OperationExport,
+		TenantID:   tenantID,
+		ActorID:    actorID,
+		Operation:  shaders.OperationExport,
 		SubjectRef: evidenceID,
 	}
 	data := shaders.ExportData{
@@ -72,7 +87,7 @@ func (s *ShaderService) Export(
 		TenantID:   tenantID,
 		State:      "issued",
 	}
-	return s.export.GenerateExport(ctx, data)
+	return exportShader.GenerateExport(ctx, data)
 }
 
 // DraftResponse es el resultado del guardado de un borrador clínico.

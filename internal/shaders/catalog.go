@@ -40,3 +40,39 @@ func (r *ShaderRegistry) Resolve(key ShaderKey) Shader {
 		return NewMedicalBasicShader()
 	}
 }
+
+// ExportShaderKey identifica un export shader de forma opaca para el Core.
+// El Core NO interpreta estos valores (ADR-0002 §2).
+type ExportShaderKey string
+
+const (
+	// ExportShaderLegal — export legal en memoria, sin persistencia (ADR-0007).
+	// Implementación: LegalExportShader. Default para tenants médicos MX.
+	ExportShaderLegal ExportShaderKey = "legal_export"
+
+	// ExportShaderNone — sin export autorizado. Fail-closed explícito.
+	// Tenants sin módulo de export activo quedan en este estado.
+	ExportShaderNone ExportShaderKey = "export_none"
+)
+
+// ExportShaderRegistry resuelve el ExportShader correcto dado un export_shader_key.
+// Fail-closed: key desconocido o vacío → ExportShaderNone (deniega export).
+type ExportShaderRegistry struct{}
+
+// NewExportShaderRegistry retorna una instancia del registry de export.
+func NewExportShaderRegistry() *ExportShaderRegistry {
+	return &ExportShaderRegistry{}
+}
+
+// Resolve retorna el ExportShader correspondiente al key indicado.
+// Fail-closed: key inválido o vacío → nil (el caller debe denegar).
+func (r *ExportShaderRegistry) Resolve(key ExportShaderKey) ExportShader {
+	switch key {
+	case ExportShaderLegal:
+		return NewLegalExportShader()
+	default:
+		// ExportShaderNone y cualquier key desconocido → nil.
+		// El caller debe denegar si Resolve retorna nil.
+		return nil
+	}
+}

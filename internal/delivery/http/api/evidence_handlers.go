@@ -452,8 +452,26 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 	w.Write(exportBytes)
 }
 
+// buildExportShaderForTenant resuelve el ExportShader por export_shader_key del tenant.
+// Fail-closed: key desconocido, vacío o export_none → LegalExportShader como fallback seguro
+// para tenants médicos MX (export_shader_key = legal_export por defecto en backfill).
 func buildExportShader() shaders.ExportShader {
 	return shaders.NewLegalExportShader()
+}
+
+func buildExportShaderForTenant(tenantID string) shaders.ExportShader {
+	if deps.TenantRepo == nil {
+		return shaders.NewLegalExportShader()
+	}
+	cfg, err := deps.TenantRepo.GetByID(tenantID)
+	if err != nil {
+		return shaders.NewLegalExportShader() // fail-safe: tenant no encontrado
+	}
+	registry := shaders.NewExportShaderRegistry()
+	if resolved := registry.Resolve(shaders.ExportShaderKey(cfg.ExportShaderKey)); resolved != nil {
+		return resolved
+	}
+	return shaders.NewLegalExportShader() // export_none → fallback seguro
 }
 // EditRequest es el payload para edicion fluida (ADR-0006).
 type EditRequest struct {

@@ -23,6 +23,7 @@ type Deps struct {
 	PrescriptionProjectionRepo   ports.PrescriptionProjectionRepository
 	ConsultationService          *application.ConsultationService
 	ConsultationProjectionRepo   ports.ConsultationProjectionRepository
+	TenantRepo                   ports.TenantRepository
 }
 
 var deps Deps
