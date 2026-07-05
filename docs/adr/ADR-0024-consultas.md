@@ -1,7 +1,7 @@
 # ADR-0024 — Módulo de consulta médica
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-28
@@ -122,13 +122,9 @@ La consulta sigue el patrón CQRS (ADR-0022):
 
 ## Estado de implementación
 
-  No implementado.
-  Requiere issues de implementación:
-
-  Migración 000016:
-    - Tabla consultation_projections + índices
-    - ADD COLUMN consultation_id en note_projections
-    - El consultation_id en prescription_projections ya existe
+  Implementado. Migraciones 000016_consultations, 000017 y 000018 aplicadas.
+  ConsultationService, consultation_shader.go y ConsultationProjectionRepository
+  implementados. Ejecutado en el desarrollo post-MVP previo a esta sesión.
 
   ConsultationShader:
     - Valida campos mínimos de una consulta

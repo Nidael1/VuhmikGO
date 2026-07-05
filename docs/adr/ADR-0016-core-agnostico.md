@@ -1,7 +1,7 @@
 # ADR-0016 — Core agnostico: contenido opaco y discriminador de tipo en Shader
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -136,13 +136,10 @@ Cada paso es una migracion separada y forward-only.
 
 ## Estado de implementacion
 
-  No implementado.
-  Requiere issues de implementacion con:
-    - Migracion: agregar content (blob), poblar desde notes, drop notes,
-      renombrar subject_id a subject_ref (forward-only, en pasos).
-    - Entidad Core: reemplazar campo Notes por Content en evidence.go.
-    - Repositorio: actualizar queries para leer/escribir content.
-    - Shader: agregar parseado de type desde el blob antes de validar.
+  Implementado. El campo Content es un blob JSON opaco en entity.go.
+  El Core nunca lo parsea. El discriminador de tipo vive dentro del blob;
+  solo el Shader lo lee. subject_ref es el campo canónico; notes no existe.
+  Ejecutado en el desarrollo post-MVP previo a esta sesión.
     - Hash: recalcular sobre content + metadata en lugar de fields
       nombrados de dominio.
     - Tests: actualizar fixtures y aserciones.

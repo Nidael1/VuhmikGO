@@ -1,7 +1,7 @@
 # ADR-0022 — CQRS: proyecciones de lectura por Shader
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-27
@@ -140,13 +140,10 @@ Sin tocar evidence. Sin PHI en las métricas.
 
 ## Estado de implementación
 
-  No implementado.
-  Requiere issues de implementación:
-
-  Migración 000011:
-    - Índice idx_evidence_content_type en evidence
-    - Tabla note_projections + índices
-    - Tabla allergy_projections + índices
+  Implementado. Migración 000011_projections.up.sql aplicada.
+  NoteProjectionRepository, PrescriptionProjectionRepository y
+  ConsultationProjectionRepository implementados en ports/ y postgres/.
+  Ejecutado en el desarrollo post-MVP previo a esta sesión.
     - Tabla prescription_projections + índices
 
   Refactor AllergyService:
