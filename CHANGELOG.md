@@ -255,3 +255,264 @@ Se agregó botón "Imprimir" (SVG lineal de impresora, sin emojis) en tres conte
 - `frontend/src/presentation/views/ConsultationDetailView.vue`
 - `frontend/src/presentation/views/PrescriptionListView.vue`
 
+
+---
+
+## Issue #200 — Modelo de datos de Tenant + Shader Stack base
+
+**Rama:** `issue/200-modelo-datos-tenant`
+**Commit:** `c4fd634`
+**Merge a main:** `101b9f5`
+**Capa:** Infraestructura / Base de datos. No toca Core ni Shaders.
+**ADR:** ADR-0025
+
+### Problema
+No existía tabla `tenants`. El tenant era un `tenant_id` suelto propagado desde `users` sin integridad referencial. El Shader Stack (`clinical_shader_key`, `export_shader_key`, `extra_shader_keys[]`) no tenía soporte de datos.
+
+### Solución
+- Migración `000019_create_tenants.up.sql`: tabla `tenants` con `tenant_id` (PK), `tenant_area`, `country_code`, `clinical_shader_key`, `export_shader_key`, timestamps.
+- Tabla `tenant_extra_shaders` para el array 0..N de extra shaders, fail-closed (`active = FALSE` por defecto).
+- FK `users.tenant_id → tenants.tenant_id` (aditiva, sobre datos ya poblados).
+- Backfill de los 7 tenants existentes con defaults canónicos: `tenant_area='medicine'`, `country_code='MX'`, `clinical_shader_key='med_basic'`, `export_shader_key='export_none'`.
+
+### Archivos involucrados
+- `database/migrations/000019_create_tenants.up.sql`
+
+### Fuera de alcance
+- Código Go, endpoints, Shaders, UI. Solo esquema de datos + backfill.
+
+---
+
+## Issue #201 — Referencia de vendedor en tenant (provisional fase 1)
+
+**Rama:** `issue/201-referencia-vendedor`
+**Commit:** `015a0db`
+**Merge a main:** `8b17ddc`
+**Capa:** Infraestructura / Base de datos. No toca Core ni Shaders.
+**ADR:** ADR-0026
+
+### Problema
+No había forma de registrar qué vendedor originó cada tenant para atribución comercial en la fase 1.
+
+### Solución
+- Migración `000020_create_vendors.up.sql`: tabla `vendors` con `vendor_id` (formato `vndrNNN`), `name`, `active`, `created_at`.
+- Seed inicial: `vndr001 / Carlos Ramírez Herrera`.
+- Columna `vendor_ref` (nullable) en `tenants` con FK → `vendors.vendor_id`.
+
+### Archivos involucrados
+- `database/migrations/000020_create_vendors.up.sql`
+
+### Fuera de alcance
+- Lógica comercial (comisiones, reportes). Core y Shaders no tocan `vendor_ref`.
+
+---
+
+## Issue #202 — Catálogo de shaders de país + MxMedicalShader + delegación NOM-024
+
+**Rama:** `issue/202-shader-catalog-mx-medical`
+**Commit:** `931ec27`
+**Merge a main:** `46f2abf`
+**Capa:** Shaders. No toca Core ni migraciones.
+**ADR:** ADR-0002
+
+### Problema
+No existía catálogo tipado de shader keys en Go. La validación NOM-024 (cédula + especialidad) vivía incorrectamente en `prescription_handlers.go` (capa `delivery/`), fuera de la capa Shaders.
+
+### Solución
+- `internal/shaders/catalog.go`: constantes `ShaderGenericCRM`, `ShaderMxMedical`, `ShaderMxTelemedicine2026` (reservado), y `ShaderRegistry` que resuelve el shader correcto por key. Fail-closed.
+- `internal/shaders/mx_medical.go`: `MxMedicalShader` + `ValidateMxMedicalProfile` con validación NOM-024-SSA3-2012.
+- `prescription_handlers.go`: validación NOM-024 inline reemplazada por delegación a `shaders.ValidateMxMedicalProfile`.
+
+### Archivos involucrados
+- `internal/shaders/catalog.go` (nuevo)
+- `internal/shaders/mx_medical.go` (nuevo)
+- `internal/delivery/http/api/prescription_handlers.go`
+
+### Fuera de alcance
+- Core, migraciones, endpoints, UI. `mx_telemedicine_2026` declarado pero sin implementación activa.
+
+---
+
+## Issue #203 — Delegación NOM-024 en admin handler
+
+**Rama:** `issue/203-nom024-admin-handler`
+**Commit:** `886eeed`
+**Merge a main:** `2c7a278`
+**Capa:** Delivery / API. No toca Core ni Shaders.
+**ADR:** ADR-0002
+
+### Problema
+`admin_handlers.go` contenía validación NOM-024 (cédula + especialidad) inline en el `switch` de `HandleAdminCreateUser`, fuera de la capa Shaders.
+
+### Solución
+- Eliminadas las dos líneas NOM-024 del `switch`.
+- Agregada llamada a `shaders.ValidateMxMedicalProfile` después del `switch`, antes de `ExistsByEmail`.
+- Agregado import de `shaders` al archivo.
+
+### Archivos involucrados
+- `internal/delivery/http/api/admin_handlers.go`
+
+### Fuera de alcance
+- Core, migraciones, Shaders, UI. Sin cambio de firma de endpoints.
+
+---
+
+## Issue #204 — TenantRepository + ShaderService dinámico por clinical_shader_key
+
+**Rama:** `issue/204-shader-stack-tenant`
+**Commit:** `9119524`
+**Merge a main:** `ef497f9`
+**Capa:** Aplicación / Infraestructura / Delivery. No toca Core ni migraciones.
+**ADR:** ADR-0025 + ADR-0002
+
+### Problema
+`ShaderService` hardcodeaba siempre `NewMedicalBasicShader()` sin consultar el `clinical_shader_key` real del tenant. No existía puerto ni adaptador para leer la tabla `tenants`.
+
+### Solución
+- `ports/tenant_repository.go`: interfaz `TenantRepository` con `GetByID`.
+- `postgres/tenant_repository.go`: adaptador que lee `tenants` por `tenant_id`. Fail-closed.
+- `delivery_deps.go`: `DeliveryDeps` con `TenantRepo` para el paquete `delivery`.
+- `shader_service.go`: `Authorize()` resuelve `clinical_shader_key` del tenant via `ShaderRegistry`. Fail-closed: tenant no encontrado → `DecisionDeny`.
+- Handlers ECE (`ece_handlers.go`, `ece_issue_handlers.go`, `ece_void_handlers.go`, `ece_export_handlers.go`, `ece_draft_save_handler.go`): `NewShaderService(deliveryDeps.TenantRepo)`.
+- `main.go`: `InitDeliveryDeps` + `TenantRepo` inyectado en `api.Deps`.
+
+### Archivos involucrados
+- `internal/application/ports/tenant_repository.go` (nuevo)
+- `internal/infrastructure/postgres/tenant_repository.go` (nuevo)
+- `internal/delivery/http/delivery_deps.go` (nuevo)
+- `internal/delivery/http/shader_service.go`
+- `internal/delivery/http/ece_handlers.go`
+- `internal/delivery/http/ece_issue_handlers.go`
+- `internal/delivery/http/ece_void_handlers.go`
+- `internal/delivery/http/ece_export_handlers.go`
+- `internal/delivery/http/ece_draft_save_handler.go`
+- `cmd/vuhmik-api/main.go`
+
+### Fuera de alcance
+- Core, migraciones, UI. `export_shader_key` y `extra_shaders` conectados en issues siguientes.
+
+---
+
+## Issue #205 — ExportShaderRegistry + resolución dinámica de export shader
+
+**Rama:** `issue/205-export-shader-catalog`
+**Commit:** `09f0a6c`
+**Merge a main:** `fbb653e`
+**Capa:** Shaders / Delivery / API. No toca Core ni migraciones.
+**ADR:** ADR-0002
+
+### Problema
+`ShaderService.Export()` y `buildExportShader()` hardcodeaban `NewLegalExportShader()` sin consultar `export_shader_key` del tenant. No existía catálogo tipado de export shader keys.
+
+### Solución
+- `catalog.go`: constantes `ExportShaderLegal` y `ExportShaderNone`, y `ExportShaderRegistry` que resuelve el export shader por key. Fail-closed: key desconocido → nil (el caller deniega).
+- `shader_service.go`: `Export()` resuelve `export_shader_key` del tenant dinámicamente.
+- `api/deps.go`: agregado `TenantRepo ports.TenantRepository`.
+- `evidence_handlers.go`: agregada `buildExportShaderForTenant(tenantID)` con resolución dinámica.
+- `main.go`: `TenantRepo` inyectado en `api.Deps`.
+
+### Archivos involucrados
+- `internal/shaders/catalog.go`
+- `internal/delivery/http/shader_service.go`
+- `internal/delivery/http/api/deps.go`
+- `internal/delivery/http/api/evidence_handlers.go`
+- `cmd/vuhmik-api/main.go`
+
+### Fuera de alcance
+- Core, migraciones, UI. `extra_shaders` conectado en issue siguiente.
+
+---
+
+## Issue #206 — Extra shaders dinámicos por tenant + evaluación encadenada
+
+**Rama:** `issue/206-extra-shaders-tenant`
+**Commit:** `2dfc842`
+**Merge a main:** `6e0b70b`
+**Capa:** Aplicación / Infraestructura / Delivery. No toca Core ni migraciones.
+**ADR:** ADR-0025
+
+### Problema
+`tenant_extra_shaders` existía en la base pero ningún código Go la consultaba. El Shader Stack estaba incompleto: los extra shaders (0..N) no se evaluaban en ninguna operación.
+
+### Solución
+- `ports/tenant_repository.go`: agregado `ExtraShaderKeys []string` a `TenantConfig`.
+- `postgres/tenant_repository.go`: segunda query en `GetByID` que lee `tenant_extra_shaders` donde `active = true`.
+- `shader_service.go`: `Authorize()` evalúa extra shaders encadenados después del clinical shader. Fail-closed: cualquier extra shader que deniega detiene la cadena.
+
+### Archivos involucrados
+- `internal/application/ports/tenant_repository.go`
+- `internal/infrastructure/postgres/tenant_repository.go`
+- `internal/delivery/http/shader_service.go`
+
+### Fuera de alcance
+- Core, UI, endpoints. Sin nuevas migraciones.
+
+---
+
+## Issue #207 — Activar mx_medical y legal_export en tenants existentes
+
+**Rama:** `issue/207-activar-mx-medical-tenants`
+**Commit:** `5cb706c`
+**Merge a main:** `bfb8202`
+**Capa:** Base de datos. No toca código Go ni Shaders.
+**ADR:** ADR-0025 + ADR-0002
+
+### Problema
+Los 7 tenants existentes tenían `export_shader_key='export_none'` y `tenant_extra_shaders` vacía. El cumplimiento NOM-024 estaba implementado pero no activado.
+
+### Solución
+- Migración `000021_seed_mx_medical_tenants.up.sql`:
+  - INSERT en `tenant_extra_shaders`: `mx_medical / active=TRUE` para los 7 tenants.
+  - UPDATE en `tenants`: `export_shader_key='legal_export'` donde era `'export_none'`.
+
+### Archivos involucrados
+- `database/migrations/000021_seed_mx_medical_tenants.up.sql`
+
+### Fuera de alcance
+- Código Go, Shaders, Core, UI.
+
+---
+
+## Issue #208 — Conectar buildExportShaderForTenant al handler de export
+
+**Rama:** `issue/208-connect-export-shader-tenant`
+**Commit:** `da58dc8`
+**Merge a main:** `3c63aa5`
+**Capa:** Delivery / API. No toca Core ni Shaders.
+**ADR:** ADR-0002
+
+### Problema
+`HandleEvidenceExport` llamaba a `buildExportShader()` (fallback estático) en vez de `buildExportShaderForTenant(tenantID)` (resolución dinámica creada en #205).
+
+### Solución
+- Una línea en `evidence_handlers.go`: `buildExportShader()` → `buildExportShaderForTenant(tenantID)`.
+
+### Archivos involucrados
+- `internal/delivery/http/api/evidence_handlers.go`
+
+### Fuera de alcance
+- Todo lo demás. Cambio quirúrgico de una línea.
+
+---
+
+## Issue #209 — Validación explícita de clinical_shader_key contra catálogo
+
+**Rama:** `issue/209-validar-clinical-shader-key`
+**Commit:** `784be12`
+**Merge a main:** `d5c3042`
+**Capa:** Shaders / Delivery. No toca Core ni migraciones.
+**ADR:** ADR-0002
+
+### Problema
+`ShaderRegistry.Resolve()` hacía fallback silencioso a `med_basic` para cualquier key desconocido, sin reportar la anomalía. Un `clinical_shader_key` corrupto en la base pasaba desapercibido.
+
+### Solución
+- `catalog.go`: `KnownShaderKeys` (mapa de keys activos válidos) e `IsKnownShaderKey()`.
+- `shader_service.go`: `Authorize()` verifica `IsKnownShaderKey()` antes de resolver. Key inválido → `DecisionDeny` con `ER-SHADER-002`.
+
+### Archivos involucrados
+- `internal/shaders/catalog.go`
+- `internal/delivery/http/shader_service.go`
+
+### Fuera de alcance
+- Core, migraciones, UI, endpoints.
