@@ -49,5 +49,24 @@ func (r *TenantRepository) GetByID(tenantID string) (ports.TenantConfig, error) 
 		cfg.ExportShaderKey = exportKey.String
 	}
 
+	// Leer extra shaders activos del tenant (ADR-0025, issue #206).
+	// Fail-closed: si falla la query, retorna cfg sin extras (no deniega — el clinical shader sigue activo).
+	const qExtra = `
+		SELECT shader_key
+		FROM tenant_extra_shaders
+		WHERE tenant_id = $1 AND active = true
+		ORDER BY shader_key`
+
+	rows, err := r.db.Query(context.Background(), qExtra, tenantID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var key string
+			if err := rows.Scan(&key); err == nil {
+				cfg.ExtraShaderKeys = append(cfg.ExtraShaderKeys, key)
+			}
+		}
+	}
+
 	return cfg, nil
 }
