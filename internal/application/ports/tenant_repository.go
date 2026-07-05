@@ -9,7 +9,8 @@ type TenantConfig struct {
 	TenantArea        string
 	CountryCode       string
 	ClinicalShaderKey string // opaco; convertir a shaders.ShaderKey en delivery
-	ExportShaderKey   string // nullable; conectar en issue siguiente
+	ExportShaderKey   string   // nullable
+	ExtraShaderKeys  []string  // 0..N extra shaders activos del tenant (ADR-0025)
 }
 
 // TenantRepository define el contrato de acceso a la configuración de tenant.

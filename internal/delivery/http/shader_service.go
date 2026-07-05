@@ -50,7 +50,25 @@ func (s *ShaderService) Authorize(
 		ActorID:   actorID,
 		Operation: op,
 	}
-	return medical.Evaluate(ctx)
+	// Evaluar primero el clinical shader.
+	decision := medical.Evaluate(ctx)
+	if decision.Result != shaders.DecisionAllow {
+		return decision
+	}
+	// Evaluar extra shaders activos (ADR-0025, issue #206).
+	// Fail-closed: si algún extra shader deniega, la operación se deniega.
+	if s.tenants != nil {
+		if cfg, err := s.tenants.GetByID(tenantID); err == nil {
+			extraRegistry := shaders.NewShaderRegistry()
+			for _, key := range cfg.ExtraShaderKeys {
+				extra := extraRegistry.Resolve(shaders.ShaderKey(key))
+				if d := extra.Evaluate(ctx); d.Result != shaders.DecisionAllow {
+					return d
+				}
+			}
+		}
+	}
+	return decision
 }
 
 // Export genera un export legal en memoria vía LegalExportShader.
