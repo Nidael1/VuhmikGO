@@ -1,7 +1,7 @@
 package shaders
 
 import (
-	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -55,7 +55,8 @@ func (s *LegalExportShader) Evaluate(ctx ShaderContext) ShaderDecision {
 	}
 }
 
-// GenerateExport genera el export en memoria como JSON.
+// GenerateExport genera el export en memoria como IPS Bundle FHIR R4 (JSON).
+// Reemplaza el dump plano anterior por el formato canónico IPS/FHIR (ADR-0010).
 //
 // El resultado debe usarse inmediatamente. No debe almacenarse ni persistirse.
 // La responsabilidad de descartar los bytes tras uso es del caller.
@@ -64,7 +65,11 @@ func (s *LegalExportShader) GenerateExport(ctx ShaderContext, data ExportData) (
 	if decision.Result != DecisionAllow {
 		return nil, &exportDeniedError{decision.ErrorCode, decision.Reason}
 	}
-	return json.Marshal(data)
+	bundle, err := BuildIPSBundle(data, "")
+	if err != nil {
+		return nil, fmt.Errorf("error al construir IPS Bundle: %w", err)
+	}
+	return MarshalIPSBundleJSON(bundle, "")
 }
 
 // NewLegalExportShader retorna una instancia del Shader de export legal.

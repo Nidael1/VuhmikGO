@@ -79,9 +79,21 @@ type CDHash struct {
 	Value     string `xml:",chardata"`
 }
 
-// GenerateExportXML genera el export en formato XML (ADR-0007).
-// El hash se calcula externamente y se pasa como parametro.
+// GenerateExportXML genera el export en formato XML IPS/FHIR R4 (ADR-0010).
+// Reemplaza el esquema CDA propio (ADR-0007 legado) por el perfil IPS canónico.
+// El hash se calcula externamente y se pasa como parámetro.
 func GenerateExportXML(data ExportData, hash string) ([]byte, error) {
+	bundle, err := BuildIPSBundle(data, hash)
+	if err != nil {
+		return nil, err
+	}
+	return MarshalIPSBundleXML(bundle, hash)
+}
+
+// generateExportXMLLegacy conserva el esquema CDA propio de ADR-0007 como legado.
+// Deprecado: usar GenerateExportXML (IPS/FHIR R4).
+// Se mantiene para referencia histórica hasta migración completa.
+func generateExportXMLLegacy(data ExportData, hash string) ([]byte, error) {
 	issuedAt := ""
 	if data.IssuedAt != nil {
 		issuedAt = data.IssuedAt.Format(time.RFC3339)
