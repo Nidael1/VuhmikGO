@@ -377,7 +377,7 @@ func HandleEvidenceExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svc := buildExportShader()
+	svc := buildExportShaderForTenant(tenantID) // ADR-0002, issue #208
 	ctx := shaders.ShaderContext{
 		TenantID:  tenantID,
 		ActorID:   actorID,
