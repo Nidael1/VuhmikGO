@@ -299,3 +299,81 @@ func HandlePatientExport(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(finalBytes)
 }
+// HandlePatientExportZIP genera el Audit Package ZIP del expediente del paciente.
+// El ZIP se genera en memoria y se sirve directamente. No se persiste.
+// Cache-Control: no-store obligatorio (ADR-0027).
+//
+// GET /api/v1/patients/:id/export/zip
+func HandlePatientExportZIP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := TenantIDFromContext(r)
+	actorID := ActorIDFromContext(r)
+	if tenantID == "" || actorID == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+
+	patientID := strings.TrimPrefix(r.URL.Path, "/api/v1/patients/")
+	patientID = strings.TrimSuffix(patientID, "/export/zip")
+	if patientID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "patient_id requerido")
+		return
+	}
+
+	// Verificar que el paciente existe
+	_, err := deps.PatientRepo.FindByID(tenantID, patientID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "paciente no encontrado")
+		return
+	}
+
+	// Obtener toda la evidencia del tenant para este paciente
+	allEvidence, err := deps.EvidenceRepo.FindAll(tenantID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al obtener evidencia")
+		return
+	}
+
+	// Filtrar evidencia del paciente (issued y voided — todo el historial)
+	exportData := make([]shaders.ExportData, 0)
+	for _, e := range allEvidence {
+		if e.SubjectRef != patientID {
+			continue
+		}
+		ed := shaders.ExportData{
+			EvidenceID:   e.ID,
+			TenantID:     e.TenantID,
+			SubjectRef:   e.SubjectRef,
+			Content:      e.Content,
+			State:        string(e.State),
+			CreatedAt:    e.CreatedAt,
+			IssuedAt:     e.IssuedAt,
+			VoidedAt:     e.VoidedAt,
+			ReplacedByID: e.ReplacedByID,
+		}
+		exportData = append(exportData, ed)
+	}
+
+	pkg := shaders.AuditPackage{
+		PatientID:   patientID,
+		TenantID:    tenantID,
+		GeneratedAt: time.Now().UTC(),
+		Evidence:    exportData,
+	}
+
+	zipBytes, err := shaders.BuildAuditPackageZIP(pkg)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al generar paquete de auditoria")
+		return
+	}
+
+	filename := "auditoria_" + patientID + "_" + time.Now().UTC().Format("20060102150405") + ".zip"
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	w.Write(zipBytes)
+}

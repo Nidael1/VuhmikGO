@@ -111,6 +111,8 @@ func patientDispatcher(w http.ResponseWriter, r *http.Request) {
 	switch parts[1] {
 	case "export":
 		HandlePatientExport(w, r)
+	case "export/zip":
+		HandlePatientExportZIP(w, r)
 	case "consultations":
 		switch r.Method {
 		case http.MethodGet:
