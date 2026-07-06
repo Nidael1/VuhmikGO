@@ -1,7 +1,7 @@
 # ADR-0015 — Modulo de resultados de laboratorio
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -136,8 +136,8 @@ ordenado por fecha del estudio.
 
 ## Estado de implementacion
 
-  No implementado en v1.
-  Requiere issues de implementacion con:
+  Implementado. Migración 000024, lab_result_shader.go, ips_lab_result_export.go,
+  lab_result_handlers.go. Issue #217.
     - Migracion: tabla lab_results (id, tenant_id, patient_id,
       estudio, fecha_estudio, resultado, laboratorio,
       solicitado_por, diagnostico_ref, valores_ref,

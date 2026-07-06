@@ -1,7 +1,7 @@
 # ADR-0013 — Modulo de diagnosticos estructurados y lista de problemas (CIE-10)
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -133,8 +133,8 @@ diagnosticos activos del paciente como contexto clinico.
 
 ## Estado de implementacion
 
-  No implementado en v1.
-  Requiere issues de implementacion con:
+  Implementado. Migración 000022, diagnosis_shader.go, ips_diagnosis_export.go,
+  diagnosis_handlers.go. Issue #214/#215.
     - Migracion: tabla diagnoses (id, tenant_id, patient_id,
       descripcion, codigo_cie10, tipo, estado_problema,
       fecha_inicio, notas, estado, hash, created_at, issued_at,

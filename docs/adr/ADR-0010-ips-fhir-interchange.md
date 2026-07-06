@@ -1,7 +1,7 @@
 # ADR-0010 — Adoptar IPS sobre FHIR como modelo de intercambio y contenido clinico
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -96,8 +96,9 @@ sueltas y se vuelven secciones del IPS:
 
 ## Estado de implementacion
 
-  No implementado en v1.
-  Requiere issues de implementacion con:
+  Implementado. ips_bundle.go (IPS Bundle FHIR R4), legal_export.go y
+  legal_export_xml.go actualizados al formato IPS canónico. Proyectores IPS
+  para alergias, diagnósticos, inmunizaciones y laboratorio. Issue #212.
     - Incorporacion de perfiles FHIR R4 / IPS y su tooling.
     - Proyector de registros del Core a documento IPS (Shader).
     - Validador de documento IPS al recibir (Shader).

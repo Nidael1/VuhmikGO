@@ -1,7 +1,7 @@
 # ADR-0014 — Modulo de inmunizaciones y vacunacion
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -112,8 +112,8 @@ ordenado por fecha de aplicacion.
 
 ## Estado de implementacion
 
-  No implementado en v1.
-  Requiere issues de implementacion con:
+  Implementado. Migración 000023, immunization_shader.go, ips_immunization_export.go,
+  immunization_handlers.go. Issue #216.
     - Migracion: tabla immunizations (id, tenant_id, patient_id,
       vacuna, fecha_aplicacion, lote, dosis, via, aplicada_por,
       notas, estado, hash, created_at, issued_at, voided_at,
