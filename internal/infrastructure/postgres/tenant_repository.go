@@ -70,3 +70,14 @@ func (r *TenantRepository) GetByID(tenantID string) (ports.TenantConfig, error) 
 
 	return cfg, nil
 }
+
+// SetVendorRef asigna el vendor_ref a un tenant existente (ADR-0026, issue #220).
+// Provisional fase 1 — sin lógica comercial adicional.
+func (r *TenantRepository) SetVendorRef(tenantID, vendorID string) error {
+	const q = `UPDATE tenants SET vendor_ref = $1, updated_at = NOW() WHERE tenant_id = $2`
+	_, err := r.db.Exec(context.Background(), q, vendorID, tenantID)
+	if err != nil {
+		return fmt.Errorf("error al asignar vendor_ref: %w", err)
+	}
+	return nil
+}

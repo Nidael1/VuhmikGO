@@ -148,6 +148,7 @@ type AdminCreateUserRequest struct {
 	Direccion         string `json:"direccion"`
 	Telefono          string `json:"telefono"`
 	CURP              string `json:"curp,omitempty"`
+	VendorRef         string `json:"vendor_ref,omitempty"`
 }
 
 // HandleAdminCreateUser crea un médico completo desde el panel admin:
@@ -273,6 +274,16 @@ func HandleAdminCreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Asignar vendor_ref al tenant si se proporcionó (ADR-0026, issue #220).
+	if v := strings.TrimSpace(req.VendorRef); v != "" && deps.VendorRepo != nil && deps.TenantRepo != nil {
+		if _, err := deps.VendorRepo.GetByID(v); err == nil {
+			// Vendor válido — asignar al tenant
+			if err := deps.TenantRepo.SetVendorRef(tenantID, v); err != nil {
+				observability.Logger.Error("admin: error al asignar vendor_ref",
+					"tenant_id", tenantID, "vendor_ref", v, "error", err.Error())
+			}
+		}
+	}
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"user_id":          userID,

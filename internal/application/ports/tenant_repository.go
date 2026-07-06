@@ -20,4 +20,7 @@ type TenantRepository interface {
 	// GetByID retorna la configuración del tenant por su tenant_id.
 	// Retorna error si el tenant no existe en la tabla tenants.
 	GetByID(tenantID string) (TenantConfig, error)
+	// SetVendorRef asigna el vendor_ref a un tenant existente (ADR-0026, issue #220).
+	// Provisional fase 1. Falla silenciosamente si el vendor_id no existe.
+	SetVendorRef(tenantID, vendorID string) error
 }
