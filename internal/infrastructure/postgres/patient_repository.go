@@ -111,3 +111,17 @@ func (r *PatientRepository) NextExpediente(tenantID string) (string, error) {
 	}
 	return fmt.Sprintf("EXP-%04d", count+1), nil
 }
+
+// FindByCURP busca un paciente por CURP dentro de un tenant.
+// Retorna error si no existe. Usado en traspaso de paciente (ADR-0009).
+func (r *PatientRepository) FindByCURP(tenantID, curp string) (Patient, error) {
+	sql := `
+		SELECT id, tenant_id, nombre, fecha_nacimiento, sexo, num_expediente, curp, created_at, updated_at
+		FROM patients WHERE tenant_id = $1 AND curp = $2 LIMIT 1`
+	row := r.pool.QueryRow(context.Background(), sql, tenantID, curp)
+	p, err := scanPatient(row)
+	if err != nil {
+		return Patient{}, fmt.Errorf("paciente no encontrado por CURP: %w", err)
+	}
+	return p, nil
+}
