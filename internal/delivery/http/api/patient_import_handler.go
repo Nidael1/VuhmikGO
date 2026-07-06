@@ -65,8 +65,23 @@ func HandlePatientImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Leer body raw para detectar formato (ADR-0028)
+	var rawBody map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&rawBody); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
+		return
+	}
+
+	// Detectar si es IPS Bundle FHIR R4 externo (ADR-0028)
+	if rt, _ := rawBody["resourceType"].(string); rt == "Bundle" {
+		handleIPSExternalImport(w, r, rawBody, tenantID)
+		return
+	}
+
+	// Flujo propio vuhmik-transfer-v1 (ADR-0009)
+	bodyBytes, _ := json.Marshal(rawBody)
 	var pkg TransferPackage
-	if err := json.NewDecoder(r.Body).Decode(&pkg); err != nil {
+	if err := json.Unmarshal(bodyBytes, &pkg); err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
 		return
 	}
@@ -208,4 +223,85 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// handleIPSExternalImport procesa un IPS Bundle FHIR R4 externo (ADR-0028).
+// Busca al paciente por CURP en el tenant destino.
+// Mapea recursos FHIR conocidos a blobs del Core.
+// Recursos desconocidos se preservan como fhir_unknown.
+func handleIPSExternalImport(w http.ResponseWriter, r *http.Request, raw map[string]interface{}, tenantID string) {
+	bundleBytes, _ := json.Marshal(raw)
+	var bundle fhirBundle
+	if err := json.Unmarshal(bundleBytes, &bundle); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_JSON", "bundle FHIR invalido")
+		return
+	}
+
+	source := importSource(bundle)
+
+	// Extraer CURP del Bundle (Patient.identifier con sistema CURP)
+	curp := extractCURPFromBundle(bundle)
+	if curp == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_CURP",
+			"paciente sin CURP en el Bundle — registra al paciente con su CURP antes de importar su expediente externo")
+		return
+	}
+
+	// Buscar paciente por CURP en el tenant destino
+	existingPatient, err := deps.PatientRepo.FindByCURP(tenantID, curp)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "PATIENT_NOT_FOUND",
+			"paciente no encontrado — registra al paciente con CURP "+curp+" antes de importar su expediente externo")
+		return
+	}
+
+	records, warnings, err := parseIPSBundleExternal(bundle, existingPatient.ID, tenantID, source)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "PARSE_ERROR", "error al procesar Bundle FHIR")
+		return
+	}
+
+	imported := 0
+	for _, e := range records {
+		if err := deps.EvidenceRepo.Create(e); err != nil {
+			warnings = append(warnings, "error al importar registro: "+e.ID)
+			continue
+		}
+		imported++
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"data": ImportResult{
+			PatientID:        existingPatient.ID,
+			Created:          false,
+			DuplicateCURP:    false,
+			EvidenceImported: imported,
+			Warnings:         warnings,
+		},
+		"error": nil,
+	})
+}
+
+// extractCURPFromBundle extrae el CURP del recurso Patient en el Bundle.
+func extractCURPFromBundle(bundle fhirBundle) string {
+	for _, entry := range bundle.Entry {
+		rt, _ := entry.Resource["resourceType"].(string)
+		if rt != "Patient" {
+			continue
+		}
+		identifiers, ok := entry.Resource["identifier"].([]interface{})
+		if !ok {
+			continue
+		}
+		for _, id := range identifiers {
+			if m, ok := id.(map[string]interface{}); ok {
+				sys, _ := m["system"].(string)
+				val, _ := m["value"].(string)
+				if sys == "urn:oid:2.16.484.1.1" && val != "" {
+					return val
+				}
+			}
+		}
+	}
+	return ""
 }
