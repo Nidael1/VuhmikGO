@@ -516,3 +516,153 @@ Los 7 tenants existentes tenían `export_shader_key='export_none'` y `tenant_ext
 
 ### Fuera de alcance
 - Core, migraciones, UI, endpoints.
+
+---
+
+## Issue #212 — IPS Bundle FHIR R4 como formato canónico de export
+
+**Rama:** `issue/212-ips-fhir-export`
+**Commit:** `8dbe78a`
+**Merge a main:** `473f4fe`
+**Capa:** Shaders. No toca Core ni migraciones.
+**ADR:** ADR-0010
+
+### Problema
+El export JSON producía un dump plano de ExportData. El export XML usaba el esquema CDA propio (ADR-0007 legado). Ninguno era IPS/FHIR R4.
+
+### Solución
+- `internal/shaders/ips_bundle.go` (nuevo): `IPSBundle`, `BuildIPSBundle`, `MarshalIPSBundleJSON`, `MarshalIPSBundleXML`.
+- `legal_export.go`: `GenerateExport` ahora produce IPS Bundle JSON.
+- `legal_export_xml.go`: `GenerateExportXML` ahora produce IPS Bundle XML. El esquema CDA propio queda como `generateExportXMLLegacy` deprecado.
+
+### Archivos involucrados
+- `internal/shaders/ips_bundle.go` (nuevo)
+- `internal/shaders/legal_export.go`
+- `internal/shaders/legal_export_xml.go`
+
+### Fuera de alcance
+- Core, migraciones, UI, endpoints. Las secciones IPS de módulos específicos se agregan en issues posteriores.
+
+---
+
+## Issue #213 — Audit Package ZIP síncrono por paciente
+
+**Rama:** `issue/213-audit-package-zip`
+**Commit:** `981a4e3`
+**Merge a main:** `a9ed7fe`
+**Capa:** Shaders / Delivery / API. No toca Core.
+**ADR:** ADR-0027 (nuevo)
+
+### Problema
+No existía endpoint para exportar el expediente completo de un paciente como paquete auditable. No había ADR que autorizara ZIP síncrono en v1.
+
+### Solución
+- `docs/adr/ADR-0027-audit-package-zip-sync.md`: ZIP síncrono en v1, en memoria, sin persistencia. Límite: un paciente a la vez.
+- `internal/shaders/audit_zip.go` (nuevo): `BuildAuditPackageZIP`, estructura `manifest.json + ips/ + evidence/ + hashes/`.
+- `patient_handlers.go`: `HandlePatientExportZIP` — `GET /api/v1/patients/:id/export/zip`.
+- `router.go`: `case "export/zip"`.
+
+### Archivos involucrados
+- `docs/adr/ADR-0027-audit-package-zip-sync.md` (nuevo)
+- `internal/shaders/audit_zip.go` (nuevo)
+- `internal/delivery/http/api/patient_handlers.go`
+- `internal/delivery/http/api/router.go`
+
+### Fuera de alcance
+- Sistema de jobs asíncronos (requiere ADR posterior). Core, UI.
+
+---
+
+## Issue #214 — Módulo de diagnósticos CIE-10 + IPS Condition
+
+**Rama:** `issue/214-diagnosticos-cie10`
+**Commit:** `acf3ffa`
+**Merge a main:** `807f14f`
+**Capa:** Shaders / API. Migración en issue #215.
+**ADR:** ADR-0013
+
+### Problema
+El módulo de diagnósticos estructurados (ADR-0013) no estaba implementado. No existía shader, handler ni proyector IPS para diagnósticos CIE-10.
+
+### Solución
+- `diagnosis_shader.go`: `DiagnosisContent`, `ValidateDiagnosisContent`, `BuildDiagnosisBlob`.
+- `ips_diagnosis_export.go`: `IPSCondition`, `ProjectDiagnosisToIPS`, `ExportDiagnosisAsIPS`.
+- `diagnosis_handlers.go`: `HandleDiagnosisCreate` y `HandleDiagnosisListByPatient`.
+- `router.go`: `case "diagnoses"`.
+
+### Archivos involucrados
+- `internal/shaders/diagnosis_shader.go` (nuevo)
+- `internal/shaders/ips_diagnosis_export.go` (nuevo)
+- `internal/delivery/http/api/diagnosis_handlers.go` (nuevo)
+- `internal/delivery/http/api/router.go`
+
+---
+
+## Issue #215 — Fix migración 000022 proyección diagnósticos
+
+**Commit:** `dc56138`
+**Capa:** Base de datos.
+**ADR:** ADR-0013
+
+### Problema
+La migración `000022_diagnosis_projections.up.sql` no se commiteó en el Issue #214.
+
+### Solución
+- Creación y aplicación de `000022_diagnosis_projections.up.sql`: tabla `diagnosis_projections` con índices.
+
+### Archivos involucrados
+- `database/migrations/000022_diagnosis_projections.up.sql` (nuevo)
+
+---
+
+## Issue #216 — Módulo de inmunizaciones + IPS Immunization
+
+**Rama:** `issue/216-inmunizaciones`
+**Commit:** `6e38988`
+**Merge a main:** `122b32e`
+**Capa:** Shaders / API / BD. No toca Core.
+**ADR:** ADR-0014
+
+### Problema
+El módulo de inmunizaciones (ADR-0014) no estaba implementado.
+
+### Solución
+- `immunization_shader.go`: `ImmunizationContent`, `ValidateImmunizationContent`, `BuildImmunizationBlob`.
+- `ips_immunization_export.go`: `IPSImmunization`, `IPSAnnotation`, `ProjectImmunizationToIPS`.
+- `immunization_handlers.go`: `HandleImmunizationCreate` y `HandleImmunizationListByPatient`.
+- `000023_immunization_projections.up.sql`: tabla `immunization_projections`.
+- `router.go`: `case "immunizations"`.
+
+### Archivos involucrados
+- `database/migrations/000023_immunization_projections.up.sql` (nuevo)
+- `internal/delivery/http/api/immunization_handlers.go` (nuevo)
+- `internal/delivery/http/api/router.go`
+- `internal/shaders/immunization_shader.go` (nuevo)
+- `internal/shaders/ips_immunization_export.go` (nuevo)
+
+---
+
+## Issue #217 — Módulo de resultados de laboratorio + IPS Observation
+
+**Rama:** `issue/217-laboratorio`
+**Commit:** `672dbc4`
+**Merge a main:** `ce2dd15`
+**Capa:** Shaders / API / BD. No toca Core.
+**ADR:** ADR-0015
+
+### Problema
+El módulo de resultados de laboratorio (ADR-0015) no estaba implementado.
+
+### Solución
+- `lab_result_shader.go`: `LabResultContent`, `ValidateLabResultContent`, `BuildLabResultBlob`.
+- `ips_lab_result_export.go`: `IPSObservation`, `ProjectLabResultToIPS`, `ExportLabResultAsIPS`.
+- `lab_result_handlers.go`: `HandleLabResultCreate` y `HandleLabResultListByPatient`.
+- `000024_lab_result_projections.up.sql`: tabla `lab_result_projections`.
+- `router.go`: `case "lab-results"`.
+
+### Archivos involucrados
+- `database/migrations/000024_lab_result_projections.up.sql` (nuevo)
+- `internal/delivery/http/api/lab_result_handlers.go` (nuevo)
+- `internal/delivery/http/api/router.go`
+- `internal/shaders/ips_lab_result_export.go` (nuevo)
+- `internal/shaders/lab_result_shader.go` (nuevo)
