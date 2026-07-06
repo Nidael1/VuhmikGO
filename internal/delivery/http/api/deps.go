@@ -24,6 +24,7 @@ type Deps struct {
 	ConsultationService          *application.ConsultationService
 	ConsultationProjectionRepo   ports.ConsultationProjectionRepository
 	TenantRepo                   ports.TenantRepository
+	VendorRepo                   ports.VendorRepository
 }
 
 var deps Deps
