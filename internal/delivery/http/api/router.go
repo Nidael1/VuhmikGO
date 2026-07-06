@@ -131,6 +131,15 @@ func patientDispatcher(w http.ResponseWriter, r *http.Request) {
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
 		}
+	case "immunizations":
+		switch r.Method {
+		case http.MethodGet:
+			HandleImmunizationListByPatient(w, r)
+		case http.MethodPost:
+			HandleImmunizationCreate(w, r)
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		}
 	case "diagnoses":
 		switch r.Method {
 		case http.MethodGet:
