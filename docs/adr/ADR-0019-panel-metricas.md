@@ -1,7 +1,7 @@
 # ADR-0019 — Panel de metricas de negocio (solo lectura)
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -69,7 +69,7 @@ rige los logs y metricas del sistema (ADR-0001).
 
 Las metricas NO se calculan en vivo en cada request del panel. Se
 precalculan periodicamente por un worker WAR-A y se almacenan en una
-tabla de snapshot `metrics_snapshot`.
+tabla de snapshot metrics_snapshot.
 
 Razon: calcular MRR, churn y conteos sobre toda la BD en cada carga
 del panel escala mal y compite con las consultas del medico. El worker
@@ -81,42 +81,51 @@ sepa que tan reciente es el dato.
 
 ### Rutas del panel de metricas
 
-  GET /admin/metrics                  resumen agregado de la plataforma
-  GET /admin/metrics/accounts         lista de cuentas con conteos
-  GET /admin/metrics/accounts/:id     detalle de una cuenta (conteos)
-  GET /admin/metrics/modules          distribucion de uso por modulo
+  GET /api/v1/admin/metrics                  resumen agregado de la plataforma
+  GET /api/v1/admin/metrics/accounts         lista de cuentas con conteos
+  GET /api/v1/admin/metrics/accounts/:id     detalle de una cuenta (conteos)
+  GET /api/v1/admin/metrics/modules          distribucion de uso por modulo
 
 Todas las rutas requieren is_admin = true (mismo middleware que ADR-0018).
 Ninguna ruta expone PHI.
 
 ### Separacion fisica de handlers
 
-Los handlers de metricas viven en un archivo separado de los de toggles
-(metrics_handlers.go vs admin_handlers.go). Comparten el middleware
-AdminOnly pero no comparten logica ni repositorios de escritura.
+Los handlers de metricas viven en metrics_handlers.go, separado de
+admin_handlers.go. Comparten el middleware AdminMiddleware pero no
+comparten logica ni repositorios de escritura.
 
 ## Dependencias
 
   - ADR-0017: lee TENANT_CAPABILITIES para modulos activos, plan y costo.
-  - ADR-0018: comparte el middleware AdminOnly (is_admin); no comparte
+  - ADR-0018: comparte el middleware AdminMiddleware (is_admin); no comparte
               handlers ni repositorios de escritura.
-  - Workers existentes: el MetricsPurgeWorker (issue #119) ya existe;
-    el worker de precalculo de metricas es un nuevo worker WAR-A.
+  - Workers existentes: MetricsPurgeWorker purga snapshots antiguos;
+    MetricsWorker (WAR-A) precalcula y escribe el snapshot cada 4 horas.
 
 ## Estado de implementacion
 
-  No implementado.
-  Requiere issues de implementacion con:
-    - Migracion: tabla metrics_snapshot (id, calculated_at, payload JSON).
-    - MetricsWorker: calcula MRR, churn, conteos por cuenta y por modulo;
-      inserta snapshot; se ejecuta periodicamente (configurable, default 4h).
-    - Handler GET /admin/metrics: lee ultimo snapshot y lo devuelve.
-    - Handler GET /admin/metrics/accounts: lista de cuentas con conteos
-      desde el snapshot; sin PHI.
-    - Handler GET /admin/metrics/accounts/:id: detalle de una cuenta.
-    - Handler GET /admin/metrics/modules: distribucion de uso por modulo.
-    - Frontend: vista /admin/metrics con dashboard de negocio (MRR, churn,
-      lista de cuentas, distribucion de modulos). Sin datos clinicos.
+  Implementado. Migracion 000013, metrics_worker.go,
+  metrics_purge.go, metrics_handlers.go.
+  Issues #226, #227.
+    - Migracion: tabla metrics_snapshot (id, calculated_at,
+      total_accounts, active_accounts, suspended_accounts,
+      mrr, total_patients, total_notes, total_allergies,
+      total_prescriptions, accounts_detail JSONB,
+      modules_distribution JSONB).
+    - Worker WAR-A: MetricsWorker calcula y escribe snapshot
+      cada 4 horas. Registrado en main.go.
+    - Worker purge: MetricsPurgeWorker elimina snapshots con
+      mas de 30 dias. Registrado en main.go.
+    - Handler GET /api/v1/admin/metrics: resumen agregado.
+    - Handler GET /api/v1/admin/metrics/accounts: lista de
+      cuentas con conteos desde el snapshot.
+    - Handler GET /api/v1/admin/metrics/accounts/:id: detalle
+      de una cuenta.
+    - Handler GET /api/v1/admin/metrics/modules: distribucion
+      de uso por modulo.
+    - Todas las rutas protegidas por AdminMiddleware.
+    - Sin PHI en ninguna ruta.
 
 ## Consecuencias
 
