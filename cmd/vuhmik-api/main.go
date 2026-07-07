@@ -45,6 +45,7 @@ func main() {
 	// Inyectar dependencias
 	capabilityRepo := postgres.NewCapabilityRepository(pool)
 	api.InitDeps(api.Deps{
+		DB: pool,
 		EvidenceRepo:               postgres.NewEvidenceRepository(pool),
 		UserRepo:                   postgres.NewUserRepository(pool),
 		PatientRepo:                postgres.NewPatientRepository(pool),
