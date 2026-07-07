@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
 	infraredis "github.com/Nidael1/VuhmikGO/internal/infrastructure/redis"
 	"github.com/Nidael1/VuhmikGO/internal/observability"
+	"github.com/Nidael1/VuhmikGO/internal/workers"
 )
 
 func main() {
@@ -42,22 +45,22 @@ func main() {
 	// Inyectar dependencias
 	capabilityRepo := postgres.NewCapabilityRepository(pool)
 	api.InitDeps(api.Deps{
-		EvidenceRepo:     postgres.NewEvidenceRepository(pool),
-		UserRepo:         postgres.NewUserRepository(pool),
-		PatientRepo:      postgres.NewPatientRepository(pool),
-		RefreshTokenRepo: postgres.NewRefreshTokenRepository(pool),
-		RedisClient:      redisClient,
-		CapabilityRepo:   capabilityRepo,
-		AllergyService:        application.NewAllergyService(postgres.NewEvidenceRepository(pool), postgres.NewAllergyProjectionRepository(pool), capabilityRepo),
-		AllergyProjectionRepo: postgres.NewAllergyProjectionRepository(pool),
+		EvidenceRepo:               postgres.NewEvidenceRepository(pool),
+		UserRepo:                   postgres.NewUserRepository(pool),
+		PatientRepo:                postgres.NewPatientRepository(pool),
+		RefreshTokenRepo:           postgres.NewRefreshTokenRepository(pool),
+		RedisClient:                redisClient,
+		CapabilityRepo:             capabilityRepo,
+		AllergyService:             application.NewAllergyService(postgres.NewEvidenceRepository(pool), postgres.NewAllergyProjectionRepository(pool), capabilityRepo),
+		AllergyProjectionRepo:      postgres.NewAllergyProjectionRepository(pool),
 		NoteProjectionRepo:         postgres.NewNoteProjectionRepository(pool),
-		PrescriptionProjectionRepo:   postgres.NewPrescriptionProjectionRepository(pool),
-		ConsultationProjectionRepo:   postgres.NewConsultationProjectionRepository(pool),
-		ConsultationService:          application.NewConsultationService(postgres.NewEvidenceRepository(pool), postgres.NewConsultationProjectionRepository(pool)),
+		PrescriptionProjectionRepo: postgres.NewPrescriptionProjectionRepository(pool),
+		ConsultationProjectionRepo: postgres.NewConsultationProjectionRepository(pool),
+		ConsultationService:        application.NewConsultationService(postgres.NewEvidenceRepository(pool), postgres.NewConsultationProjectionRepository(pool)),
 		PrescriptionService:        application.NewPrescriptionService(postgres.NewEvidenceRepository(pool), postgres.NewPrescriptionProjectionRepository(pool), capabilityRepo),
-		ProfileRepo:      postgres.NewProfileRepository(pool),
-		TenantRepo:       postgres.NewTenantRepository(pool),
-		VendorRepo:       postgres.NewVendorRepository(pool),
+		ProfileRepo:                postgres.NewProfileRepository(pool),
+		TenantRepo:                 postgres.NewTenantRepository(pool),
+		VendorRepo:                 postgres.NewVendorRepository(pool),
 	})
 
 	mux := http.NewServeMux()
@@ -68,8 +71,28 @@ func main() {
 	api.RegisterAPIRoutes(mux)
 	handler := delivery.Handler(mux)
 
+	// Contexto global para workers WAR-A
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Workers WAR-A obligatorios
+	go workers.NewBackupWorker().Start(ctx)
+	go workers.NewMetricsPurgeWorker().Start(ctx)
+	go workers.NewMetricsWorker(pool).Start(ctx)
+
+	// Señal de shutdown graceful
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
 	observability.Logger.Info("servidor iniciado", "addr", ":8080")
-	if err := http.ListenAndServe(":8080", handler); err != nil {
-		log.Fatalf("error al iniciar servidor: %v", err)
-	}
+
+	go func() {
+		if err := http.ListenAndServe(":8080", handler); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("error al iniciar servidor: %v", err)
+		}
+	}()
+
+	<-quit
+	observability.Logger.Info("servidor detenido")
+	cancel()
 }
