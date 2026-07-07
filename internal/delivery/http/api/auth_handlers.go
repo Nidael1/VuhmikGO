@@ -158,6 +158,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "TOKEN_ERROR", err.Error())
 		return
 	}
+	logActivity(r.Context(), u.TenantID, "session_start")
 	writeJSON(w, http.StatusOK, map[string]any{"data": resp, "error": nil})
 }
 
@@ -266,5 +267,6 @@ func HandleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	deps.RefreshTokenRepo.Revoke(rt.ID)
+	logActivity(r.Context(), rt.TenantID, "session_end")
 	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]string{"message": "sesion cerrada"}, "error": nil})
 }
