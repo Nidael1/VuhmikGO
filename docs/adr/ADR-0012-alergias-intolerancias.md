@@ -1,7 +1,7 @@
 # ADR-0012 — Modulo de alergias e intolerancias
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -118,21 +118,22 @@ Cada alergia esta vinculada obligatoriamente a un paciente
 
 ## Estado de implementacion
 
-  No implementado en v1.
-  Requiere issues de implementacion con:
-    - Migracion: tabla allergies (id, tenant_id, patient_id,
-      agente, tipo_reaccion, criticidad, certeza, fecha_inicio,
-      notas, estado, hash, created_at, issued_at, voided_at,
-      replaced_by_id).
-    - Shader: validacion de campos minimos antes de emitir.
-    - Handler API: POST /api/v1/allergies/draft,
-      POST /api/v1/allergies/:id/emit,
-      POST /api/v1/allergies/:id/void.
-    - Handler API: GET /api/v1/patients/:id/allergies.
-    - Export IPS: proyeccion a AllergyIntolerance.
-    - Frontend: seccion de alergias en detalle del paciente,
-      visible antes del historial de notas.
-    - Frontend: alergias activas visibles al componer receta.
+  Implementado. Migracion 000011 (allergy_projections),
+  allergy_shader.go, ips_allergy_export.go,
+  allergy_handlers.go, allergy_service.go,
+  allergy_projection_repository.go.
+  Issues #132, #133, #135.
+    - Migracion: tabla allergy_projections en 000011_projections
+      (evidence_id, tenant_id, patient_id, agente,
+      tipo_reaccion, criticidad, certeza, fecha_inicio,
+      notas, state, created_at, issued_at).
+    - Shader: allergy_shader.go — validacion de campos
+      minimos antes de emitir.
+    - Handler API: GET /api/v1/patients/:id/allergies,
+      POST /api/v1/patients/:id/allergies.
+    - Export IPS: proyeccion a AllergyIntolerance
+      en ips_allergy_export.go.
+    - Frontend: allergy.ts, allergyRepository.ts.
 
 ## Consecuencias
 
