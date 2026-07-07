@@ -39,6 +39,8 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/metrics/accounts", JWTMiddleware(AdminMiddleware(HandleAdminMetricsAccounts)))
 	mux.HandleFunc("/api/v1/admin/metrics/modules", JWTMiddleware(AdminMiddleware(HandleAdminMetricsModules)))
 	mux.HandleFunc("/api/v1/admin/metrics/accounts/", JWTMiddleware(AdminMiddleware(HandleAdminMetricsAccountDetail)))
+	mux.HandleFunc("/api/v1/admin/activity", JWTMiddleware(AdminMiddleware(HandleAdminActivity)))
+	mux.HandleFunc("/api/v1/admin/activity/", JWTMiddleware(AdminMiddleware(HandleAdminActivityDetail)))
 	mux.HandleFunc("/api/v1/consultations", JWTMiddleware(consultationBaseDispatcher))
 	mux.HandleFunc("/api/v1/consultations/", JWTMiddleware(consultationDispatcher))
 	mux.HandleFunc("/api/v1/prescriptions", JWTMiddleware(HandlePrescriptionListAll))
