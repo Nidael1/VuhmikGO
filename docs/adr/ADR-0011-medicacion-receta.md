@@ -152,14 +152,15 @@ Cada receta esta vinculada obligatoriamente a un paciente
     "advertencia visible" antes de prescribir un controlado; hoy esa
     advertencia no se muestra. Pendiente de issue propio.
 
-  Gap 2 — Sin verificacion cruzada contra perfil profesional (ADR-0021):
-    El Shader valida que cedula_profesional y especialidad vengan no
-    vacios en el blob de la receta (los teclea el medico al crearla),
-    pero no los contrasta contra professional_profiles del actor
-    autenticado. Un medico puede emitir con datos distintos a los de
-    su perfil registrado. ADR-0021 especifica esta verificacion
-    cruzada como parte de su propia decision; tampoco esta implementada
-    ahi. Pendiente de issue propio en ambos ADR.
+  Gap 2 (descartado tras verificacion mas profunda): se habia reportado
+  ausencia de verificacion cruzada contra professional_profiles. Correccion:
+  si existe. HandlePrescriptionEmit obtiene el perfil real via
+  deps.ProfileRepo.Get(actorID), valida con ValidateMxMedicalProfile
+  (shader mx_medical.go, extra shader de cumplimiento NOM-024, issue #202)
+  antes de tocar el Service, y PrescriptionService.Emit() ademas sobrescribe
+  cedula_profesional/especialidad del blob con los del perfil antes de la
+  validacion final y el rebuild del blob. Doble verificacion: handler +
+  service. Sin gap real aqui.
 
   Medicamentos controlados COFEPRIS: sigue fuera de alcance en v1,
   conforme a la decision original — correcto, no es un gap.

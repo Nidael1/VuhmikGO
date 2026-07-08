@@ -105,17 +105,15 @@ directa en la pantalla. Guardado via PUT /api/v1/profile.
     - Frontend: pantalla de perfil (a confirmar ubicacion exacta en
       menu lateral — no verificado en esta revision).
 
-  Gap — Sin verificacion cruzada en el Shader de receta:
-    La decision especifica textualmente: "El Shader de receta verifica
-    que cedula_profesional y especialidad esten presentes antes de
-    permitir la emision (draft → issued)... Si faltan, el Shader niega".
-    Verificado en prescription_shader.go: la validacion actual
-    (ValidatePrescriptionContent) solo exige que esos campos vengan no
-    vacios en el blob de la receta misma — no consulta
-    professional_profiles del actor autenticado en ningun punto.
-    Este es el mismo gap identificado desde el lado de ADR-0011.
-    Pendiente: conectar prescription_service.go con ProfileRepository
-    para la verificacion cruzada antes de permitir Emit.
+  Gap (descartado tras verificacion mas profunda): se habia reportado que
+  el Shader de receta no verificaba cedula_profesional/especialidad contra
+  professional_profiles. Correccion: si lo hace. HandlePrescriptionEmit
+  (prescription_handlers.go) obtiene el perfil real via
+  deps.ProfileRepo.Get(actorID) y lo valida con ValidateMxMedicalProfile
+  (shader mx_medical.go, issue #202) antes de invocar
+  PrescriptionService.Emit(), que ademas sobrescribe los campos del blob
+  con los del perfil antes de la validacion final. La decision de este
+  ADR se cumple integramente.
 
 ## Consecuencias
 
