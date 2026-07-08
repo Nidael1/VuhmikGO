@@ -146,11 +146,23 @@ Cada receta esta vinculada obligatoriamente a un paciente
     - CapabilityGuard (ADR-0017) conectado en prescription_service.go —
       el modulo respeta fail-closed por tenant.
 
-  Gap 1 — Advertencia de controlados no implementada en UI:
-    El campo `es_controlado` existe en PrescriptionContent (shader) pero
-    no se usa en PrescriptionNewView.vue. La decision original exige
-    "advertencia visible" antes de prescribir un controlado; hoy esa
-    advertencia no se muestra. Pendiente de issue propio.
+  Gap 1 (recategorizado) — Advertencia de controlados: bloqueada por
+  decision regulatoria pendiente, no por falta de UI. El campo
+  `es_controlado` existe en PrescriptionContent (shader) pero no tiene
+  ningun productor de datos: no hay lista de medicamentos controlados
+  COFEPRIS cargada en ningun catalogo, tabla, o archivo del sistema.
+  Verificado: ningun handler ni servicio asigna este campo. Esto no es
+  un descuido — la propia decision original ya lo anticipa: "La lista
+  de controlados y el flujo digital se documentaran en un ADR futuro
+  una vez obtenida la validacion regulatoria". Construir la advertencia
+  visible hoy requeriria una de dos cosas fuera de alcance tecnico:
+  (a) cargar una lista COFEPRIS Grupo II/III sin validacion regulatoria
+  explicita, que es precisamente el riesgo que la decision original
+  busca evitar, o (b) un checkbox autodeclarado por el medico, que no
+  cumple la intencion de la decision (que el sistema detecte y advierta,
+  no que el medico se autoreporte). Pendiente: el ADR futuro mencionado
+  en la decision original, con la lista validada, antes de construir
+  cualquier advertencia en UI.
 
   Gap 2 (descartado tras verificacion mas profunda): se habia reportado
   ausencia de verificacion cruzada contra professional_profiles. Correccion:
