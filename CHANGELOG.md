@@ -4,6 +4,64 @@ Registro de issues ejecutados sobre el Asteroide `crm_ui`. Cada entrada correspo
 
 ---
 
+## Estado agregado por ADR (última actualización: issue #233, 2026-07-08)
+
+Esta tabla es un tablero de estado, no un registro cronológico. Se actualiza cada vez
+que un ADR cambia de estado real (no solo cuando se documenta). Fuente: `docs/adr/*.md`
+más verificación directa contra código en `main`.
+
+| ADR | Tema | Estado | Nota |
+|---|---|---|---|
+| 0001 | Stack Go | ✅ Implementado | — |
+| 0002 | Shaders por país / modo genérico | ✅ Implementado | — |
+| 0003 | Estructura Go idiomática | ✅ Implementado | — |
+| 0004 | Frontend Vue SPA | ✅ Implementado | — |
+| 0005 | JWT auth | ✅ Implementado | — |
+| 0006 | UX fluida / versionado silencioso | ✅ Implementado | — |
+| 0007 | Export clínico XML+JSON | ⚠️ Parcial | Cubierto en la práctica por IPS/FHIR (ADR-0010); no hay implementación dedicada al formato original propuesto |
+| 0008 | Firma digital / integridad | ❌ No implementado | Sin ningún archivo de código correspondiente |
+| 0009 | Traspaso de paciente entre tenants | ✅ Implementado | issues #221, #222 — encabezado del ADR pendiente de actualizar a Aceptado |
+| 0010 | IPS/FHIR como modelo de intercambio | ✅ Implementado | issue #212 |
+| 0011 | Medicación y receta electrónica | ✅ Implementado | proyección ya en producción + IPS MedicationStatement (issue #219) — encabezado del ADR pendiente de actualizar a Aceptado |
+| 0012 | Alergias e intolerancias | ✅ Implementado | issues #132, #133, #135; ADR actualizado a Aceptado en issue #224 |
+| 0013 | Diagnósticos CIE-10 | ✅ Implementado | issues #214, #215 |
+| 0014 | Inmunizaciones | ✅ Implementado | issue #216 |
+| 0015 | Resultados de laboratorio | ✅ Implementado | issue #217 |
+| 0016 | Core agnóstico (content opaco) | ✅ Implementado | — |
+| 0017 | Registro de capacidades por tenant | ✅ Implementado | migración 000009, `capability_repository.go`, `capability_guard.go` — encabezado del ADR pendiente de actualizar a Aceptado |
+| 0018 | Panel de toggles por cuenta | ✅ Implementado | migración 000012 (`is_admin`, `is_suspended`), `admin_handlers.go` — encabezado del ADR pendiente de actualizar a Aceptado |
+| 0019 | Panel de métricas de negocio | ✅ Implementado | issues #226, #227; ADR actualizado a Aceptado en issue #228 |
+| 0020 | Super-admin off-web | ⏸️ Diferido (decisión, no gap) | v1 = seed de `modules` por migración; app interna futura requiere su propio ADR |
+| 0021 | Perfil profesional por rubro | ✅ Implementado | migración 000010, `profile_repository.go`, `profile_handlers.go` — encabezado del ADR pendiente de actualizar a Aceptado |
+| 0022 | CQRS proyecciones de lectura | ✅ Implementado | — |
+| 0023 | Panel de actividad y uso | ✅ Implementado | issues #229, #230, #231; ADR actualizado a Aceptado en issue #232; consumo en frontend en issue #233 |
+| 0024 | Consulta médica | ✅ Implementado | migraciones 000016-000018 |
+| 0025 | Modelo de datos de Tenant | ✅ Implementado | issues #200, #207 |
+| 0026 | Referencia de vendedor en tenant | ✅ Implementado | issue #201; catálogo y handler en issue #220 |
+| 0027 | Audit Package ZIP síncrono | ✅ Implementado | issue #213 |
+| 0028 | Import de IPS Bundle FHIR R4 externo | ✅ Implementado | issue #223 |
+
+### Pendiente de acción documental (no de código)
+Los ADR-0009, ADR-0011, ADR-0017, ADR-0018 y ADR-0021 tienen código ya
+funcional en `main`, pero su encabezado (`## Estado`) todavía dice
+"Propuesto". Falta el mismo tratamiento que se aplicó a ADR-0012, ADR-0019
+y ADR-0023: actualizar el encabezado a Aceptado y completar su sección
+"Estado de implementación" con referencias reales de archivos e issues.
+
+### Pendiente de código real
+- **ADR-0008 (firma digital / integridad):** sin ningún avance. Es el único
+  gap real de código detectado en esta auditoría, no solo de documentación.
+- **ADR-0007 (export XML+JSON):** su alcance original quedó parcialmente
+  absorbido por IPS/FHIR (ADR-0010); requiere decisión explícita — ¿se
+  marca como Superseded por ADR-0010, o sigue vigente con alcance propio?
+
+### Hallazgo colateral (no ADR)
+Falta la migración `000025` en la secuencia numérica (existe `000024` y
+`000026`). Coincide con el caso ya conocido de una rama de
+`allergy_projections` creada, diagnosticada y borrada sin merge.
+
+---
+
 ## Issue A — Jerarquía visual de secciones en expediente del paciente
 
 **Rama:** `issue/crm-patient-detail-visual-hierarchy`
@@ -666,3 +724,276 @@ El módulo de resultados de laboratorio (ADR-0015) no estaba implementado.
 - `internal/delivery/http/api/router.go`
 - `internal/shaders/ips_lab_result_export.go` (nuevo)
 - `internal/shaders/lab_result_shader.go` (nuevo)
+
+---
+
+## Issue #219 — Proyector IPS MedicationStatement para recetas
+
+**Commit:** `783108f`
+**Merge a main:** `5c6900a`
+**Capa:** Shaders. No toca Core.
+**ADR:** ADR-0011
+
+### Problema
+El módulo de recetas (`prescription_projections`, ya en producción desde antes) no tenía proyector a IPS/FHIR R4. El export legal de un paciente con recetas emitidas no incluía `MedicationStatement`.
+
+### Solución
+- `ips_prescription_export.go` (nuevo): proyector de `prescription_projections` a `MedicationStatement` conforme perfil IPS.
+
+### Archivos involucrados
+- `internal/shaders/ips_prescription_export.go` (nuevo)
+
+---
+
+## Issue #220 — vendor_ref: handler y catálogo de vendedores
+
+**Commit:** `19baa41`
+**Merge a main:** `7d492b7`
+**Capa:** Aplicación / Infraestructura / API.
+**ADR:** ADR-0026
+
+### Problema
+La columna `vendor_ref` (migración `000020_create_vendors.up.sql`, ya aplicada) no tenía forma de asignarse ni consultarse desde la API administrativa.
+
+### Solución
+- `vendor_repository.go` (puerto + adaptador Postgres, nuevos): catálogo de vendedores.
+- `admin_handlers.go`: endpoint para asignar `vendor_ref` a un tenant.
+- `vendor_handlers.go` (nuevo): `SetVendorRef`.
+- `tenant_repository.go` (puerto + adaptador): soporte de lectura/escritura de `vendor_ref`.
+
+### Archivos involucrados
+- `cmd/vuhmik-api/main.go`
+- `internal/application/ports/tenant_repository.go`
+- `internal/application/ports/vendor_repository.go` (nuevo)
+- `internal/delivery/http/api/admin_handlers.go`
+- `internal/delivery/http/api/deps.go`
+- `internal/delivery/http/api/router.go`
+- `internal/delivery/http/api/vendor_handlers.go` (nuevo)
+- `internal/infrastructure/postgres/tenant_repository.go`
+- `internal/infrastructure/postgres/vendor_repository.go` (nuevo)
+
+---
+
+## Issue #221 — Traspaso de paciente: import + FindByCURP
+
+**Commit:** `b2f5f0b`
+**Merge a main:** `6db2446`
+**Capa:** Delivery / Infraestructura. No toca Core.
+**ADR:** ADR-0009
+
+### Problema
+ADR-0009 (traspaso de paciente entre tenants) no tenía implementación. No existía endpoint de import ni búsqueda de paciente por CURP en el tenant destino.
+
+### Solución
+- `patient_import_handler.go` (nuevo): `POST /api/v1/patients/import` — creación de evidencia en estado `issued` a partir de un paquete de traspaso.
+- `patient_repository.go`: se agregó `FindByCURP` para localizar al paciente destino antes de importar.
+
+### Archivos involucrados
+- `internal/delivery/http/api/patient_import_handler.go` (nuevo)
+- `internal/delivery/http/api/router.go`
+- `internal/infrastructure/postgres/patient_repository.go`
+
+---
+
+## Issue #222 — Export de paquete de traspaso compatible con import
+
+**Commit:** `9714142`
+**Merge a main:** `2773d1e`
+**Capa:** Delivery. No toca Core.
+**ADR:** ADR-0009
+
+### Problema
+El endpoint de import (issue #221) no tenía contraparte de export: no existía forma de generar, desde el tenant origen, el paquete de traspaso que el import del issue #221 pudiera consumir.
+
+### Solución
+- `patient_transfer_export_handler.go` (nuevo): genera el paquete de traspaso en el formato esperado por `patient_import_handler.go`.
+
+### Archivos involucrados
+- `internal/delivery/http/api/patient_transfer_export_handler.go` (nuevo)
+- `internal/delivery/http/api/router.go`
+
+---
+
+## Issue #223 — Importación de IPS Bundle FHIR R4 externo (IMSS/ISSSTE)
+
+**Commit:** `a5a6d80`
+**Merge a main:** `cff2fd5`
+**Capa:** Delivery. No toca Core.
+**ADR:** ADR-0028 (nuevo)
+
+### Problema
+El import de paciente (issue #221) solo aceptaba el formato propio `vuhmik-transfer-v1`. No había forma de recibir un expediente externo en formato IPS/FHIR R4 estándar (IMSS, ISSSTE u otro emisor).
+
+### Solución
+- `docs/adr/ADR-0028-ips-fhir-external-import.md` (nuevo): acepta cualquier IPS Bundle FHIR R4; recursos no reconocidos se preservan como blob `fhir_unknown` con su contenido íntegro; el origen se marca (`fhir-imss`, `fhir-issste`, `fhir-external`); requiere CURP pre-registrado.
+- `ips_external_parser.go` (nuevo): parser del Bundle FHIR R4 externo.
+- `patient_import_handler.go`: detección automática de formato por `resourceType: "Bundle"` vs. `format: "vuhmik-transfer-v1"`.
+
+### Archivos involucrados
+- `docs/adr/ADR-0028-ips-fhir-external-import.md` (nuevo)
+- `internal/delivery/http/api/ips_external_parser.go` (nuevo)
+- `internal/delivery/http/api/patient_import_handler.go`
+
+---
+
+## Issue #224 — ADR-0012 → Aceptado (alergias e intolerancias)
+
+**Commit:** `01bc58e`
+**Capa:** Documentación. Sin cambios de código.
+**ADR:** ADR-0012
+
+### Problema
+ADR-0012 documentaba el módulo de alergias como decisión, pero no reflejaba que la implementación (migración `000011_projections`, `allergy_shader.go`, `ips_allergy_export.go`, `allergy_handlers.go`, `allergy_service.go`) ya estaba en `main` desde los issues #132, #133 y #135.
+
+### Solución
+- `ADR-0012-alergias-intolerancias.md`: estado actualizado a Aceptado, con sección "Estado de implementación" documentando los archivos reales.
+
+### Archivos involucrados
+- `docs/adr/ADR-0012-alergias-intolerancias.md`
+
+---
+
+## Issue #226 — Worker de métricas (WAR-A)
+
+**Commit:** `bc3fdd4`
+**Capa:** Workers. No toca Core ni Shaders.
+**ADR:** ADR-0019
+
+### Problema
+ADR-0019 (panel de métricas de negocio) no tenía worker que calculara y persistiera snapshots. La tabla `metrics_snapshot` (migración `000013`, ya existente) no se poblaba.
+
+### Solución
+- `metrics_worker.go` (nuevo): `MetricsWorker` calcula snapshot cada 4 horas (cuentas totales/activas/suspendidas, MRR, pacientes, notas, alergias, recetas, distribución de módulos) y lo persiste; `MetricsPurgeWorker` elimina snapshots con más de 30 días.
+- `main.go`: registro de ambos workers con apagado ordenado ante señales del sistema operativo (WAR-A).
+
+### Archivos involucrados
+- `cmd/vuhmik-api/main.go`
+- `internal/workers/metrics_worker.go` (nuevo)
+
+---
+
+## Issue #227 — Handlers GET de métricas de administración
+
+**Commit:** `219a577`
+**Capa:** Delivery / API. No toca Core.
+**ADR:** ADR-0019
+
+### Problema
+El snapshot de métricas (issue #226) no tenía forma de consultarse desde la API. No existían endpoints de solo lectura para el panel de administración.
+
+### Solución
+- `metrics_handlers.go` (nuevo): `HandleAdminMetrics` (resumen agregado), `HandleAdminMetricsAccounts` (lista de cuentas con conteos), `HandleAdminMetricsAccountDetail` (detalle de una cuenta), `HandleAdminMetricsModules` (distribución de módulos).
+- `deps.go`: se agregó `deps.DB *pgxpool.Pool` para que los handlers de métricas consulten directamente el snapshot.
+- `router.go`: rutas `/api/v1/admin/metrics*` protegidas por `AdminMiddleware`.
+
+### Archivos involucrados
+- `cmd/vuhmik-api/main.go`
+- `internal/delivery/http/api/deps.go`
+- `internal/delivery/http/api/metrics_handlers.go` (nuevo)
+- `internal/delivery/http/api/router.go`
+
+---
+
+## Issue #228 — ADR-0019 → Aceptado (panel de métricas)
+
+**Commit:** `06e4bda`
+**Capa:** Documentación. Sin cambios de código.
+**ADR:** ADR-0019
+
+### Problema
+ADR-0019 no reflejaba la implementación real completada en los issues #226 y #227.
+
+### Solución
+- `ADR-0019-panel-metricas.md`: estado actualizado a Aceptado, con sección "Estado de implementación" documentando migración, workers y handlers reales.
+
+### Archivos involucrados
+- `docs/adr/ADR-0019-panel-metricas.md`
+
+---
+
+## Issue #229 — Migración activity_snapshot (000026)
+
+**Commit:** `68f9eb6`
+**Capa:** Base de datos.
+**ADR:** ADR-0023 (nuevo)
+
+### Problema
+ADR-0023 (panel de actividad y uso) requería una tabla de snapshot por tenant y periodo, distinta de `metrics_snapshot` (ADR-0019, que es global). No existía tabla para este propósito.
+
+### Solución
+- `000026_activity_snapshot.up.sql` (nuevo): tabla `activity_snapshot` (PK compuesta `tenant_id, period`) con conteos de notas, alergias, recetas, exportaciones, pacientes y sesiones por mes, más índices por tenant/periodo.
+
+### Archivos involucrados
+- `database/migrations/000026_activity_snapshot.up.sql` (nuevo)
+
+---
+
+## Issue #230 — activity_log helper + eventos de sesión
+
+**Commit:** `6c582fa`
+**Capa:** Delivery. No toca Core.
+**ADR:** ADR-0023
+
+### Problema
+No existía forma de registrar eventos de actividad (inicio/fin de sesión) sin PHI para alimentar `activity_snapshot` (issue #229).
+
+### Solución
+- `activity_log.go` (nuevo): helper `logActivity(ctx, tenantID, eventType)` — inserta en `activity_log` solo `tenant_id`, tipo de evento y timestamp; un fallo de escritura no bloquea el flujo principal.
+- `auth_handlers.go`: se agregaron eventos `session_start` en `HandleLogin` y `session_end` en `HandleLogout`.
+
+### Archivos involucrados
+- `internal/delivery/http/api/activity_log.go` (nuevo)
+- `internal/delivery/http/api/auth_handlers.go`
+
+---
+
+## Issue #231 — Handlers GET de actividad de administración
+
+**Commit:** `ec710ec`
+**Capa:** Delivery / API. No toca Core.
+**ADR:** ADR-0023
+
+### Problema
+Los eventos registrados (issue #230) y el snapshot (issue #229) no tenían forma de consultarse desde la API administrativa.
+
+### Solución
+- `activity_handlers.go` (nuevo): `HandleAdminActivity` (`GET /api/v1/admin/activity` — lista de tenants con conteos agregados desde `activity_snapshot`), `HandleAdminActivityDetail` (`GET /api/v1/admin/activity/:tenant` — detalle por mes, últimos 12 meses).
+- `router.go`: rutas protegidas por `AdminMiddleware`.
+
+### Archivos involucrados
+- `internal/delivery/http/api/activity_handlers.go` (nuevo)
+- `internal/delivery/http/api/router.go`
+
+---
+
+## Issue #232 — ADR-0023 → Aceptado (panel de actividad)
+
+**Commit:** `a9fc20b`
+**Capa:** Documentación. Sin cambios de código.
+**ADR:** ADR-0023
+
+### Problema
+ADR-0023 no reflejaba la implementación real completada en los issues #229, #230 y #231.
+
+### Solución
+- `ADR-0023-panel-actividad.md`: estado actualizado a Aceptado, con sección "Estado de implementación" documentando migraciones, helper de log y handlers reales.
+
+### Archivos involucrados
+- `docs/adr/ADR-0023-panel-actividad.md`
+
+---
+
+## Issue #233 — Panel admin: métricas + actividad + navegación lateral
+
+**Commit:** `d682f70`
+**Capa:** Asteroide (frontend admin). No toca Core ni Shaders.
+**ADR:** ADR-0019, ADR-0023
+
+### Problema
+Los endpoints de métricas (#227) y actividad (#231) no tenían consumo en el frontend. El panel de administración no mostraba esta información ni tenía navegación hacia ella.
+
+### Solución
+- `AdminView.vue`: se agregaron las secciones de Métricas y Actividad al panel de administración, con navegación lateral hacia ambas.
+
+### Archivos involucrados
+- `frontend/src/presentation/views/AdminView.vue`
