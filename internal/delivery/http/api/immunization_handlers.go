@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/Nidael1/VuhmikGO/internal/core/evidence"
 	"github.com/Nidael1/VuhmikGO/internal/shaders"
@@ -48,6 +47,7 @@ func toImmunizationItem(e evidence.Evidence, patientID string) ImmunizationItem 
 }
 
 // HandleImmunizationCreate crea un registro de vacuna para un paciente.
+// Delega en ImmunizationService (Handler -> Service -> Shader/CapabilityGuard -> Core).
 // POST /api/v1/patients/:id/immunizations
 func HandleImmunizationCreate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -72,40 +72,22 @@ func HandleImmunizationCreate(w http.ResponseWriter, r *http.Request) {
 		patientID = req.PatientID
 	}
 	content := shaders.ImmunizationContent{
-		Vacuna: strings.TrimSpace(req.Vacuna),
+		Vacuna:          strings.TrimSpace(req.Vacuna),
 		FechaAplicacion: strings.TrimSpace(req.FechaAplicacion),
-		Lote: req.Lote, Dosis: req.Dosis, Via: req.Via,
+		Lote:            req.Lote, Dosis: req.Dosis, Via: req.Via,
 		AplicadaPor: req.AplicadaPor, Notas: req.Notas,
 	}
-	if err := shaders.ValidateImmunizationContent(content); err != nil {
-		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", err.Error())
-		return
-	}
-	blob, err := shaders.BuildImmunizationBlob(content)
+
+	e, err := deps.ImmunizationService.Create(tenantID, actorID, patientID, content)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al construir blob")
-		return
-	}
-	now := time.Now().UTC()
-	id := "imm-" + now.Format("20060102150405.000")
-	e := evidence.Evidence{
-		ID: id, TenantID: tenantID, SubjectRef: patientID,
-		Content: blob, State: evidence.StateDraft, CreatedAt: now,
-	}
-	if err := deps.EvidenceRepo.Create(e); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear vacuna")
-		return
-	}
-	e.State = evidence.StateIssued
-	e.IssuedAt = &now
-	if err := deps.EvidenceRepo.Update(tenantID, e); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al emitir vacuna")
+		writeError(w, http.StatusUnprocessableEntity, "IMMUNIZATION_ERROR", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"data": toImmunizationItem(e, patientID), "error": nil})
 }
 
 // HandleImmunizationListByPatient retorna las vacunas de un paciente.
+// Lee de immunization_projections via ImmunizationService (ADR-0022).
 // GET /api/v1/patients/:id/immunizations
 func HandleImmunizationListByPatient(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -123,24 +105,49 @@ func HandleImmunizationListByPatient(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "patient_id requerido")
 		return
 	}
-	allEvidence, err := deps.EvidenceRepo.FindAll(tenantID)
+
+	projs, err := deps.ImmunizationService.ListByPatient(tenantID, patientID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al obtener vacunas")
 		return
 	}
-	items := make([]ImmunizationItem, 0)
-	for _, e := range allEvidence {
-		if e.SubjectRef != patientID {
-			continue
-		}
-		var c shaders.ImmunizationContent
-		if err := shaders.ParseImmunizationBlob(e.Content, &c); err != nil {
-			continue
-		}
-		if c.Type != "immunization" || e.State == evidence.StateVoided {
-			continue
-		}
-		items = append(items, toImmunizationItem(e, patientID))
+	items := make([]ImmunizationItem, 0, len(projs))
+	for _, p := range projs {
+		items = append(items, ImmunizationItem{
+			ID: p.EvidenceID, TenantID: p.TenantID, PatientID: p.PatientID,
+			Vacuna: p.Vacuna, FechaAplicacion: p.FechaAplicacion,
+			Lote: p.Lote, Dosis: p.Dosis, Via: p.Via,
+			AplicadaPor: p.AplicadaPor, Notas: p.Notas,
+			State: p.State,
+		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"items": items}, "error": nil})
+}
+
+// HandleImmunizationVoid anula una inmunización. Corrección via void (ADR-0006).
+// POST /api/v1/immunizations/:id/void
+func HandleImmunizationVoid(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := TenantIDFromContext(r)
+	actorID := ActorIDFromContext(r)
+	if tenantID == "" || actorID == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+	immunizationID := strings.TrimPrefix(r.URL.Path, "/api/v1/immunizations/")
+	immunizationID = strings.TrimSuffix(immunizationID, "/void")
+	if immunizationID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "immunization id requerido")
+		return
+	}
+
+	voided, err := deps.ImmunizationService.Void(tenantID, actorID, immunizationID)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "IMMUNIZATION_ERROR", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": toItem(voided), "error": nil})
 }

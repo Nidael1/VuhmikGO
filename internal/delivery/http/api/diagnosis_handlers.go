@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/Nidael1/VuhmikGO/internal/core/evidence"
 	"github.com/Nidael1/VuhmikGO/internal/shaders"
@@ -46,6 +45,7 @@ func toDiagnosisItem(e evidence.Evidence, patientID string) DiagnosisItem {
 }
 
 // HandleDiagnosisCreate crea un diagnóstico para un paciente.
+// Delega en DiagnosisService (Handler -> Service -> Shader/CapabilityGuard -> Core).
 // POST /api/v1/patients/:id/diagnoses
 func HandleDiagnosisCreate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -73,38 +73,20 @@ func HandleDiagnosisCreate(w http.ResponseWriter, r *http.Request) {
 	content := shaders.DiagnosisContent{
 		Descripcion: strings.TrimSpace(req.Descripcion),
 		CodigoCIE10: strings.TrimSpace(req.CodigoCIE10),
-		Tipo: req.Tipo, EstadoProblema: req.EstadoProblema,
+		Tipo:        req.Tipo, EstadoProblema: req.EstadoProblema,
 		FechaInicio: req.FechaInicio, Notas: req.Notas,
 	}
-	if err := shaders.ValidateDiagnosisContent(content); err != nil {
-		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", err.Error())
-		return
-	}
-	blob, err := shaders.BuildDiagnosisBlob(content)
+
+	e, err := deps.DiagnosisService.Create(tenantID, actorID, patientID, content)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al construir blob")
-		return
-	}
-	now := time.Now().UTC()
-	id := "diag-" + now.Format("20060102150405.000")
-	e := evidence.Evidence{
-		ID: id, TenantID: tenantID, SubjectRef: patientID,
-		Content: blob, State: evidence.StateDraft, CreatedAt: now,
-	}
-	if err := deps.EvidenceRepo.Create(e); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear diagnostico")
-		return
-	}
-	e.State = evidence.StateIssued
-	e.IssuedAt = &now
-	if err := deps.EvidenceRepo.Update(tenantID, e); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al emitir diagnostico")
+		writeError(w, http.StatusUnprocessableEntity, "DIAGNOSIS_ERROR", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"data": toDiagnosisItem(e, patientID), "error": nil})
 }
 
 // HandleDiagnosisListByPatient retorna los diagnósticos activos de un paciente.
+// Lee de diagnosis_projections via DiagnosisService (ADR-0022).
 // GET /api/v1/patients/:id/diagnoses
 func HandleDiagnosisListByPatient(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -122,24 +104,49 @@ func HandleDiagnosisListByPatient(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "patient_id requerido")
 		return
 	}
-	allEvidence, err := deps.EvidenceRepo.FindAll(tenantID)
+
+	projs, err := deps.DiagnosisService.ListByPatient(tenantID, patientID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al obtener diagnosticos")
 		return
 	}
-	items := make([]DiagnosisItem, 0)
-	for _, e := range allEvidence {
-		if e.SubjectRef != patientID {
-			continue
-		}
-		var c shaders.DiagnosisContent
-		if err := shaders.ParseDiagnosisBlob(e.Content, &c); err != nil {
-			continue
-		}
-		if c.Type != "diagnosis" || e.State == evidence.StateVoided {
-			continue
-		}
-		items = append(items, toDiagnosisItem(e, patientID))
+	items := make([]DiagnosisItem, 0, len(projs))
+	for _, p := range projs {
+		items = append(items, DiagnosisItem{
+			ID: p.EvidenceID, TenantID: p.TenantID, PatientID: p.PatientID,
+			Descripcion: p.Descripcion, CodigoCIE10: p.CodigoCIE10,
+			Tipo: p.Tipo, EstadoProblema: p.EstadoProblema,
+			FechaInicio: p.FechaInicio, Notas: p.Notas,
+			State: p.State,
+		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"items": items}, "error": nil})
+}
+
+// HandleDiagnosisVoid anula un diagnóstico. Corrección via void (ADR-0006).
+// POST /api/v1/diagnoses/:id/void
+func HandleDiagnosisVoid(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := TenantIDFromContext(r)
+	actorID := ActorIDFromContext(r)
+	if tenantID == "" || actorID == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+	diagnosisID := strings.TrimPrefix(r.URL.Path, "/api/v1/diagnoses/")
+	diagnosisID = strings.TrimSuffix(diagnosisID, "/void")
+	if diagnosisID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "diagnosis id requerido")
+		return
+	}
+
+	voided, err := deps.DiagnosisService.Void(tenantID, actorID, diagnosisID)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "DIAGNOSIS_ERROR", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": toItem(voided), "error": nil})
 }

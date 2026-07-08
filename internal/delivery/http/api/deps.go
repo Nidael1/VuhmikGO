@@ -24,6 +24,12 @@ type Deps struct {
 	NoteProjectionRepo         ports.NoteProjectionRepository
 	PrescriptionService        *application.PrescriptionService
 	PrescriptionProjectionRepo ports.PrescriptionProjectionRepository
+	DiagnosisService           *application.DiagnosisService
+	DiagnosisProjectionRepo    ports.DiagnosisProjectionRepository
+	ImmunizationService        *application.ImmunizationService
+	ImmunizationProjectionRepo ports.ImmunizationProjectionRepository
+	LabResultService           *application.LabResultService
+	LabResultProjectionRepo    ports.LabResultProjectionRepository
 	ConsultationService        *application.ConsultationService
 	ConsultationProjectionRepo ports.ConsultationProjectionRepository
 	TenantRepo                 ports.TenantRepository

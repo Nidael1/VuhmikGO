@@ -29,6 +29,9 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/patients", JWTMiddleware(patientsBaseDispatcher))
 	mux.HandleFunc("/api/v1/patients/", JWTMiddleware(patientDispatcher))
 	mux.HandleFunc("/api/v1/allergies/", JWTMiddleware(allergyDispatcher))
+	mux.HandleFunc("/api/v1/diagnoses/", JWTMiddleware(diagnosisDispatcher))
+	mux.HandleFunc("/api/v1/immunizations/", JWTMiddleware(immunizationDispatcher))
+	mux.HandleFunc("/api/v1/lab-results/", JWTMiddleware(labResultDispatcher))
 	mux.HandleFunc("/api/v1/profile", JWTMiddleware(profileDispatcher))
 	mux.HandleFunc("/api/v1/admin/vendors", JWTMiddleware(HandleVendorList))
 	mux.HandleFunc("/api/v1/admin/tenants", JWTMiddleware(AdminMiddleware(HandleAdminTenants)))
@@ -280,6 +283,42 @@ func allergyDispatcher(w http.ResponseWriter, r *http.Request) {
 	parts := strings.SplitN(path, "/", 2)
 	if len(parts) == 2 && parts[1] == "void" {
 		HandleAllergyVoid(w, r)
+		return
+	}
+	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+}
+
+// diagnosisDispatcher enruta requests de diagnosticos con ID dinamico.
+// Soporta: /api/v1/diagnoses/:id/void
+func diagnosisDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/diagnoses/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 2 && parts[1] == "void" {
+		HandleDiagnosisVoid(w, r)
+		return
+	}
+	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+}
+
+// immunizationDispatcher enruta requests de inmunizaciones con ID dinamico.
+// Soporta: /api/v1/immunizations/:id/void
+func immunizationDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/immunizations/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 2 && parts[1] == "void" {
+		HandleImmunizationVoid(w, r)
+		return
+	}
+	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+}
+
+// labResultDispatcher enruta requests de resultados de laboratorio con ID dinamico.
+// Soporta: /api/v1/lab-results/:id/void
+func labResultDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/lab-results/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 2 && parts[1] == "void" {
+		HandleLabResultVoid(w, r)
 		return
 	}
 	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
