@@ -1,7 +1,7 @@
 # ADR-0017 — Registro de capacidades por tenant
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -99,20 +99,36 @@ seed en la migracion inicial de MODULES.
 
 ## Estado de implementacion
 
-  No implementado.
-  Requiere issues de implementacion con:
-    - Migracion: tabla modules (id, rubro, publication_status, descripcion,
-      created_at). Seed con modulos del rubro medico publicados.
-    - Migracion: tabla tenant_capabilities (tenant_id PK, module_id PK FK,
-      active bool default false, plan text, costo numeric, updated_at).
-    - Puerto CapabilityRepository con metodos:
-        IsPublished(moduleID, rubro) bool
-        IsActive(tenantID, moduleID) bool
-        ListByTenant(tenantID) []Capability
-    - Adaptador PostgreSQL del puerto.
-    - Integracion en el Shader: verificar IsPublished + IsActive antes
-      de procesar cualquier request de modulo clinico.
-    - Tests: verificar que fail-closed funciona (sin registro = denegado).
+  Implementado el mecanismo; cobertura parcial entre modulos (ver gap).
+  Migracion 000009_modules_capabilities (tablas modules y
+  tenant_capabilities, con seed de los 6 modulos del rubro medico).
+  capability_repository.go (puerto + adaptador Postgres).
+  capability_guard.go (Shader wrapper fail-closed).
+
+    - Migracion 000009: tabla modules (id, rubro, publication_status,
+      descripcion, created_at) + tabla tenant_capabilities (tenant_id,
+      module_id PK compuesta, active default false, plan, costo,
+      updated_at). Seed: note, prescription, allergy, diagnosis,
+      immunization, lab_result — todos publication_status = 'publicado'.
+    - Puerto ports.CapabilityRepository: IsPublished(moduleID, rubro),
+      IsActive(tenantID, moduleID), Activate(...), Deactivate(...),
+      ListByTenant(tenantID, rubro) — superset de lo especificado.
+    - CapabilityGuard: wrapper de Shader en shaders/capability_guard.go.
+      Evaluate() verifica IsPublished y luego IsActive antes de delegar
+      al Shader interno; deniega si el repositorio falla (fail-closed
+      real, no solo declarado).
+
+  Gap — Cobertura parcial: CapabilityGuard solo esta conectado en
+  prescription_service.go y allergy_service.go. Los modulos diagnosis,
+  immunization y lab_result no tienen capa Service propia (van de
+  handler a shader directo) y por lo tanto no pasan por la compuerta
+  de capacidades. En la practica, hoy esos tres modulos estan
+  accesibles para cualquier tenant autenticado sin verificar
+  tenant_capabilities, aunque la tabla y el seed los declaren
+  publicados. Pendiente: crear Service + CapabilityGuard para los
+  tres modulos restantes, o decidir explicitamente que la compuerta
+  aplica solo a prescription/allergy en v1 (requeriria actualizar
+  esta decision).
 
 ## Consecuencias
 

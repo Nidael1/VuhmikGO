@@ -1,7 +1,7 @@
 # ADR-0021 — Perfil profesional por rubro
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-27
@@ -89,17 +89,33 @@ directa en la pantalla. Guardado via PUT /api/v1/profile.
 
 ## Estado de implementacion
 
-  No implementado.
-  Requiere issues de implementacion:
-    - Migracion 000010: tabla professional_profiles + creacion automatica
-      de perfil vacio al registrar usuario (rubro medicine por defecto).
-    - Puerto ProfileRepository: Get(userID) y Update(userID, data).
-    - Adaptador PostgreSQL del puerto.
-    - Handlers GET /profile y PUT /profile.
-    - Auth/me actualizado para incluir datos del perfil.
-    - Frontend: pantalla de perfil en menu lateral.
-    - Shader de receta (ADR-0011): verificacion de cedula + especialidad
-      antes de emision.
+  Implementado el perfil en si; pendiente la integracion con receta
+  que la decision exige explicitamente (ver gap).
+  Migracion 000010_professional_profiles. profile_repository.go
+  (puerto + adaptador Postgres). profile_handlers.go.
+
+    - Migracion 000010: tabla professional_profiles (user_id, tenant_id,
+      rubro default 'medicine', nombre_completo, cedula_profesional,
+      especialidad, datos_extra JSONB, created_at, updated_at,
+      PK user_id+rubro).
+    - Puerto ports.ProfileRepository: Get(userID) y Upsert(p Profile) —
+      Upsert cubre creacion y actualizacion en una sola operacion.
+    - Handlers: HandleGetProfile (GET /api/v1/profile),
+      HandleUpdateProfile (PUT /api/v1/profile).
+    - Frontend: pantalla de perfil (a confirmar ubicacion exacta en
+      menu lateral — no verificado en esta revision).
+
+  Gap — Sin verificacion cruzada en el Shader de receta:
+    La decision especifica textualmente: "El Shader de receta verifica
+    que cedula_profesional y especialidad esten presentes antes de
+    permitir la emision (draft → issued)... Si faltan, el Shader niega".
+    Verificado en prescription_shader.go: la validacion actual
+    (ValidatePrescriptionContent) solo exige que esos campos vengan no
+    vacios en el blob de la receta misma — no consulta
+    professional_profiles del actor autenticado en ningun punto.
+    Este es el mismo gap identificado desde el lado de ADR-0011.
+    Pendiente: conectar prescription_service.go con ProfileRepository
+    para la verificacion cruzada antes de permitir Emit.
 
 ## Consecuencias
 

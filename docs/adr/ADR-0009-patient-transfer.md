@@ -1,7 +1,7 @@
 # ADR-0009 — Protocolo de traspaso de paciente entre tenants
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-22
@@ -86,12 +86,32 @@ Si el CURP no existe:
 
 ## Estado de implementacion
 
-  No implementado en v1.
-  Requiere issue de implementacion con:
-    - Endpoint POST /api/v1/patients/import
-    - Verificador de hash
-    - Logica de fusion/creacion por CURP
-    - Migracion para agregar CURP a patients
+  Implementado. patient_import_handler.go, patient_transfer_export_handler.go,
+  FindByCURP en patient_repository.go. Issues #221, #222.
+
+  Nota: el flujo real no depende de ADR-0007/0008 como decisiones separadas.
+  El hash SHA-256 de integridad esta embebido directamente en el formato
+  propio TransferPackage (campo `hash`, formato `vuhmik-transfer-v1`),
+  no en un mecanismo de firma digital general. La verificacion de hash
+  es condicional: solo se ejecuta si el paquete trae el campo `hash`
+  poblado (`if pkg.Hash != ""`), no es obligatoria para todo paquete.
+
+    - Endpoint POST /api/v1/patients/import: implementado en
+      patient_import_handler.go. Detecta automaticamente si el payload
+      es TransferPackage propio o IPS Bundle FHIR R4 externo (ADR-0028)
+      por el campo `resourceType`.
+    - Endpoint GET /api/v1/patients/:id/export/transfer: implementado en
+      patient_transfer_export_handler.go, genera el paquete compatible
+      con el import.
+    - Verificador de hash: verifyTransferHash() en
+      patient_import_handler.go — SHA-256 sobre el paquete sin el campo hash.
+    - Logica de fusion/creacion por CURP: FindByCURP en
+      patient_repository.go. CURP existente → importa sobre el paciente
+      existente; CURP ausente → crea paciente nuevo.
+    - CURP en tabla patients: ya existente desde migracion 000007
+      (add_curp_to_patients), previa a este ADR.
+    - Evidencia importada se crea directamente en estado issued, con
+      import_source e import_ref en el blob, conforme a la decision.
 
 ## Consecuencias
 
