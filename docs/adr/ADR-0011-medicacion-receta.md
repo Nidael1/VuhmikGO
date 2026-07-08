@@ -1,7 +1,7 @@
 # ADR-0011 — Modulo de medicacion y receta electronica
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -119,20 +119,50 @@ Cada receta esta vinculada obligatoriamente a un paciente
 
 ## Estado de implementacion
 
-  No implementado en v1.
-  Requiere issues de implementacion con:
-    - Migracion: tabla prescriptions (id, tenant_id, patient_id,
-      cedula_profesional, especialidad, medicamento_generico,
-      dosis, estado, hash, created_at, issued_at, voided_at,
-      replaced_by_id).
-    - Shader: validacion de campos minimos antes de emitir.
-    - Handler API: POST /api/v1/prescriptions/draft,
-      POST /api/v1/prescriptions/:id/emit,
-      POST /api/v1/prescriptions/:id/void.
-    - Handler API: GET /api/v1/patients/:id/prescriptions.
-    - Export IPS: proyeccion a MedicationStatement / MedicationRequest.
-    - Frontend: formulario de receta vinculado al detalle del paciente.
-    - Advertencia visible para medicamentos controlados.
+  Implementado, con dos gaps pendientes respecto a la decision original
+  (ver abajo). prescription_shader.go, prescription_service.go,
+  prescription_handlers.go, prescription_projection_repository.go
+  (puerto + adaptador Postgres), ips_prescription_export.go.
+  Proyeccion en prescription_projections (migracion 000011_projections).
+  Issue #219 (proyector IPS MedicationStatement).
+
+    - Modelo de datos: proyeccion prescription_projections en vez de
+      tabla prescriptions dedicada, siguiendo el patron CQRS de
+      ADR-0022 (evidencia append-only en el Core + proyeccion de
+      lectura en Shaders). Cumple el mismo proposito que la tabla
+      propuesta originalmente.
+    - Shader: prescription_shader.go — ValidatePrescriptionContent
+      exige cedula_profesional, especialidad, medicamento_generico,
+      dosis antes de construir el blob. Campo es_controlado presente
+      en el modelo de contenido.
+    - Handler API: HandlePrescriptionCreate, HandlePrescriptionEmit,
+      HandlePrescriptionVoid, HandlePrescriptionListByPatient,
+      HandlePrescriptionListAll, HandlePrescriptionDetail — cubren el
+      lifecycle draft/emit/void mas listado y detalle.
+    - Export IPS: ProjectPrescriptionToIPS en ips_prescription_export.go
+      (issue #219) — MedicationStatement.
+    - Frontend: PrescriptionNewView.vue, PrescriptionListView.vue,
+      PrescriptionDetailView.vue vinculadas al detalle del paciente.
+    - CapabilityGuard (ADR-0017) conectado en prescription_service.go —
+      el modulo respeta fail-closed por tenant.
+
+  Gap 1 — Advertencia de controlados no implementada en UI:
+    El campo `es_controlado` existe en PrescriptionContent (shader) pero
+    no se usa en PrescriptionNewView.vue. La decision original exige
+    "advertencia visible" antes de prescribir un controlado; hoy esa
+    advertencia no se muestra. Pendiente de issue propio.
+
+  Gap 2 — Sin verificacion cruzada contra perfil profesional (ADR-0021):
+    El Shader valida que cedula_profesional y especialidad vengan no
+    vacios en el blob de la receta (los teclea el medico al crearla),
+    pero no los contrasta contra professional_profiles del actor
+    autenticado. Un medico puede emitir con datos distintos a los de
+    su perfil registrado. ADR-0021 especifica esta verificacion
+    cruzada como parte de su propia decision; tampoco esta implementada
+    ahi. Pendiente de issue propio en ambos ADR.
+
+  Medicamentos controlados COFEPRIS: sigue fuera de alcance en v1,
+  conforme a la decision original — correcto, no es un gap.
 
 ## Consecuencias
 

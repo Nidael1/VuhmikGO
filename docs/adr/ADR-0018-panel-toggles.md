@@ -1,7 +1,7 @@
 # ADR-0018 — Panel de administracion: toggles por cuenta
 
 ## Estado
-Propuesto
+Aceptado
 
 ## Fecha
 2026-06-24
@@ -115,21 +115,40 @@ Ninguna ruta del panel lee o escribe PHI.
 
 ## Estado de implementacion
 
-  No implementado.
-  Requiere issues de implementacion con:
-    - Migracion: columna is_admin (bool default false) en tabla users.
-    - Middleware AdminOnly: verifica is_admin antes de cualquier handler
-      del panel; rechaza con 403 si no cumple.
-    - Handler GET /admin/accounts: lista tenants con conteo de modulos
-      activos y estado de cuenta. Sin PHI.
-    - Handler GET /admin/accounts/:id: modulos publicados con toggle
-      activo/inactivo para ese tenant.
-    - Handler POST enable/disable: escribe en TENANT_CAPABILITIES.
-    - Handler POST suspend/activate: actualiza estado de cuenta en users.
-    - Middleware de suspension: verifica estado de cuenta en cada request
-      del medico; rechaza con 403 si esta suspendida.
-    - Frontend: vista /admin con lista de cuentas y vista de detalle
-      con toggles. Sin acceso a datos clinicos.
+  Implementado. Rutas y nombres de handler difieren de los propuestos
+  originalmente pero cubren la misma funcionalidad; ver detalle.
+  Migracion 000012_admin_flags (is_admin, is_suspended en users).
+  admin_handlers.go, AdminMiddleware en router.go, AdminView.vue.
+
+    - Migracion 000012: columna is_admin (bool default false) e
+      is_suspended (bool default false) en tabla users. El usuario
+      dev@vuhmik.com se marca is_admin = true por seed.
+    - Middleware AdminMiddleware (router.go): verifica is_admin = true
+      en el JWT antes de cualquier handler bajo /api/v1/admin/*;
+      rechaza con 403 si no cumple.
+    - Handler HandleAdminTenants (GET /api/v1/admin/tenants): lista
+      tenants con estado y conteos. Sin PHI. Equivalente a la ruta
+      propuesta GET /admin/accounts.
+    - Handler HandleAdminCapabilityToggle (POST /api/v1/admin/capabilities):
+      un solo endpoint para activar/desactivar modulo por tenant, en vez
+      de dos rutas separadas enable/disable — misma funcionalidad,
+      forma distinta.
+    - Handler HandleAdminSuspend (POST /api/v1/admin/suspend): un solo
+      endpoint con flag is_suspended, en vez de dos rutas separadas
+      suspend/activate — misma funcionalidad, forma distinta.
+    - Middleware de suspension: verificacion de IsSuspended en
+      auth_handlers.go (HandleLogin) — bloquea el login del tenant
+      suspendido antes de emitir JWT. No borra ni altera datos.
+    - Frontend: AdminView.vue — vista de administracion con toggles,
+      sin acceso a datos clinicos. Ampliada en issue #233 con secciones
+      de metricas y actividad (ADR-0019, ADR-0023).
+
+  Nota: las rutas reales (/api/v1/admin/tenants, /capabilities, /suspend)
+  no coinciden literalmente con las propuestas en la decision
+  (/admin/accounts/:tenant_id/modules/:module_id/enable, etc.). La
+  funcionalidad y las garantias (fail-closed, sin PHI, is_admin
+  obligatorio) se cumplen; el nombrado de rutas quedo mas compacto
+  de lo planeado.
 
 ## Consecuencias
 
