@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Nidael1/VuhmikGO/internal/application/ports"
+	"github.com/Nidael1/VuhmikGO/internal/application"
 	"github.com/Nidael1/VuhmikGO/internal/core/evidence"
 	"github.com/Nidael1/VuhmikGO/internal/integrity"
 	"github.com/Nidael1/VuhmikGO/internal/shaders"
@@ -105,6 +105,9 @@ type DraftRequest struct {
 }
 
 // HandleEvidenceDraft crea un nuevo registro de evidencia en estado draft.
+// Delega en NoteService (Handler -> Service -> CapabilityGuard/Shader -> Core).
+// Emite automaticamente (ADR-0006) — el frontend nunca debe llamar a
+// un endpoint de emit despues de este.
 //
 // POST /api/v1/evidence/draft
 func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
@@ -131,38 +134,16 @@ func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "notes es obligatorio")
 		return
 	}
-	id := "ev-" + time.Now().Format("20060102150405.000")
-	now := time.Now().UTC()
-	e := evidence.Evidence{
-		ID:        id,
-		TenantID:  tenantID,
-		SubjectRef: req.SubjectRef,
-		Content:   req.Content,
-		State:     evidence.StateDraft,
-		CreatedAt: now,
-	}
-	if err := deps.EvidenceRepo.Create(e); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear borrador")
-		return
-	}
-	// Emite automaticamente (ADR-0006 — el medico no ve estados internos)
-	if err := transitionTo(&e, evidence.StateIssued, tenantID, now); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
-		return
-	}
 
-	// Escribir proyección de nota (ADR-0022)
+	// El frontend envía content como JSON: {"type":"note","text":"..."}
+	// Extraemos el texto real para la proyección de lectura (ADR-0022).
 	var noteBlob map[string]any
-	_ = json.Unmarshal([]byte(e.Content), &noteBlob)
+	_ = json.Unmarshal([]byte(req.Content), &noteBlob)
 	noteText, _ := noteBlob["text"].(string)
-	_ = deps.NoteProjectionRepo.Upsert(ports.NoteProjection{
-		EvidenceID: e.ID,
-		TenantID:   tenantID,
-		PatientID:  req.SubjectRef,
+
+	content := application.NoteContent{
+		SubjectRef: req.SubjectRef,
 		Text:       noteText,
-		State:      string(e.State),
-		CreatedAt:  e.CreatedAt,
-		IssuedAt:   e.IssuedAt,
 		TA:         req.TA,
 		FC:         req.FC,
 		FR:         req.FR,
@@ -170,7 +151,13 @@ func HandleEvidenceDraft(w http.ResponseWriter, r *http.Request) {
 		Peso:       req.Peso,
 		Talla:      req.Talla,
 		SAO2:       req.SAO2,
-	})
+	}
+
+	e, err := deps.NoteService.Create(tenantID, actorID, req.Content, content)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "NOTE_ERROR", err.Error())
+		return
+	}
 
 	writeJSON(w, http.StatusCreated, map[string]any{"data": toItem(e), "error": nil})
 }
@@ -249,6 +236,22 @@ func HandleEvidenceVoid(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
 		return
 	}
+
+	// Resolver el modulo real desde el blob y verificar capacidades
+	// (ADR-0017) antes de anular — este endpoint es generico y no sabe
+	// de antemano a que modulo pertenece el registro.
+	moduleID, inner := moduleShaderForBlob(e.Content)
+	guard := shaders.NewCapabilityGuard(inner, deps.CapabilityRepo, moduleID, "medico")
+	guardCtx := shaders.ShaderContext{
+		TenantID:  tenantID,
+		Operation: shaders.OperationVoid,
+		ActorID:   ActorIDFromContext(r),
+	}
+	if decision := guard.Evaluate(guardCtx); decision.Result != shaders.DecisionAllow {
+		writeError(w, http.StatusUnprocessableEntity, decision.ErrorCode, decision.Reason)
+		return
+	}
+
 	voided, err := evidence.Void(e, evidence.ReasonCode(req.ReasonCode), time.Now().UTC())
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
@@ -320,6 +323,41 @@ func HandleEvidenceReplace(w http.ResponseWriter, r *http.Request) {
 func extractID(path, suffix string) string {
 	path = strings.TrimPrefix(path, "/api/v1/evidence/")
 	return strings.TrimSuffix(path, suffix)
+}
+
+// moduleShaderForBlob lee el campo "type" del blob de contenido y resuelve
+// el moduleID + Shader correspondiente (ADR-0016: el Shader interpreta el
+// type del blob opaco, nunca el Core). Usado por endpoints genericos de
+// evidencia (HandleEvidenceVoid, HandleEvidenceReplace) que no conocen de
+// antemano a que modulo pertenece el registro sobre el que operan —
+// evita asumir un modulo fijo quien podria no corresponder al contenido
+// real (ADR-0017: la compuerta de capacidades debe evaluar el modulo
+// real, no un valor hardcodeado).
+//
+// Tipos reconocidos: allergy, prescription, diagnosis, immunization,
+// lab_result. Cualquier otro type (incluyendo "note" o ausente) cae en
+// MedicalBasicShader bajo moduleID "note" — hoy es el unico tipo sin
+// Shader propio que pasa por estos endpoints genericos.
+func moduleShaderForBlob(content string) (moduleID string, s shaders.Shader) {
+	var blob struct {
+		Type string `json:"type"`
+	}
+	_ = json.Unmarshal([]byte(content), &blob)
+
+	switch blob.Type {
+	case "allergy":
+		return "allergy", shaders.NewAllergyShader()
+	case "prescription":
+		return "prescription", shaders.NewPrescriptionShader()
+	case "diagnosis":
+		return "diagnosis", shaders.NewDiagnosisShader()
+	case "immunization":
+		return "immunization", shaders.NewImmunizationShader()
+	case "lab_result":
+		return "lab_result", shaders.NewLabResultShader()
+	default:
+		return "note", shaders.NewMedicalBasicShader()
+	}
 }
 
 // transitionTo aplica una transicion de estado y persiste.
@@ -490,6 +528,7 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tenantID := TenantIDFromContext(r)
+	actorID := ActorIDFromContext(r)
 	if tenantID == "" {
 		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
 		return
@@ -501,81 +540,23 @@ func HandleEvidenceEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orig, err := deps.EvidenceRepo.FindByID(tenantID, id)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "NOT_FOUND", "evidencia no encontrada")
-		return
-	}
-
 	var req EditRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
 		return
 	}
 
-	// Si esta en draft, solo actualiza el registro existente (reemite)
-	// Si esta emitida/bloqueada, ejecuta void + replace silencioso
-	now := time.Now().UTC()
-	newID := id + "-v" + now.Format("20060102150405")
-
-	if orig.State == evidence.StateDraft {
-		// Solo re-emite el draft existente
-		if err := transitionTo(&orig, evidence.StateIssued, tenantID, now); err != nil {
-			writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"data": toItem(orig), "error": nil})
-		return
-	}
-
-	// Void + replace silencioso (ADR-0006)
-	// El medico no ve este proceso — solo ve el resultado final
-	repl := evidence.Evidence{
-		ID:        newID,
-		TenantID:  tenantID,
-		SubjectRef: orig.SubjectRef,
-		Content:   req.Content,
-		State:     evidence.StateDraft,
-		CreatedAt: now,
-	}
-
-	voided, issued, err := evidence.Replace(
-		orig, repl,
-		evidence.RCReplaceUpdate, // RC-REPLACE-002 automatico
-		now,
-	)
-	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
-		return
-	}
-
-	// Orden FK crítico: primero Create(nuevo), luego UpdateForVoid(original)
-	// para no violar evidence_replaced_by_fk (ADR-0006)
-	if err := deps.EvidenceRepo.Create(issued); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear version")
-		return
-	}
-	if err := deps.EvidenceRepo.UpdateForVoid(tenantID, voided); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, mapCoreError(err), err.Error())
-		return
-	}
-
-	// Actualizar proyección de nota (ADR-0022)
+	// El frontend envía content como JSON: {"type":"note","text":"..."}
 	var noteBlob map[string]any
-	_ = json.Unmarshal([]byte(issued.Content), &noteBlob)
+	_ = json.Unmarshal([]byte(req.Content), &noteBlob)
 	noteText, _ := noteBlob["text"].(string)
-	_ = deps.NoteProjectionRepo.UpdateState(tenantID, orig.ID, string(evidence.StateVoided))
-	_ = deps.NoteProjectionRepo.Upsert(ports.NoteProjection{
-		EvidenceID: issued.ID,
-		TenantID:   tenantID,
-		PatientID:  issued.SubjectRef,
-		Text:       noteText,
-		State:      string(issued.State),
-		CreatedAt:  issued.CreatedAt,
-		IssuedAt:   issued.IssuedAt,
-	})
 
-	// Retorna el nuevo registro como si fuera el mismo
+	e, err := deps.NoteService.Edit(tenantID, actorID, id, req.Content, noteText)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "NOTE_ERROR", err.Error())
+		return
+	}
+
 	// El medico no ve que hubo un void + replace
-	writeJSON(w, http.StatusOK, map[string]any{"data": toItem(issued), "error": nil})
+	writeJSON(w, http.StatusOK, map[string]any{"data": toItem(e), "error": nil})
 }
