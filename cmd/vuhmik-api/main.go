@@ -55,6 +55,7 @@ func main() {
 		AllergyService:             application.NewAllergyService(postgres.NewEvidenceRepository(pool), postgres.NewAllergyProjectionRepository(pool), capabilityRepo),
 		AllergyProjectionRepo:      postgres.NewAllergyProjectionRepository(pool),
 		NoteProjectionRepo:         postgres.NewNoteProjectionRepository(pool),
+		NoteService:                application.NewNoteService(postgres.NewEvidenceRepository(pool), postgres.NewNoteProjectionRepository(pool), capabilityRepo),
 		PrescriptionProjectionRepo: postgres.NewPrescriptionProjectionRepository(pool),
 		ConsultationProjectionRepo: postgres.NewConsultationProjectionRepository(pool),
 		ConsultationService:        application.NewConsultationService(postgres.NewEvidenceRepository(pool), postgres.NewConsultationProjectionRepository(pool)),
