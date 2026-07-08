@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/Nidael1/VuhmikGO/internal/core/evidence"
 	"github.com/Nidael1/VuhmikGO/internal/shaders"
@@ -48,6 +47,7 @@ func toLabResultItem(e evidence.Evidence, patientID string) LabResultItem {
 }
 
 // HandleLabResultCreate crea un resultado de laboratorio para un paciente.
+// Delega en LabResultService (Handler -> Service -> Shader/CapabilityGuard -> Core).
 // POST /api/v1/patients/:id/lab-results
 func HandleLabResultCreate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -72,41 +72,23 @@ func HandleLabResultCreate(w http.ResponseWriter, r *http.Request) {
 		patientID = req.PatientID
 	}
 	content := shaders.LabResultContent{
-		Estudio: strings.TrimSpace(req.Estudio),
+		Estudio:      strings.TrimSpace(req.Estudio),
 		FechaEstudio: strings.TrimSpace(req.FechaEstudio),
-		Resultado: req.Resultado, Laboratorio: req.Laboratorio,
+		Resultado:    req.Resultado, Laboratorio: req.Laboratorio,
 		Unidades: req.Unidades, ValorReferencia: req.ValorReferencia,
 		Notas: req.Notas,
 	}
-	if err := shaders.ValidateLabResultContent(content); err != nil {
-		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", err.Error())
-		return
-	}
-	blob, err := shaders.BuildLabResultBlob(content)
+
+	e, err := deps.LabResultService.Create(tenantID, actorID, patientID, content)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al construir blob")
-		return
-	}
-	now := time.Now().UTC()
-	id := "lab-" + now.Format("20060102150405.000")
-	e := evidence.Evidence{
-		ID: id, TenantID: tenantID, SubjectRef: patientID,
-		Content: blob, State: evidence.StateDraft, CreatedAt: now,
-	}
-	if err := deps.EvidenceRepo.Create(e); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al crear resultado")
-		return
-	}
-	e.State = evidence.StateIssued
-	e.IssuedAt = &now
-	if err := deps.EvidenceRepo.Update(tenantID, e); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al emitir resultado")
+		writeError(w, http.StatusUnprocessableEntity, "LAB_RESULT_ERROR", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"data": toLabResultItem(e, patientID), "error": nil})
 }
 
 // HandleLabResultListByPatient retorna los resultados de laboratorio de un paciente.
+// Lee de lab_result_projections via LabResultService (ADR-0022).
 // GET /api/v1/patients/:id/lab-results
 func HandleLabResultListByPatient(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -124,24 +106,49 @@ func HandleLabResultListByPatient(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "patient_id requerido")
 		return
 	}
-	allEvidence, err := deps.EvidenceRepo.FindAll(tenantID)
+
+	projs, err := deps.LabResultService.ListByPatient(tenantID, patientID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al obtener resultados")
 		return
 	}
-	items := make([]LabResultItem, 0)
-	for _, e := range allEvidence {
-		if e.SubjectRef != patientID {
-			continue
-		}
-		var c shaders.LabResultContent
-		if err := shaders.ParseLabResultBlob(e.Content, &c); err != nil {
-			continue
-		}
-		if c.Type != "lab_result" || e.State == evidence.StateVoided {
-			continue
-		}
-		items = append(items, toLabResultItem(e, patientID))
+	items := make([]LabResultItem, 0, len(projs))
+	for _, p := range projs {
+		items = append(items, LabResultItem{
+			ID: p.EvidenceID, TenantID: p.TenantID, PatientID: p.PatientID,
+			Estudio: p.Estudio, FechaEstudio: p.FechaEstudio,
+			Resultado: p.Resultado, Laboratorio: p.Laboratorio,
+			Unidades: p.Unidades, ValorReferencia: p.ValorReferencia,
+			Notas: p.Notas, State: p.State,
+		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"items": items}, "error": nil})
+}
+
+// HandleLabResultVoid anula un resultado de laboratorio. Corrección via void (ADR-0006).
+// POST /api/v1/lab-results/:id/void
+func HandleLabResultVoid(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := TenantIDFromContext(r)
+	actorID := ActorIDFromContext(r)
+	if tenantID == "" || actorID == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+	labResultID := strings.TrimPrefix(r.URL.Path, "/api/v1/lab-results/")
+	labResultID = strings.TrimSuffix(labResultID, "/void")
+	if labResultID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "lab_result id requerido")
+		return
+	}
+
+	voided, err := deps.LabResultService.Void(tenantID, actorID, labResultID)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "LAB_RESULT_ERROR", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": toItem(voided), "error": nil})
 }
