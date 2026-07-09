@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strings"
+	"time"
 )
 
 // HandleAdminMetrics devuelve el ultimo snapshot de metricas agregadas.
@@ -18,7 +19,7 @@ func HandleAdminMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var snap struct {
-		CalculatedAt       string  `json:"calculated_at"`
+		CalculatedAt       time.Time `json:"calculated_at"`
 		TotalAccounts      int     `json:"total_accounts"`
 		ActiveAccounts     int     `json:"active_accounts"`
 		SuspendedAccounts  int     `json:"suspended_accounts"`
@@ -58,7 +59,7 @@ func HandleAdminMetricsAccounts(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "db no disponible")
 		return
 	}
-	var calculatedAt string
+	var calculatedAt time.Time
 	var accountsJSON []byte
 	err := deps.DB.QueryRow(r.Context(), `
 		SELECT calculated_at, accounts_detail
@@ -97,7 +98,7 @@ func HandleAdminMetricsAccountDetail(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "db no disponible")
 		return
 	}
-	var calculatedAt string
+	var calculatedAt time.Time
 	var accountsJSON []byte
 	err := deps.DB.QueryRow(r.Context(), `
 		SELECT calculated_at, accounts_detail
@@ -131,7 +132,7 @@ func HandleAdminMetricsModules(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "db no disponible")
 		return
 	}
-	var calculatedAt string
+	var calculatedAt time.Time
 	var modulesJSON []byte
 	err := deps.DB.QueryRow(r.Context(), `
 		SELECT calculated_at, modules_distribution
