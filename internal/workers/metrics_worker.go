@@ -134,10 +134,10 @@ func (w *MetricsWorker) run(ctx context.Context) error {
 
 	// 5. Distribucion de modulos
 	modRows, err := w.pool.Query(ctx, `
-		SELECT capability_key, COUNT(*) AS total
+		SELECT module_id, COUNT(*) AS total
 		FROM tenant_capabilities
-		WHERE is_active = true
-		GROUP BY capability_key
+		WHERE active = true
+		GROUP BY module_id
 		ORDER BY total DESC
 	`)
 	if err != nil {
