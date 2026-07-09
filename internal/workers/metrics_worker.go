@@ -81,9 +81,9 @@ func (w *MetricsWorker) run(ctx context.Context) error {
 	// 2. MRR: suma de costos de cuentas activas desde tenant_capabilities
 	var mrr float64
 	err = w.pool.QueryRow(ctx, `
-		SELECT COALESCE(SUM(monthly_cost), 0)
+		SELECT COALESCE(SUM(costo), 0)
 		FROM tenant_capabilities
-		WHERE is_active = true
+		WHERE active = true
 	`).Scan(&mrr)
 	if err != nil {
 		return err
@@ -108,14 +108,14 @@ func (w *MetricsWorker) run(ctx context.Context) error {
 			u.tenant_id,
 			u.email,
 			CASE WHEN u.is_suspended THEN 'suspended' ELSE 'active' END AS state,
-			COALESCE(tc.monthly_cost, 0) AS mrr,
+			COALESCE(tc.costo, 0) AS mrr,
 			COUNT(DISTINCT p.id) AS patients,
 			MAX(p.created_at)::text AS last_record
 		FROM users u
-		LEFT JOIN tenant_capabilities tc ON tc.tenant_id = u.tenant_id AND tc.is_active = true
+		LEFT JOIN tenant_capabilities tc ON tc.tenant_id = u.tenant_id AND tc.active = true
 		LEFT JOIN patients p ON p.tenant_id = u.tenant_id
 		WHERE u.is_admin = false
-		GROUP BY u.tenant_id, u.email, u.is_suspended, tc.monthly_cost
+		GROUP BY u.tenant_id, u.email, u.is_suspended, tc.costo
 		ORDER BY patients DESC
 	`)
 	if err != nil {
