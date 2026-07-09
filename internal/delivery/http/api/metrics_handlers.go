@@ -30,7 +30,7 @@ func HandleAdminMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	err := deps.DB.QueryRow(r.Context(), `
 		SELECT calculated_at, total_accounts, active_accounts, suspended_accounts,
-		       mrr, total_patients, total_notes, total_allergies, total_prescriptions
+		       mrr::float8, total_patients, total_notes, total_allergies, total_prescriptions
 		FROM metrics_snapshot
 		ORDER BY calculated_at DESC
 		LIMIT 1
