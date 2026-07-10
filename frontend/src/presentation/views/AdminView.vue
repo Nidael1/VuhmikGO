@@ -17,6 +17,14 @@ const loadingTenants = ref(true)
 const errorTenants = ref('')
 const search = ref('')
 const expandedTenants = ref<Set<string>>(new Set())
+const editingTenant = ref<string | null>(null)
+const editMode = ref<'profile' | 'billing' | 'password' | null>(null)
+const editProfileForm = ref({ nombre_completo: '', cedula_profesional: '', especialidad: '', universidad: '', direccion: '', telefono: '' })
+const editBillingForm = ref({ billing_mode: 'per_module', monthly_fee: 0 })
+const editPasswordForm = ref({ new_password: '' })
+const editLoading = ref(false)
+const editError = ref('')
+const editSuccess = ref('')
 const showCreateForm = ref(false)
 const createLoading = ref(false)
 const createError = ref('')
@@ -24,6 +32,31 @@ const createSuccess = ref('')
 const createForm = ref({ email: '', password: '', nombre_completo: '', cedula_profesional: '', especialidad: '', universidad: '', direccion: '', telefono: '', curp: '' })
 const filtered = computed(() => { const q = search.value.toLowerCase().trim(); if (!q) return tenants.value; return tenants.value.filter(t => t.email.toLowerCase().includes(q) || t.tenant_id.toLowerCase().includes(q)) })
 function toggleExpand(id: string) { expandedTenants.value.has(id) ? expandedTenants.value.delete(id) : expandedTenants.value.add(id) }
+
+function startEdit(tenantId: string, mode: 'profile' | 'billing' | 'password', t: any) {
+  editingTenant.value = tenantId; editMode.value = mode; editError.value = ''; editSuccess.value = ''
+  if (mode === 'profile') { editProfileForm.value = { nombre_completo: t.profile?.nombre_completo || '', cedula_profesional: t.profile?.cedula_profesional || '', especialidad: t.profile?.especialidad || '', universidad: t.profile?.universidad || '', direccion: t.profile?.direccion || '', telefono: t.profile?.telefono || '' } }
+  else if (mode === 'billing') { editBillingForm.value = { billing_mode: t.billing_mode || 'per_module', monthly_fee: t.monthly_fee || 0 } }
+  else { editPasswordForm.value = { new_password: '' } }
+}
+function cancelEdit() { editingTenant.value = null; editMode.value = null; editError.value = ''; editSuccess.value = '' }
+async function saveEdit(tenantId: string) {
+  editLoading.value = true; editError.value = ''; editSuccess.value = ''
+  try {
+    const token = auth.token
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    let url = ''; let body: any = {}
+    if (editMode.value === 'profile') { url = `/api/v1/admin/users/${tenantId}/profile`; body = editProfileForm.value }
+    else if (editMode.value === 'billing') { url = `/api/v1/admin/users/${tenantId}/billing`; body = editBillingForm.value }
+    else { url = `/api/v1/admin/users/${tenantId}/password`; body = editPasswordForm.value }
+    const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error.message)
+    editSuccess.value = 'Guardado correctamente'
+    if (editMode.value === 'billing') { try { await http.post('/admin/metrics/recalculate', {}) } catch (_) {} }
+    setTimeout(() => { cancelEdit(); loadTenants() }, 1200)
+  } catch (e: any) { editError.value = e.message } finally { editLoading.value = false }
+}
 function resetCreateForm() { createForm.value = { email: '', password: '', nombre_completo: '', cedula_profesional: '', especialidad: '', universidad: '', direccion: '', telefono: '', curp: '' }; createError.value = ''; createSuccess.value = '' }
 async function loadTenants() { const res = await http.get<any>('/admin/tenants'); tenants.value = res.data?.items ?? [] }
 async function toggleModule(tenantId: string, moduleId: string, active: boolean) { try { await http.post('/admin/capabilities', { tenant_id: tenantId, module_id: moduleId, active: !active }); await loadTenants() } catch (e: any) { errorTenants.value = e.message } }
@@ -36,7 +69,7 @@ const metricsAccounts = ref<AccountDetail[]>([])
 const metricsModules = ref<Record<string, number>>({})
 const loadingMetrics = ref(false)
 const errorMetrics = ref('')
-async function loadMetrics() { loadingMetrics.value = true; errorMetrics.value = ''; try { const [snapRes, accRes, modRes] = await Promise.all([http.get<any>('/admin/metrics'), http.get<any>('/admin/metrics/accounts'), http.get<any>('/admin/metrics/modules')]); metrics.value = snapRes.data ?? null; const rawAcc = accRes.data?.accounts; metricsAccounts.value = typeof rawAcc === 'string' ? JSON.parse(rawAcc) : (rawAcc ?? []); const rawMod = modRes.data?.modules; metricsModules.value = typeof rawMod === 'string' ? JSON.parse(rawMod) : (rawMod ?? {}) } catch (e: any) { errorMetrics.value = e.message?.includes('NO_SNAPSHOT') ? 'El worker aún no ha calculado métricas. Estará disponible en las próximas horas.' : e.message } finally { loadingMetrics.value = false } }
+async function loadMetrics() { loadingMetrics.value = true; errorMetrics.value = ''; try { try { await http.post('/admin/metrics/recalculate', {}) } catch (_) {}; const [snapRes, accRes, modRes] = await Promise.all([http.get<any>('/admin/metrics'), http.get<any>('/admin/metrics/accounts'), http.get<any>('/admin/metrics/modules')]); metrics.value = snapRes.data ?? null; const rawAcc = accRes.data?.accounts; metricsAccounts.value = typeof rawAcc === 'string' ? JSON.parse(rawAcc) : (rawAcc ?? []); const rawMod = modRes.data?.modules; metricsModules.value = typeof rawMod === 'string' ? JSON.parse(rawMod) : (rawMod ?? {}) } catch (e: any) { errorMetrics.value = e.message?.includes('NO_SNAPSHOT') ? 'El worker aún no ha calculado métricas. Estará disponible en las próximas horas.' : e.message } finally { loadingMetrics.value = false } }
 function fmtMXN(v: number) { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(v) }
 function fmtDate(s: string) { if (!s) return '—'; return new Date(s).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) }
 
@@ -138,6 +171,46 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
                 <div v-for="m in t.modules" :key="m.ModuleID" class="module-row">
                   <span class="module-name">{{ m.Descripcion || m.ModuleID }}</span>
                   <button :class="['toggle-btn', m.Active ? 'active' : '']" @click="toggleModule(t.tenant_id, m.ModuleID, m.Active)">{{ m.Active ? 'Activo' : 'Inactivo' }}</button>
+                </div>
+                <div class="tenant-actions">
+                  <button class="btn-accion" @click="startEdit(t.tenant_id, 'profile', t)">Editar perfil</button>
+                  <button class="btn-accion" @click="startEdit(t.tenant_id, 'billing', t)">Facturación</button>
+                  <button class="btn-accion" @click="startEdit(t.tenant_id, 'password', t)">Resetear contraseña</button>
+                </div>
+                <div v-if="editingTenant === t.tenant_id" class="edit-panel">
+                  <div class="alert-error" v-if="editError">{{ editError }}</div>
+                  <div class="alert-success" v-if="editSuccess">{{ editSuccess }}</div>
+                  <template v-if="editMode === 'profile'">
+                    <div class="edit-title">Editar perfil profesional</div>
+                    <div class="edit-grid">
+                      <div class="form-row"><label>Nombre completo</label><input v-model="editProfileForm.nombre_completo" class="input" placeholder="DR. JUAN PÉREZ" /></div>
+                      <div class="form-row"><label>Cédula profesional</label><input v-model="editProfileForm.cedula_profesional" class="input" placeholder="1234567" /></div>
+                      <div class="form-row"><label>Especialidad</label><input v-model="editProfileForm.especialidad" class="input" placeholder="Medicina General" /></div>
+                      <div class="form-row"><label>Universidad</label><input v-model="editProfileForm.universidad" class="input" placeholder="UNAM" /></div>
+                      <div class="form-row"><label>Dirección</label><input v-model="editProfileForm.direccion" class="input" placeholder="Consultorio..." /></div>
+                      <div class="form-row"><label>Teléfono</label><input v-model="editProfileForm.telefono" class="input" placeholder="55 1234 5678" /></div>
+                    </div>
+                  </template>
+                  <template v-else-if="editMode === 'billing'">
+                    <div class="edit-title">Modo de facturación</div>
+                    <div class="billing-options">
+                      <button :class="['billing-btn', editBillingForm.billing_mode === 'per_module' ? 'active' : '']" @click="editBillingForm.billing_mode = 'per_module'">Por módulo</button>
+                      <button :class="['billing-btn', editBillingForm.billing_mode === 'monthly' ? 'active' : '']" @click="editBillingForm.billing_mode = 'monthly'">Plan mensual</button>
+                    </div>
+                    <div v-if="editBillingForm.billing_mode === 'monthly'" class="form-row" style="margin-top:0.75rem">
+                      <label>Cuota mensual (MXN)</label>
+                      <input v-model.number="editBillingForm.monthly_fee" type="number" min="0" step="50" class="input" placeholder="499" />
+                    </div>
+                    <div v-else class="billing-info">El MRR se calcula sumando el costo de cada módulo activo.</div>
+                  </template>
+                  <template v-else-if="editMode === 'password'">
+                    <div class="edit-title">Nueva contraseña</div>
+                    <div class="form-row"><label>Contraseña nueva (mín. 8 caracteres)</label><input v-model="editPasswordForm.new_password" type="password" class="input" placeholder="••••••••" /></div>
+                  </template>
+                  <div class="edit-actions">
+                    <button class="btn-primary" @click="saveEdit(t.tenant_id)" :disabled="editLoading">{{ editLoading ? 'Guardando...' : 'Guardar' }}</button>
+                    <button class="btn-secondary" @click="cancelEdit">Cancelar</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -328,4 +401,21 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
 .toggle-btn.active { background: #DCFCE7; border-color: #86EFAC; color: #166534; }
 .toggle-btn:not(.active):hover { border-color: var(--color-error); color: var(--color-error); }
 .badge-admin { font-size: 11px; font-weight: 700; background: #FEF9C3; color: #854D0E; border-radius: 4px; padding: 1px 6px; }
+.tenant-actions { display: flex; gap: 0.5rem; padding: 0.5rem 0 0.25rem; border-top: 1px solid var(--color-border); margin-top: 0.5rem; }
+.edit-panel { background: #F8FAFB; border: 1px solid #D1D5DB; border-radius: 8px; padding: 1rem; margin-top: 0.75rem; }
+.edit-title { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; }
+.edit-grid .form-row label { color: #374151; font-size: 12px; }
+.edit-grid .form-row .input { background: #fff; color: #111827; border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 13px; width: 100%; }
+.edit-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.billing-options { display: flex; gap: 0.5rem; }
+.billing-btn { padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #D1D5DB; background: #fff; color: #374151; cursor: pointer; font-size: 13px; }
+.billing-btn.active { background: #00DFA2; color: #090C10; border-color: #00DFA2; font-weight: 700; }
+.billing-info { font-size: 12px; color: #6B7280; margin-top: 0.5rem; }
+.alert-success { background: #ECFDF5; border: 1px solid #00DFA2; color: #065F46; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 13px; margin-bottom: 0.5rem; }
+.edit-panel .alert-error { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 13px; margin-bottom: 0.5rem; }
+.edit-panel .form-row { display: flex; flex-direction: column; gap: 0.25rem; }
+.edit-panel .btn-primary { background: #00DFA2; color: #090C10; border: none; border-radius: 6px; padding: 0.5rem 1.2rem; font-size: 13px; font-weight: 700; cursor: pointer; }
+.edit-panel .btn-secondary { background: #fff; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.5rem 1.2rem; font-size: 13px; cursor: pointer; }
+.edit-panel input[type="password"], .edit-panel input[type="number"] { background: #fff; color: #111827; border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 13px; width: 100%; }
 </style>

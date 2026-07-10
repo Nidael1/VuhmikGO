@@ -152,3 +152,21 @@ func HandleAdminMetricsModules(w http.ResponseWriter, r *http.Request) {
 		"error": nil,
 	})
 }
+
+// HandleAdminMetricsRecalculate fuerza un recalculo inmediato del snapshot de metricas.
+// POST /api/v1/admin/metrics/recalculate
+func HandleAdminMetricsRecalculate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	if deps.MetricsWorker == nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "worker no disponible")
+		return
+	}
+	if err := deps.MetricsWorker.Calculate(); err != nil {
+		writeError(w, http.StatusInternalServerError, "RECALCULATE_ERROR", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"ok": true}, "error": nil})
+}

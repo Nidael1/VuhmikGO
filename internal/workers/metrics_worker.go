@@ -63,6 +63,11 @@ type accountDetail struct {
 
 // run ejecuta el calculo completo y escribe un nuevo snapshot.
 // Todos los datos son agregados — sin PHI ni contenido clinico.
+// Calculate ejecuta el calculo de metricas inmediatamente (recalculo manual desde panel admin).
+func (w *MetricsWorker) Calculate() error {
+	return w.run(context.Background())
+}
+
 func (w *MetricsWorker) run(ctx context.Context) error {
 	// 1. Conteos globales de cuentas
 	var totalAccounts, activeAccounts, suspendedAccounts int
