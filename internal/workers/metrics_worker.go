@@ -120,14 +120,16 @@ func (w *MetricsWorker) run(ctx context.Context) error {
 			u.tenant_id,
 			u.email,
 			CASE WHEN u.is_suspended THEN 'suspended' ELSE 'active' END AS state,
-			COALESCE(tc.costo, 0) AS mrr,
+			CASE WHEN u.billing_mode = 'monthly'
+				THEN u.monthly_fee
+				ELSE COALESCE((SELECT SUM(tc2.costo) FROM tenant_capabilities tc2 WHERE tc2.tenant_id = u.tenant_id AND tc2.active = true), 0)
+			END AS mrr,
 			COUNT(DISTINCT p.id) AS patients,
 			MAX(p.created_at)::text AS last_record
 		FROM users u
-		LEFT JOIN tenant_capabilities tc ON tc.tenant_id = u.tenant_id AND tc.active = true
 		LEFT JOIN patients p ON p.tenant_id = u.tenant_id
 		WHERE u.is_admin = false
-		GROUP BY u.tenant_id, u.email, u.is_suspended, tc.costo
+		GROUP BY u.tenant_id, u.email, u.is_suspended, u.billing_mode, u.monthly_fee
 		ORDER BY patients DESC
 	`)
 	if err != nil {
