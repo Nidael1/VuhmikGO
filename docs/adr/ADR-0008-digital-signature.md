@@ -1,10 +1,13 @@
 # ADR-0008 — Mecanismo de integridad y firma digital
 
 ## Estado
-Propuesto
+Diferido — decision consciente, no gap
 
 ## Fecha
 2026-06-22
+
+## Actualizacion
+2026-07-09
 
 ## Contexto
 
@@ -17,46 +20,37 @@ Para que el export sea legalmente probatorio ante COFEPRIS y en
 procedimientos judiciales, se requiere un mecanismo de firma digital
 que permita verificar la autenticidad del documento.
 
-## Decisión
+## Decision (actualizada 2026-07-09)
 
-### Fase 1 — Hash SHA-256 (v1, implementacion inmediata)
+La firma digital criptografica con PKI NO se implementa en v1.
 
-El export incluye un hash SHA-256 del contenido canonico.
-El servidor puede recalcular el hash en cualquier momento para
-verificar que el documento es identico al que genero.
-Esta fase no requiere certificados ni infraestructura de PKI.
+Razon: ninguna ley o norma mexicana vigente exige firma digital
+criptografica para el expediente clinico de medicos independientes.
+La NOM-004-SSA3-2010 y la NOM-024-SSA3-2010 exigen integridad,
+autoria y no alteracion — garantias que ya provee la arquitectura
+append-only de VUHMIK (registros inmutables, void+replace, chain
+de replaced_by_id, timestamps, backup diario, hash en traspaso).
 
-### Fase 2 — Firma HMAC-SHA256 con clave del servidor (v1.5)
-
-El servidor firma el hash con su clave privada (JWT_SECRET o
-clave dedicada). El receptor puede verificar la firma si tiene
-acceso a la clave publica del servidor.
-Esta fase permite verificacion sin acceso a la BD.
-
-### Fase 3 — Firma digital con certificado (v2)
-
-Firma con certificado digital reconocido por el SAT o por la
-Secretaria de Salud. Nivel de prueba maxima en procedimientos
-legales mexicanos.
-Esta fase requiere contratar un proveedor de certificacion.
+La firma con PKI requiere gestion de claves que introduce complejidad
+operativa sin beneficio proporcional para medicos independientes en v1.
+Implementarla mal (clave privada en servidor) es peor que no tenerla.
 
 ## Implementacion en v1
 
-Solo se implementa Fase 1 (hash SHA-256).
-Las fases 2 y 3 requieren ADR de implementacion y presupuesto.
+No se implementa. Estado cerrado como Diferido — decision explicita,
+no deuda tecnica pendiente.
 
-## Algoritmo de hash canonico
+## Cuando reconsiderar
 
-  1. Extraer todos los campos del documento excepto "hash"
-     y "exported_at".
-  2. Serializar como JSON con claves en orden alfabetico,
-     sin espacios ni saltos de linea.
-  3. Calcular SHA-256 del string UTF-8 resultante.
-  4. Incluir como "sha256:<hex_lowercase>".
+  - Una norma exige firma digital para medicos independientes.
+  - VUHMIK requiere interoperabilidad con IMSS/ISSSTE/SSA.
+  - Un caso juridico especifico requiere no-repudio criptografico.
+
+En ese momento: Fase 2 (HMAC-SHA256 servidor) antes de Fase 3
+(certificado SAT/Secretaria de Salud).
 
 ## Consecuencias
 
-  El servidor puede verificar cualquier export en cualquier momento.
-  El medico puede detectar si alguien modifico su documento.
-  COFEPRIS puede solicitar verificacion al servidor.
-  No requiere infraestructura adicional en v1.
+  La arquitectura append-only provee garantias suficientes para v1.
+  No se agrega complejidad de gestion de claves.
+  Esta decision no afecta el lanzamiento de v1.
