@@ -4,7 +4,7 @@ Registro de issues ejecutados sobre el Asteroide `crm_ui`. Cada entrada correspo
 
 ---
 
-## Estado agregado por ADR (última actualización: issue #233, 2026-07-08)
+## Estado agregado por ADR (última actualización: issue #237, 2026-07-09)
 
 Esta tabla es un tablero de estado, no un registro cronológico. Se actualiza cada vez
 que un ADR cambia de estado real (no solo cuando se documenta). Fuente: `docs/adr/*.md`
@@ -20,45 +20,56 @@ más verificación directa contra código en `main`.
 | 0006 | UX fluida / versionado silencioso | ✅ Implementado | — |
 | 0007 | Export clínico XML+JSON | ⚠️ Parcial | Cubierto en la práctica por IPS/FHIR (ADR-0010); no hay implementación dedicada al formato original propuesto |
 | 0008 | Firma digital / integridad | ❌ No implementado | Sin ningún archivo de código correspondiente |
-| 0009 | Traspaso de paciente entre tenants | ✅ Implementado | issues #221, #222 — encabezado del ADR pendiente de actualizar a Aceptado |
+| 0009 | Traspaso de paciente entre tenants | ✅ Implementado | issues #221, #222 |
 | 0010 | IPS/FHIR como modelo de intercambio | ✅ Implementado | issue #212 |
-| 0011 | Medicación y receta electrónica | ✅ Implementado | proyección ya en producción + IPS MedicationStatement (issue #219) — encabezado del ADR pendiente de actualizar a Aceptado |
-| 0012 | Alergias e intolerancias | ✅ Implementado | issues #132, #133, #135; ADR actualizado a Aceptado en issue #224 |
-| 0013 | Diagnósticos CIE-10 | ✅ Implementado | issues #214, #215 |
-| 0014 | Inmunizaciones | ✅ Implementado | issue #216 |
-| 0015 | Resultados de laboratorio | ✅ Implementado | issue #217 |
+| 0011 | Medicación y receta electrónica | ✅ Implementado | Backend completo; advertencia de controlados bloqueada por decisión regulatoria pendiente (no es gap de código) |
+| 0012 | Alergias e intolerancias | ✅ Implementado | issues #132, #133, #135 |
+| 0013 | Diagnósticos CIE-10 | ✅ Implementado | Backend issue #235; UI issue #237 — validado end-to-end 2026-07-09 |
+| 0014 | Inmunizaciones | ✅ Implementado | Backend issue #235; UI issue #237 — validado end-to-end 2026-07-09 |
+| 0015 | Resultados de laboratorio | ✅ Implementado | Backend issue #235; UI issue #237 — validado end-to-end 2026-07-09 |
 | 0016 | Core agnóstico (content opaco) | ✅ Implementado | — |
-| 0017 | Registro de capacidades por tenant | ✅ Implementado | migración 000009, `capability_repository.go`, `capability_guard.go` — encabezado del ADR pendiente de actualizar a Aceptado |
-| 0018 | Panel de toggles por cuenta | ✅ Implementado | migración 000012 (`is_admin`, `is_suspended`), `admin_handlers.go` — encabezado del ADR pendiente de actualizar a Aceptado |
-| 0019 | Panel de métricas de negocio | ✅ Implementado | issues #226, #227; ADR actualizado a Aceptado en issue #228 |
-| 0020 | Super-admin off-web | ⏸️ Diferido (decisión, no gap) | v1 = seed de `modules` por migración; app interna futura requiere su propio ADR |
-| 0021 | Perfil profesional por rubro | ✅ Implementado | migración 000010, `profile_repository.go`, `profile_handlers.go` — encabezado del ADR pendiente de actualizar a Aceptado |
-| 0022 | CQRS proyecciones de lectura | ✅ Implementado | — |
-| 0023 | Panel de actividad y uso | ✅ Implementado | issues #229, #230, #231; ADR actualizado a Aceptado en issue #232; consumo en frontend en issue #233 |
-| 0024 | Consulta médica | ✅ Implementado | migraciones 000016-000018 |
-| 0025 | Modelo de datos de Tenant | ✅ Implementado | issues #200, #207 |
-| 0026 | Referencia de vendedor en tenant | ✅ Implementado | issue #201; catálogo y handler en issue #220 |
-| 0027 | Audit Package ZIP síncrono | ✅ Implementado | issue #213 |
-| 0028 | Import de IPS Bundle FHIR R4 externo | ✅ Implementado | issue #223 |
+| 0017 | Registro de capacidades por tenant | ✅ Implementado | CapabilityGuard conectado en los 6 módulos publicados tras issues #235 y #236 |
+| 0018 | Panel de toggles por cuenta | ✅ Implementado | Validado en navegador 2026-07-09 |
+| 0019 | Panel de métricas de negocio | ✅ Implementado | Validado en navegador 2026-07-09; bugs de columna corregidos |
+| 0020 | Super-admin off-web | ⏸️ Diferido (decisión, no gap) | v1 = seed de `modules` por migración |
+| 0021 | Perfil profesional por rubro | ✅ Implementado | — |
+| 0022 | CQRS proyecciones de lectura | ✅ Implementado | Proyecciones conectadas para los 6 módulos tras issue #235 |
+| 0023 | Panel de actividad y uso | ✅ Implementado | Validado en navegador 2026-07-09; migración 000026 aplicada |
+| 0024 | Consulta médica | ✅ Implementado | — |
+| 0025 | Modelo de datos de Tenant | ✅ Implementado | — |
+| 0026 | Referencia de vendedor en tenant | ✅ Implementado | — |
+| 0027 | Audit Package ZIP síncrono | ✅ Implementado | — |
+| 0028 | Import de IPS Bundle FHIR R4 externo | ✅ Implementado | — |
 
-### Pendiente de acción documental (no de código)
-Los ADR-0009, ADR-0011, ADR-0017, ADR-0018 y ADR-0021 tienen código ya
-funcional en `main`, pero su encabezado (`## Estado`) todavía dice
-"Propuesto". Falta el mismo tratamiento que se aplicó a ADR-0012, ADR-0019
-y ADR-0023: actualizar el encabezado a Aceptado y completar su sección
-"Estado de implementación" con referencias reales de archivos e issues.
+### ✅ Validado end-to-end en navegador (2026-07-09)
+- Notas clínicas: Create + Edit + panel lateral
+- Alergias e intolerancias: Create + Edit + Void
+- Diagnósticos CIE-10: Create + Void
+- Inmunizaciones: Create + Void
+- Resultados de laboratorio: Create + Void
+- Consultas médicas: Create + detalle
+- Recetas electrónicas: Backend OK — requiere perfil profesional completo en tenant
+- Panel admin — Operaciones: lista, toggles, crear médico
+- Panel admin — Métricas: snapshot real con datos
+- Panel admin — Actividad: tabla lista, se poblará con uso
 
-### Pendiente de código real
-- **ADR-0008 (firma digital / integridad):** sin ningún avance. Es el único
-  gap real de código detectado en esta auditoría, no solo de documentación.
+### 🔧 Pendiente de código real
+- **ADR-0008 (firma digital / integridad):** sin ningún avance.
 - **ADR-0007 (export XML+JSON):** su alcance original quedó parcialmente
-  absorbido por IPS/FHIR (ADR-0010); requiere decisión explícita — ¿se
-  marca como Superseded por ADR-0010, o sigue vigente con alcance propio?
+  absorbido por IPS/FHIR (ADR-0010); requiere decisión explícita.
+- **Advertencia de controlados (ADR-0011):** bloqueada por decisión regulatoria —
+  requiere lista oficial COFEPRIS Grupo II/III validada antes de implementar.
+
+### 🐛 Bugs conocidos (no bloqueantes)
+- UX: secciones clínicas no se auto-expanden al guardar un registro nuevo.
+- UX: panel de notas generales no es visible hasta expandir manualmente al abrir formulario.
+- UX: `activity_snapshot` no registra conteos de diagnósticos/inmunizaciones/lab_results
+  (solo nota, alergia, receta, exportación, paciente, sesión).
 
 ### Hallazgo colateral (no ADR)
-Falta la migración `000025` en la secuencia numérica (existe `000024` y
-`000026`). Coincide con el caso ya conocido de una rama de
-`allergy_projections` creada, diagnosticada y borrada sin merge.
+Falta la migración `000025` en la secuencia numérica (existe `000024` y `000026`).
+Coincide con el caso ya conocido de una rama de `allergy_projections` creada,
+diagnosticada y borrada sin merge.
 
 ---
 
@@ -996,4 +1007,176 @@ Los endpoints de métricas (#227) y actividad (#231) no tenían consumo en el fr
 - `AdminView.vue`: se agregaron las secciones de Métricas y Actividad al panel de administración, con navegación lateral hacia ambas.
 
 ### Archivos involucrados
+- `frontend/src/presentation/views/AdminView.vue`
+
+---
+
+## Issue #234 — ADR-0009, 0011, 0017, 0018, 0021 → Aceptado (encabezados desactualizados)
+
+**Commit:** `bb34d10`
+**Merge a main:** `b953104`
+**Capa:** Documentación. Sin cambios de código.
+**ADR:** ADR-0009, ADR-0011, ADR-0017, ADR-0018, ADR-0021
+
+### Problema
+Auditoría completa de los 28 ADRs contra código real reveló que 5 ADRs tenían
+código ya funcional en `main` pero sus encabezados seguían diciendo "Propuesto" /
+"No implementado". La auditoría también encontró 3 gaps reales documentados como
+errores de cobertura (ver issues #235, #236).
+
+### Solución
+- ADR-0009, 0011, 0017, 0018, 0021: encabezado actualizado a Aceptado con sección
+  "Estado de implementación" documentando archivos e issues reales.
+- ADR-0011/0021: gap falso de verificación cruzada perfil-receta corregido — la
+  verificación ya existía vía `mx_medical.go` (issue #202), error de auditoría inicial.
+- ADR-0017: cobertura de CapabilityGuard documentada como parcial (diagnosis,
+  immunization, lab_result sin compuerta) — resuelto en issue #235.
+
+### Archivos involucrados
+- `docs/adr/ADR-0009-patient-transfer.md`
+- `docs/adr/ADR-0011-medicacion-receta.md`
+- `docs/adr/ADR-0017-registro-capacidades.md`
+- `docs/adr/ADR-0018-panel-toggles.md`
+- `docs/adr/ADR-0021-perfil-profesional.md`
+
+---
+
+## Issue #235 — CapabilityGuard + Service + proyecciones CQRS + Void para diagnosis, immunization, lab_result
+
+**Commit:** `7792c38`
+**Merge a main:** `309b2e2`
+**Capa:** Aplicación / Infraestructura / API. No toca Core.
+**ADR:** ADR-0013, ADR-0014, ADR-0015, ADR-0017, ADR-0022
+
+### Problema
+Los módulos diagnosis, immunization y lab_result tenían Shaders definidos pero
+completamente desconectados. Los handlers iban directo a `EvidenceRepo` sin pasar
+por ningún Shader ni CapabilityGuard. Las tablas de proyección CQRS (migraciones
+000022/023/024) existían pero ningún código las escribía ni leía. No existía Void
+para ninguno de los tres módulos.
+
+### Solución
+- 3 puertos de proyección nuevos (`DiagnosisProjectionRepository`,
+  `ImmunizationProjectionRepository`, `LabResultProjectionRepository`).
+- 3 adaptadores Postgres para las tablas de proyección ya existentes.
+- 3 servicios (`DiagnosisService`, `ImmunizationService`, `LabResultService`)
+  siguiendo el patrón de `AllergyService`: Create con CapabilityGuard,
+  ListByPatient leyendo de la proyección, Void.
+- Handlers reescritos para delegar al Service.
+- Rutas `/void` nuevas para los 3 módulos.
+- `deps.go` y `main.go` actualizados.
+
+### Archivos involucrados (15 archivos)
+- `internal/application/diagnosis_service.go` (nuevo)
+- `internal/application/immunization_service.go` (nuevo)
+- `internal/application/lab_result_service.go` (nuevo)
+- `internal/application/ports/diagnosis_projection_repository.go` (nuevo)
+- `internal/application/ports/immunization_projection_repository.go` (nuevo)
+- `internal/application/ports/lab_result_projection_repository.go` (nuevo)
+- `internal/infrastructure/postgres/diagnosis_projection_repository.go` (nuevo)
+- `internal/infrastructure/postgres/immunization_projection_repository.go` (nuevo)
+- `internal/infrastructure/postgres/lab_result_projection_repository.go` (nuevo)
+- `internal/delivery/http/api/diagnosis_handlers.go`
+- `internal/delivery/http/api/immunization_handlers.go`
+- `internal/delivery/http/api/lab_result_handlers.go`
+- `internal/delivery/http/api/deps.go`
+- `internal/delivery/http/api/router.go`
+- `cmd/vuhmik-api/main.go`
+
+---
+
+## Issue #236 — CapabilityGuard para note (Create/Edit/Void)
+
+**Commit:** `a65cfdf`
+**Merge a main:** `da46976`
+**Capa:** Aplicación / Delivery. No toca Core.
+**ADR:** ADR-0017, ADR-0022
+
+### Problema
+El módulo `note` (notas clínicas) tampoco pasaba por CapabilityGuard — mismo
+problema que los 3 módulos del issue #235 pero en un módulo distinto. Los handlers
+`HandleEvidenceDraft` y `HandleEvidenceEdit` iban directo a `EvidenceRepo` sin
+ninguna compuerta. `HandleEvidenceVoid` (endpoint genérico para cualquier tipo de
+evidencia) tampoco tenía guard, y asumía implícitamente que solo se usaba para notas.
+
+### Solución
+- `NoteService` nuevo: `Create` (con auto-emit, ADR-0006) y `Edit` (void+replace
+  silencioso) ambos con CapabilityGuard usando `MedicalBasicShader` como base.
+- `HandleEvidenceDraft` y `HandleEvidenceEdit` delegan en `NoteService`.
+- `moduleShaderForBlob()` nuevo: helper que lee el campo `type` real del blob antes
+  de aplicar el guard en `HandleEvidenceVoid` — en vez de asumir un módulo fijo,
+  resuelve dinámicamente el Shader correcto para cualquier tipo de evidencia.
+- `deps.go` y `main.go` actualizados.
+
+### Archivos involucrados (4 archivos)
+- `internal/application/note_service.go` (nuevo)
+- `internal/delivery/http/api/evidence_handlers.go`
+- `internal/delivery/http/api/deps.go`
+- `cmd/vuhmik-api/main.go`
+
+---
+
+## Issue #237 — UI para diagnósticos, inmunizaciones y resultados de laboratorio
+
+**Commit:** `4737be1`
+**Merge a main:** `91d50db`
+**Capa:** Asteroide (frontend). No toca Core ni Shaders.
+**ADR:** ADR-0013, ADR-0014, ADR-0015
+
+### Problema
+Los 3 módulos del issue #235 tenían backend completo pero sin ninguna vista Vue.
+No eran validables desde el navegador.
+
+### Solución
+- 3 tipos TypeScript nuevos: `Diagnosis`, `Immunization`, `LabResult`.
+- 3 repositorios TypeScript nuevos: `diagnosisRepository`, `immunizationRepository`,
+  `labResultRepository` — mismo patrón que `allergyRepository`.
+- 3 secciones colapsables en `PatientDetailView.vue` (mismo patrón que alergias):
+  formulario inline, create/void, contador visible.
+- Validado end-to-end en navegador el 2026-07-09.
+
+### Archivos involucrados (7 archivos)
+- `frontend/src/domain/types/diagnosis.ts` (nuevo)
+- `frontend/src/domain/types/immunization.ts` (nuevo)
+- `frontend/src/domain/types/lab_result.ts` (nuevo)
+- `frontend/src/infrastructure/repositories/diagnosisRepository.ts` (nuevo)
+- `frontend/src/infrastructure/repositories/immunizationRepository.ts` (nuevo)
+- `frontend/src/infrastructure/repositories/labResultRepository.ts` (nuevo)
+- `frontend/src/presentation/views/PatientDetailView.vue`
+
+---
+
+## Fixes de sesión 2026-07-09 (bugs detectados durante validación en navegador)
+
+**Commits:** `1713e7c`, `a10006b`, `6a8f43f`, `66b2387`, `efcacc4`
+**Capa:** Workers / Delivery / Asteroide.
+
+### Problema
+Durante la sesión de validación end-to-end del 2026-07-09 se detectaron 4 bugs
+preexistentes que bloqueaban la validación del panel admin:
+
+1. `metrics_worker.go` usaba nombres de columna incorrectos (`monthly_cost`,
+   `is_active`, `capability_key`) que no existen en el esquema real de
+   `tenant_capabilities` (columnas reales: `costo`, `active`, `module_id`).
+2. `metrics_handlers.go` escaneaba `calculated_at` (timestamptz) en un `string` —
+   incompatible con pgx v5 que requiere `time.Time` para ese tipo OID.
+3. `metrics_handlers.go` escaneaba `mrr` (numeric(10,2)) en `float64` sin castear —
+   pgx v5 en modo binario no convierte `numeric` a `float64` automáticamente.
+4. `AdminView.vue` tenía dos componentes Vue completos concatenados (dos bloques
+   `<script setup>` + `<template>` + `<style>`) — resultado del issue #233 que
+   pegó un componente nuevo sobre el existente en vez de fusionarlos. Bloqueaba
+   el arranque del frontend completamente.
+5. Migración `000026` (`activity_snapshot`) no estaba aplicada en BD local.
+
+### Solución
+- `metrics_worker.go`: corregir los 3 nombres de columna incorrectos.
+- `metrics_handlers.go`: cambiar `CalculatedAt string` → `time.Time` y agregar
+  `mrr::float8` en el query SQL para forzar el cast en origen.
+- `AdminView.vue`: eliminar el primer bloque duplicado (332 líneas), dejando solo
+  el segundo bloque que era el completo y actualizado.
+- BD local: `migrate up` para aplicar `000026_activity_snapshot`.
+
+### Archivos involucrados
+- `internal/workers/metrics_worker.go`
+- `internal/delivery/http/api/metrics_handlers.go`
 - `frontend/src/presentation/views/AdminView.vue`
