@@ -12,6 +12,12 @@ import { prescriptionRepository } from '@/infrastructure/repositories/prescripti
 import type { Prescription } from '@/domain/types/prescription'
 import { consultationRepository } from '@/infrastructure/repositories/consultationRepository'
 import type { Consultation } from '@/domain/types/consultation'
+import { diagnosisRepository } from '@/infrastructure/repositories/diagnosisRepository'
+import { immunizationRepository } from '@/infrastructure/repositories/immunizationRepository'
+import { labResultRepository } from '@/infrastructure/repositories/labResultRepository'
+import type { Diagnosis } from '@/domain/types/diagnosis'
+import type { Immunization } from '@/domain/types/immunization'
+import type { LabResult } from '@/domain/types/lab_result'
 import { useAuthStore } from '@/app/stores/auth'
 
 const route = useRoute()
@@ -29,6 +35,9 @@ const nameValue = ref('')
 const allergies = ref<Allergy[]>([])
 const prescriptions = ref<Prescription[]>([])
 const consultations = ref<Consultation[]>([])
+const diagnoses = ref<Diagnosis[]>([])
+const immunizations = ref<Immunization[]>([])
+const labResults = ref<LabResult[]>([])
 const showRxForm = ref(false)
 const rxForm = ref({ medicamento_generico: '', dosis: '', diagnostico: '', indicaciones: '', seguimiento: '' })
 const rxLoading = ref(false)
@@ -38,6 +47,22 @@ const allergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza
 const allergyLoading = ref(false)
 const allergyError = ref('')
 
+// Diagnósticos
+const showDiagnosisForm = ref(false)
+const diagnosisForm = ref({ descripcion: '', codigo_cie10: '', tipo: '', estado_problema: 'activo', fecha_inicio: '', notas: '' })
+const diagnosisLoading = ref(false)
+const diagnosisError = ref('')
+// Inmunizaciones
+const showImmunizationForm = ref(false)
+const immunizationForm = ref({ vacuna: '', fecha_aplicacion: '', lote: '', dosis: '', via: '', aplicada_por: '', notas: '' })
+const immunizationLoading = ref(false)
+const immunizationError = ref('')
+// Resultados de laboratorio
+const showLabResultForm = ref(false)
+const labResultForm = ref({ estudio: '', fecha_estudio: '', resultado: '', laboratorio: '', unidades: '', valor_referencia: '', notas: '' })
+const labResultLoading = ref(false)
+const labResultError = ref('')
+
 const editingAllergyId = ref<string | null>(null)
 const editAllergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza: '' })
 const auth = useAuthStore()
@@ -46,6 +71,9 @@ const auth = useAuthStore()
 const seccionesAbiertas = ref<Record<string, boolean>>({
   alergias: false,
   recetas: false,
+  diagnosticos: false,
+  inmunizaciones: false,
+  laboratorio: false,
   consultas: false,
 })
 
@@ -70,12 +98,15 @@ const editNotaForm = ref('')
 
 onMounted(async () => {
   try {
-    const [p, notes, algs, rxs, cons] = await Promise.all([
+    const [p, notes, algs, rxs, cons, diags, imms, labs] = await Promise.all([
       patientRepository.get(id),
       evidenceRepository.list(),
       allergyRepository.list(id),
       prescriptionRepository.listByPatient(id),
       consultationRepository.listByPatient(id),
+      diagnosisRepository.list(id),
+      immunizationRepository.list(id),
+      labResultRepository.list(id),
     ])
     patient.value = p
     nameValue.value = p.nombre
@@ -83,6 +114,9 @@ onMounted(async () => {
     allergies.value = algs
     prescriptions.value = rxs
     consultations.value = cons
+    diagnoses.value = diags
+    immunizations.value = imms
+    labResults.value = labs
   } catch (e: any) { error.value = e.message }
   finally { loading.value = false }
 })
@@ -303,6 +337,69 @@ async function saveEditNota(n: Evidence) {
   } finally {
     notaLoading.value = false
   }
+}
+
+async function createDiagnosis() {
+  if (!diagnosisForm.value.descripcion.trim()) { diagnosisError.value = 'La descripción es obligatoria'; return }
+  diagnosisLoading.value = true; diagnosisError.value = ''
+  try {
+    const d = await diagnosisRepository.create(id, {
+      descripcion: diagnosisForm.value.descripcion.trim(),
+      codigo_cie10: diagnosisForm.value.codigo_cie10.trim() || undefined,
+      tipo: diagnosisForm.value.tipo || undefined,
+      estado_problema: diagnosisForm.value.estado_problema || undefined,
+      fecha_inicio: diagnosisForm.value.fecha_inicio || undefined,
+      notas: diagnosisForm.value.notas.trim() || undefined,
+    })
+    diagnoses.value.unshift(d)
+    showDiagnosisForm.value = false
+    diagnosisForm.value = { descripcion: '', codigo_cie10: '', tipo: '', estado_problema: 'activo', fecha_inicio: '', notas: '' }
+  } catch (e: any) { diagnosisError.value = e.message } finally { diagnosisLoading.value = false }
+}
+async function voidDiagnosis(d: Diagnosis) {
+  try { await diagnosisRepository.void(d.id); diagnoses.value = diagnoses.value.filter(x => x.id !== d.id) } catch (e: any) { error.value = e.message }
+}
+async function createImmunization() {
+  if (!immunizationForm.value.vacuna.trim() || !immunizationForm.value.fecha_aplicacion) { immunizationError.value = 'Vacuna y fecha son obligatorios'; return }
+  immunizationLoading.value = true; immunizationError.value = ''
+  try {
+    const imm = await immunizationRepository.create(id, {
+      vacuna: immunizationForm.value.vacuna.trim(),
+      fecha_aplicacion: immunizationForm.value.fecha_aplicacion,
+      lote: immunizationForm.value.lote.trim() || undefined,
+      dosis: immunizationForm.value.dosis.trim() || undefined,
+      via: immunizationForm.value.via.trim() || undefined,
+      aplicada_por: immunizationForm.value.aplicada_por.trim() || undefined,
+      notas: immunizationForm.value.notas.trim() || undefined,
+    })
+    immunizations.value.unshift(imm)
+    showImmunizationForm.value = false
+    immunizationForm.value = { vacuna: '', fecha_aplicacion: '', lote: '', dosis: '', via: '', aplicada_por: '', notas: '' }
+  } catch (e: any) { immunizationError.value = e.message } finally { immunizationLoading.value = false }
+}
+async function voidImmunization(imm: Immunization) {
+  try { await immunizationRepository.void(imm.id); immunizations.value = immunizations.value.filter(x => x.id !== imm.id) } catch (e: any) { error.value = e.message }
+}
+async function createLabResult() {
+  if (!labResultForm.value.estudio.trim() || !labResultForm.value.fecha_estudio) { labResultError.value = 'Estudio y fecha son obligatorios'; return }
+  labResultLoading.value = true; labResultError.value = ''
+  try {
+    const lab = await labResultRepository.create(id, {
+      estudio: labResultForm.value.estudio.trim(),
+      fecha_estudio: labResultForm.value.fecha_estudio,
+      resultado: labResultForm.value.resultado.trim() || undefined,
+      laboratorio: labResultForm.value.laboratorio.trim() || undefined,
+      unidades: labResultForm.value.unidades.trim() || undefined,
+      valor_referencia: labResultForm.value.valor_referencia.trim() || undefined,
+      notas: labResultForm.value.notas.trim() || undefined,
+    })
+    labResults.value.unshift(lab)
+    showLabResultForm.value = false
+    labResultForm.value = { estudio: '', fecha_estudio: '', resultado: '', laboratorio: '', unidades: '', valor_referencia: '', notas: '' }
+  } catch (e: any) { labResultError.value = e.message } finally { labResultLoading.value = false }
+}
+async function voidLabResult(lab: LabResult) {
+  try { await labResultRepository.void(lab.id); labResults.value = labResults.value.filter(x => x.id !== lab.id) } catch (e: any) { error.value = e.message }
 }
 
 async function exportExpediente() {
@@ -560,6 +657,116 @@ async function exportExpediente() {
               <div v-if="rx.diagnostico" class="rx-dx">Dx: {{ rx.diagnostico }}</div>
             </RouterLink>
           </div>
+          </div>
+        </div>
+
+
+        <!-- SECCIÓN: Diagnósticos -->
+        <div class="seccion seccion--diagnosticos">
+          <div class="seccion-header">
+            <div class="seccion-titulo" @click="toggleSeccion('diagnosticos')" style="cursor:pointer;flex:1;">
+              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <h3>Diagnósticos</h3>
+              <span class="seccion-count">{{ diagnoses.length }}</span>
+            </div>
+            <button class="btn-primary" @click.stop="showDiagnosisForm = !showDiagnosisForm">{{ showDiagnosisForm ? 'Cancelar' : '+ Nuevo diagnóstico' }}</button>
+          </div>
+          <div v-show="seccionesAbiertas['diagnosticos']">
+            <div v-if="showDiagnosisForm" class="allergy-form">
+              <div class="alert-error" v-if="diagnosisError">{{ diagnosisError }}</div>
+              <div class="form-row"><label>Descripción *</label><input v-model="diagnosisForm.descripcion" class="input" placeholder="p. ej. Hipertensión arterial esencial" /></div>
+              <div class="form-row"><label>Código CIE-10</label><input v-model="diagnosisForm.codigo_cie10" class="input" placeholder="p. ej. I10" /></div>
+              <div class="form-row"><label>Estado</label><select v-model="diagnosisForm.estado_problema" class="input"><option value="activo">Activo</option><option value="resuelto">Resuelto</option><option value="cronico">Crónico</option></select></div>
+              <div class="form-row"><label>Fecha de inicio</label><input v-model="diagnosisForm.fecha_inicio" type="date" class="input" /></div>
+              <div class="form-row"><label>Notas</label><input v-model="diagnosisForm.notas" class="input" placeholder="Observaciones" /></div>
+              <button class="btn-primary" @click="createDiagnosis" :disabled="diagnosisLoading">{{ diagnosisLoading ? 'Guardando...' : 'Registrar diagnóstico' }}</button>
+            </div>
+            <div v-if="diagnoses.length === 0 && !showDiagnosisForm" class="state-empty-sm">Sin diagnósticos registrados.</div>
+            <div v-else class="allergy-list">
+              <div v-for="d in diagnoses" :key="d.id" class="allergy-item">
+                <div class="allergy-meta">
+                  <div class="allergy-main">
+                    <span class="allergy-agente">{{ d.descripcion }}</span>
+                    <span v-if="d.codigo_cie10" class="allergy-badge moderada">{{ d.codigo_cie10 }}</span>
+                    <span v-if="d.estado_problema" class="allergy-badge" :class="d.estado_problema === 'activo' ? 'leve' : ''">{{ d.estado_problema }}</span>
+                  </div>
+                  <div class="allergy-acciones"><button class="btn-accion" @click="voidDiagnosis(d)">Quitar</button></div>
+                </div>
+                <div v-if="d.fecha_inicio" class="allergy-sub">Desde: {{ d.fecha_inicio }}</div>
+                <div v-if="d.notas" class="allergy-certeza">{{ d.notas }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN: Inmunizaciones -->
+        <div class="seccion seccion--inmunizaciones">
+          <div class="seccion-header">
+            <div class="seccion-titulo" @click="toggleSeccion('inmunizaciones')" style="cursor:pointer;flex:1;">
+              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 9-2 2-4-4 2-2a2 2 0 0 1 2.828 0l1.172 1.172a2 2 0 0 1 0 2.828z"/><path d="m13 11-8.5 8.5a2.121 2.121 0 0 0 3 3L16 14"/><path d="m14 14 2 2"/></svg>
+              <h3>Inmunizaciones</h3>
+              <span class="seccion-count">{{ immunizations.length }}</span>
+            </div>
+            <button class="btn-primary" @click.stop="showImmunizationForm = !showImmunizationForm">{{ showImmunizationForm ? 'Cancelar' : '+ Nueva vacuna' }}</button>
+          </div>
+          <div v-show="seccionesAbiertas['inmunizaciones']">
+            <div v-if="showImmunizationForm" class="allergy-form">
+              <div class="alert-error" v-if="immunizationError">{{ immunizationError }}</div>
+              <div class="form-row"><label>Vacuna *</label><input v-model="immunizationForm.vacuna" class="input" placeholder="p. ej. Influenza trivalente" /></div>
+              <div class="form-row"><label>Fecha de aplicación *</label><input v-model="immunizationForm.fecha_aplicacion" type="date" class="input" /></div>
+              <div class="form-row"><label>Dosis</label><input v-model="immunizationForm.dosis" class="input" placeholder="p. ej. 0.5 ml" /></div>
+              <div class="form-row"><label>Vía</label><input v-model="immunizationForm.via" class="input" placeholder="p. ej. intramuscular" /></div>
+              <div class="form-row"><label>Lote</label><input v-model="immunizationForm.lote" class="input" placeholder="p. ej. AB12345" /></div>
+              <div class="form-row"><label>Aplicada por</label><input v-model="immunizationForm.aplicada_por" class="input" placeholder="p. ej. Dr. García" /></div>
+              <button class="btn-primary" @click="createImmunization" :disabled="immunizationLoading">{{ immunizationLoading ? 'Guardando...' : 'Registrar vacuna' }}</button>
+            </div>
+            <div v-if="immunizations.length === 0 && !showImmunizationForm" class="state-empty-sm">Sin inmunizaciones registradas.</div>
+            <div v-else class="allergy-list">
+              <div v-for="imm in immunizations" :key="imm.id" class="allergy-item">
+                <div class="allergy-meta">
+                  <div class="allergy-main"><span class="allergy-agente">{{ imm.vacuna }}</span><span v-if="imm.dosis" class="allergy-badge moderada">{{ imm.dosis }}</span></div>
+                  <div class="allergy-acciones"><button class="btn-accion" @click="voidImmunization(imm)">Quitar</button></div>
+                </div>
+                <div class="allergy-sub">{{ imm.fecha_aplicacion }}<span v-if="imm.via"> · {{ imm.via }}</span><span v-if="imm.lote"> · Lote: {{ imm.lote }}</span></div>
+                <div v-if="imm.aplicada_por" class="allergy-certeza">Aplicada por: {{ imm.aplicada_por }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN: Resultados de laboratorio -->
+        <div class="seccion seccion--laboratorio">
+          <div class="seccion-header">
+            <div class="seccion-titulo" @click="toggleSeccion('laboratorio')" style="cursor:pointer;flex:1;">
+              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v6l-2 4v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8l-2-4V2"/><line x1="6" y1="10" x2="14" y2="10"/></svg>
+              <h3>Resultados de laboratorio</h3>
+              <span class="seccion-count">{{ labResults.length }}</span>
+            </div>
+            <button class="btn-primary" @click.stop="showLabResultForm = !showLabResultForm">{{ showLabResultForm ? 'Cancelar' : '+ Nuevo resultado' }}</button>
+          </div>
+          <div v-show="seccionesAbiertas['laboratorio']">
+            <div v-if="showLabResultForm" class="allergy-form">
+              <div class="alert-error" v-if="labResultError">{{ labResultError }}</div>
+              <div class="form-row"><label>Estudio *</label><input v-model="labResultForm.estudio" class="input" placeholder="p. ej. Biometría hemática" /></div>
+              <div class="form-row"><label>Fecha del estudio *</label><input v-model="labResultForm.fecha_estudio" type="date" class="input" /></div>
+              <div class="form-row"><label>Resultado</label><input v-model="labResultForm.resultado" class="input" placeholder="p. ej. Hemoglobina 14.2 g/dL" /></div>
+              <div class="form-row"><label>Laboratorio</label><input v-model="labResultForm.laboratorio" class="input" placeholder="p. ej. Lab Clínica Central" /></div>
+              <div class="form-row"><label>Unidades</label><input v-model="labResultForm.unidades" class="input" placeholder="p. ej. g/dL" /></div>
+              <div class="form-row"><label>Valor de referencia</label><input v-model="labResultForm.valor_referencia" class="input" placeholder="p. ej. 12-17 g/dL" /></div>
+              <div class="form-row"><label>Notas</label><input v-model="labResultForm.notas" class="input" placeholder="Observaciones" /></div>
+              <button class="btn-primary" @click="createLabResult" :disabled="labResultLoading">{{ labResultLoading ? 'Guardando...' : 'Registrar resultado' }}</button>
+            </div>
+            <div v-if="labResults.length === 0 && !showLabResultForm" class="state-empty-sm">Sin resultados de laboratorio registrados.</div>
+            <div v-else class="allergy-list">
+              <div v-for="lab in labResults" :key="lab.id" class="allergy-item">
+                <div class="allergy-meta">
+                  <div class="allergy-main"><span class="allergy-agente">{{ lab.estudio }}</span><span v-if="lab.laboratorio" class="allergy-badge moderada">{{ lab.laboratorio }}</span></div>
+                  <div class="allergy-acciones"><button class="btn-accion" @click="voidLabResult(lab)">Quitar</button></div>
+                </div>
+                <div v-if="lab.resultado" class="allergy-sub">{{ lab.resultado }}<span v-if="lab.unidades"> {{ lab.unidades }}</span><span v-if="lab.valor_referencia"> (ref: {{ lab.valor_referencia }})</span></div>
+                <div class="allergy-certeza">{{ lab.fecha_estudio }}</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -903,6 +1110,9 @@ async function exportExpediente() {
   border-left: 3px solid var(--color-clinical-blue, #3B82F6);
 }
 
+.seccion--diagnosticos .seccion-header { background: #F0FDF4; border-left: 3px solid #22C55E; }
+.seccion--inmunizaciones .seccion-header { background: #EFF6FF; border-left: 3px solid #3B82F6; }
+.seccion--laboratorio .seccion-header { background: #FDF4FF; border-left: 3px solid #A855F7; }
 .seccion--consultas .seccion-header {
   background: #F2FDFB;
   border-left: 3px solid var(--color-turquoise, #00DFA2);
