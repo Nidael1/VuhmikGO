@@ -78,12 +78,19 @@ func (w *MetricsWorker) run(ctx context.Context) error {
 		return err
 	}
 
-	// 2. MRR: suma de costos de cuentas activas desde tenant_capabilities
+	// 2. MRR: suma de cuotas mensuales fijas + suma de costos por módulo activo
+	// según el billing_mode de cada tenant (ADR-0025, issue #238)
 	var mrr float64
 	err = w.pool.QueryRow(ctx, `
-		SELECT COALESCE(SUM(costo), 0)
-		FROM tenant_capabilities
-		WHERE active = true
+		SELECT
+			COALESCE(SUM(CASE WHEN u.billing_mode = 'monthly' THEN u.monthly_fee ELSE 0 END), 0) +
+			COALESCE(SUM(CASE WHEN u.billing_mode = 'per_module' OR u.billing_mode IS NULL
+				THEN (SELECT COALESCE(SUM(tc2.costo), 0)
+				      FROM tenant_capabilities tc2
+				      WHERE tc2.tenant_id = u.tenant_id AND tc2.active = true)
+				ELSE 0 END), 0)
+		FROM users u
+		WHERE u.is_admin = false
 	`).Scan(&mrr)
 	if err != nil {
 		return err
