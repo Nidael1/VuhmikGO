@@ -7,11 +7,13 @@ import (
 	"github.com/Nidael1/VuhmikGO/internal/application/ports"
 	"github.com/Nidael1/VuhmikGO/internal/infrastructure/postgres"
 	infraredis "github.com/Nidael1/VuhmikGO/internal/infrastructure/redis"
+	"github.com/Nidael1/VuhmikGO/internal/workers"
 )
 
 // Deps contiene las dependencias inyectadas en los handlers de la API.
 type Deps struct {
 	DB               *pgxpool.Pool
+	MetricsWorker    *workers.MetricsWorker
 	EvidenceRepo     ports.EvidenceRepository
 	UserRepo         *postgres.UserRepository
 	PatientRepo      *postgres.PatientRepository

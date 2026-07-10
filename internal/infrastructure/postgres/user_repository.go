@@ -18,6 +18,8 @@ type User struct {
 	PasswordHash string
 	IsAdmin      bool
 	IsSuspended  bool
+	BillingMode  string
+	MonthlyFee   float64
 	CreatedAt    time.Time
 }
 
@@ -92,7 +94,8 @@ func (r *UserRepository) FindByID(id string) (User, error) {
 // FindAll retorna todos los usuarios del sistema (para el panel admin).
 func (r *UserRepository) FindAll() ([]User, error) {
 	sql := `
-		SELECT id, tenant_id, email, password_hash, curp, is_admin, is_suspended, created_at
+		SELECT id, tenant_id, email, password_hash, curp, is_admin, is_suspended,
+		       billing_mode, monthly_fee, created_at
 		FROM users ORDER BY created_at ASC`
 	rows, err := r.pool.Query(context.Background(), sql)
 	if err != nil {
@@ -104,7 +107,8 @@ func (r *UserRepository) FindAll() ([]User, error) {
 		var u User
 		var curp *string
 		if err := rows.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash,
-			&curp, &u.IsAdmin, &u.IsSuspended, &u.CreatedAt); err != nil {
+			&curp, &u.IsAdmin, &u.IsSuspended,
+			&u.BillingMode, &u.MonthlyFee, &u.CreatedAt); err != nil {
 			return nil, fmt.Errorf("error al escanear usuario: %w", err)
 		}
 		if curp != nil {
@@ -124,3 +128,27 @@ func (r *UserRepository) SetSuspended(userID string, suspended bool) error {
 	}
 	return nil
 }
+
+// SetBilling actualiza el modo de facturación y cuota mensual de un tenant.
+func (r *UserRepository) SetBilling(tenantID, billingMode string, monthlyFee float64) error {
+	if billingMode != "monthly" && billingMode != "per_module" {
+		return fmt.Errorf("billing_mode invalido: %s", billingMode)
+	}
+	sql := `UPDATE users SET billing_mode = $1, monthly_fee = $2 WHERE tenant_id = $3`
+	_, err := r.pool.Exec(context.Background(), sql, billingMode, monthlyFee, tenantID)
+	if err != nil {
+		return fmt.Errorf("error al actualizar billing: %w", err)
+	}
+	return nil
+}
+
+// SetPassword actualiza el hash de contraseña de un usuario (reset por admin).
+func (r *UserRepository) SetPassword(userID, passwordHash string) error {
+	sql := `UPDATE users SET password_hash = $1 WHERE id = $2`
+	_, err := r.pool.Exec(context.Background(), sql, passwordHash, userID)
+	if err != nil {
+		return fmt.Errorf("error al actualizar contraseña: %w", err)
+	}
+	return nil
+}
+

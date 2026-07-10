@@ -44,8 +44,10 @@ func main() {
 
 	// Inyectar dependencias
 	capabilityRepo := postgres.NewCapabilityRepository(pool)
+	metricsWorker := workers.NewMetricsWorker(pool)
 	api.InitDeps(api.Deps{
-		DB: pool,
+		DB:            pool,
+		MetricsWorker: metricsWorker,
 		EvidenceRepo:               postgres.NewEvidenceRepository(pool),
 		UserRepo:                   postgres.NewUserRepository(pool),
 		PatientRepo:                postgres.NewPatientRepository(pool),
@@ -86,7 +88,7 @@ func main() {
 	// Workers WAR-A obligatorios
 	go workers.NewBackupWorker().Start(ctx)
 	go workers.NewMetricsPurgeWorker().Start(ctx)
-	go workers.NewMetricsWorker(pool).Start(ctx)
+	go metricsWorker.Start(ctx)
 
 	// Señal de shutdown graceful
 	quit := make(chan os.Signal, 1)

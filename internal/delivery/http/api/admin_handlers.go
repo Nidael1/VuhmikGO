@@ -28,6 +28,8 @@ type adminTenantItem struct {
 	Email       string            `json:"email"`
 	IsAdmin     bool              `json:"is_admin"`
 	IsSuspended bool              `json:"is_suspended"`
+	BillingMode string            `json:"billing_mode"`
+	MonthlyFee  float64           `json:"monthly_fee"`
 	Modules     []adminModuleItem `json:"modules"`
 }
 
@@ -66,6 +68,8 @@ func HandleAdminTenants(w http.ResponseWriter, r *http.Request) {
 			Email:       u.Email,
 			IsAdmin:     u.IsAdmin,
 			IsSuspended: u.IsSuspended,
+			BillingMode: u.BillingMode,
+			MonthlyFee:  u.MonthlyFee,
 			Modules:     modItems,
 		})
 	}
@@ -295,3 +299,159 @@ func HandleAdminCreateUser(w http.ResponseWriter, r *http.Request) {
 		"error": nil,
 	})
 }
+
+// HandleAdminUpdateProfile actualiza el perfil profesional de un médico desde el panel admin.
+// PUT /api/v1/admin/users/:tenant_id/profile
+func HandleAdminUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/users/")
+	tenantID = strings.TrimSuffix(tenantID, "/profile")
+	if tenantID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "tenant_id requerido")
+		return
+	}
+
+	var req struct {
+		NombreCompleto    string `json:"nombre_completo"`
+		CedulaProfesional string `json:"cedula_profesional"`
+		Especialidad      string `json:"especialidad"`
+		Universidad       string `json:"universidad"`
+		Direccion         string `json:"direccion"`
+		Telefono          string `json:"telefono"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
+		return
+	}
+
+	// Buscar el userID a partir del tenantID
+	users, err := deps.UserRepo.FindAll()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al buscar usuario")
+		return
+	}
+	var userID string
+	for _, u := range users {
+		if u.TenantID == tenantID {
+			userID = u.ID
+			break
+		}
+	}
+	if userID == "" {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "tenant no encontrado")
+		return
+	}
+
+	profile := ports.Profile{
+		UserID:            userID,
+		TenantID:          tenantID,
+		Rubro:             "medico",
+		NombreCompleto:    strings.TrimSpace(req.NombreCompleto),
+		CedulaProfesional: strings.TrimSpace(req.CedulaProfesional),
+		Especialidad:      strings.TrimSpace(req.Especialidad),
+		Universidad:       strings.TrimSpace(req.Universidad),
+		Direccion:         strings.TrimSpace(req.Direccion),
+		Telefono:          strings.TrimSpace(req.Telefono),
+	}
+	if err := deps.ProfileRepo.Upsert(profile); err != nil {
+		writeError(w, http.StatusInternalServerError, "PROFILE_ERROR", "error al actualizar perfil")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"ok": true}, "error": nil})
+}
+
+// HandleAdminSetBilling actualiza el modo de facturación de un tenant.
+// PUT /api/v1/admin/users/:tenant_id/billing
+func HandleAdminSetBilling(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/users/")
+	tenantID = strings.TrimSuffix(tenantID, "/billing")
+	if tenantID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "tenant_id requerido")
+		return
+	}
+
+	var req struct {
+		BillingMode string  `json:"billing_mode"`
+		MonthlyFee  float64 `json:"monthly_fee"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
+		return
+	}
+	if req.BillingMode != "monthly" && req.BillingMode != "per_module" {
+		writeError(w, http.StatusBadRequest, "INVALID_BILLING_MODE", "billing_mode debe ser 'monthly' o 'per_module'")
+		return
+	}
+
+	if err := deps.UserRepo.SetBilling(tenantID, req.BillingMode, req.MonthlyFee); err != nil {
+		writeError(w, http.StatusInternalServerError, "BILLING_ERROR", "error al actualizar facturacion")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"ok": true}, "error": nil})
+}
+
+// HandleAdminResetPassword resetea la contraseña de un médico desde el panel admin.
+// PUT /api/v1/admin/users/:tenant_id/password
+func HandleAdminResetPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/users/")
+	tenantID = strings.TrimSuffix(tenantID, "/password")
+	if tenantID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "tenant_id requerido")
+		return
+	}
+
+	var req struct {
+		NewPassword string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
+		return
+	}
+	if len(req.NewPassword) < 8 {
+		writeError(w, http.StatusBadRequest, "PASSWORD_TOO_SHORT", "password minimo 8 caracteres")
+		return
+	}
+
+	// Buscar userID por tenantID
+	users, err := deps.UserRepo.FindAll()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al buscar usuario")
+		return
+	}
+	var userID string
+	for _, u := range users {
+		if u.TenantID == tenantID {
+			userID = u.ID
+			break
+		}
+	}
+	if userID == "" {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "tenant no encontrado")
+		return
+	}
+
+	hash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "HASH_ERROR", "error al procesar password")
+		return
+	}
+	if err := deps.UserRepo.SetPassword(userID, hash); err != nil {
+		writeError(w, http.StatusInternalServerError, "PASSWORD_ERROR", "error al actualizar contraseña")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"ok": true}, "error": nil})
+}
+
+// HandleAdminUpdateProfile actualiza el perfil profesional de un médico desde el panel admin.
+// PUT /api/v1/admin/users/:tenant_id/profile

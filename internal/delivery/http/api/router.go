@@ -38,6 +38,8 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/capabilities", JWTMiddleware(AdminMiddleware(HandleAdminCapabilityToggle)))
 	mux.HandleFunc("/api/v1/admin/users", JWTMiddleware(AdminMiddleware(HandleAdminCreateUser)))
 	mux.HandleFunc("/api/v1/admin/suspend", JWTMiddleware(AdminMiddleware(HandleAdminSuspend)))
+	mux.HandleFunc("/api/v1/admin/users/", JWTMiddleware(AdminMiddleware(adminUserDispatcher)))
+	mux.HandleFunc("/api/v1/admin/metrics/recalculate", JWTMiddleware(AdminMiddleware(HandleAdminMetricsRecalculate)))
 	mux.HandleFunc("/api/v1/admin/metrics", JWTMiddleware(AdminMiddleware(HandleAdminMetrics)))
 	mux.HandleFunc("/api/v1/admin/metrics/accounts", JWTMiddleware(AdminMiddleware(HandleAdminMetricsAccounts)))
 	mux.HandleFunc("/api/v1/admin/metrics/modules", JWTMiddleware(AdminMiddleware(HandleAdminMetricsModules)))
@@ -322,4 +324,28 @@ func labResultDispatcher(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+}
+
+// adminUserDispatcher enruta requests de admin sobre usuarios con ID dinámico.
+// Soporta:
+//   PUT /api/v1/admin/users/:tenant_id/profile   — editar perfil profesional
+//   PUT /api/v1/admin/users/:tenant_id/billing   — cambiar modo de facturación
+//   PUT /api/v1/admin/users/:tenant_id/password  — resetear contraseña
+func adminUserDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/users/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) != 2 {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+		return
+	}
+	switch parts[1] {
+	case "profile":
+		HandleAdminUpdateProfile(w, r)
+	case "billing":
+		HandleAdminSetBilling(w, r)
+	case "password":
+		HandleAdminResetPassword(w, r)
+	default:
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+	}
 }
