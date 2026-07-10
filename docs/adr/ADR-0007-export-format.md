@@ -1,10 +1,25 @@
 # ADR-0007 — Formato de export clínico: XML + JSON
 
 ## Estado
-Propuesto
+Superseded por ADR-0010
 
 ## Fecha
 2026-06-22
+
+## Actualizacion
+2026-07-09
+
+## Nota de cierre
+
+La intencion original de este ADR era definir un formato de export
+clinico que permitiera interoperabilidad en Mexico. Esa intencion
+se cumplio con ADR-0010 (IPS/FHIR R4), que es precisamente el
+estandar que usan las instituciones grandes del sistema de salud
+mexicano (IMSS, ISSSTE, SSA).
+
+ADR-0007 expresaba el "que" (exportar en formato de interoperabilidad
+mexicano). ADR-0010 resolvio el "como" (IPS/FHIR R4). No hay
+implementacion pendiente — la decision ya esta tomada e implementada.
 
 ## Contexto
 
