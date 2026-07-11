@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"encoding/hex"
@@ -146,6 +147,13 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 	u, err := deps.UserRepo.FindByEmail(req.Email)
 	if err != nil || !auth.CheckPassword(req.Password, u.PasswordHash) {
+		go func() {
+			id := fmt.Sprintf("la-%d", time.Now().UnixNano())
+			_, _ = deps.DB.Exec(context.Background(),
+				`INSERT INTO login_attempts (id, email, occurred_at, reason) VALUES ($1, $2, NOW(), 'invalid_credentials')`,
+				id, req.Email,
+			)
+		}()
 		writeError(w, http.StatusUnauthorized, "INVALID_CREDENTIALS", "credenciales invalidas")
 		return
 	}
