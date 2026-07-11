@@ -7,8 +7,17 @@ import { http } from '@/infrastructure/api/httpClient'
 const auth = useAuthStore()
 const router = useRouter()
 
-type Section = 'operaciones' | 'metricas' | 'actividad'
+type Section = 'operaciones' | 'metricas' | 'actividad' | 'salud' | 'sistema'
 const activeSection = ref<Section>('operaciones')
+const health = ref<any[]>([])
+const healthSummary = ref({ active: 0, at_risk: 0, inactive: 0 })
+const healthFilter = ref('')
+const loadingHealth = ref(false)
+const errorHealth = ref('')
+const systemSnap = ref<any>(null)
+const failedLogins = ref<any[]>([])
+const loadingSystem = ref(false)
+const errorSystem = ref('')
 
 interface ModuleStatus { ModuleID: string; Descripcion: string; Active: boolean; Plan: string; Costo: number }
 interface TenantInfo { tenant_id: string; email: string; is_admin: boolean; is_suspended: boolean; modules: ModuleStatus[] }
@@ -85,7 +94,42 @@ async function loadActivity() { loadingActivity.value = true; errorActivity.valu
 async function loadActivityDetail(tenantId: string) { selectedTenant.value = tenantId; loadingDetail.value = true; try { const res = await http.get<any>(`/admin/activity/${tenantId}`); activityDetail.value = res.data?.periods ?? [] } catch { activityDetail.value = [] } finally { loadingDetail.value = false } }
 
 onMounted(async () => { try { await loadTenants() } catch (e: any) { errorTenants.value = e.message } finally { loadingTenants.value = false } })
-async function switchSection(s: Section) { activeSection.value = s; if (s === 'metricas' && !metrics.value && !loadingMetrics.value) await loadMetrics(); if (s === 'actividad' && activity.value.length === 0 && !loadingActivity.value) await loadActivity() }
+async function switchSection(s: Section) {
+  activeSection.value = s
+  if (s === 'metricas' && !metrics.value && !loadingMetrics.value) await loadMetrics()
+  if (s === 'actividad' && activity.value.length === 0 && !loadingActivity.value) await loadActivity()
+  if (s === 'salud' && health.value.length === 0 && !loadingHealth.value) await loadHealth()
+  if (s === 'sistema' && !systemSnap.value && !loadingSystem.value) await loadSystem()
+}
+async function loadHealth() {
+  loadingHealth.value = true; errorHealth.value = ''; health.value = []
+  try {
+    const url = healthFilter.value ? `/admin/health/accounts?status=${healthFilter.value}` : '/admin/health/accounts'
+    const res = await http.get<any>(url) as any
+    health.value = res.data?.items ?? []
+    healthSummary.value = res.data?.summary ?? { active: 0, at_risk: 0, inactive: 0 }
+  } catch (e: any) { errorHealth.value = e.message } finally { loadingHealth.value = false }
+}
+async function loadSystem() {
+  loadingSystem.value = true; errorSystem.value = ''; systemSnap.value = null
+  try {
+    await http.post('/admin/system/recalculate', {})
+    const res = await http.get<any>('/admin/system') as any
+    systemSnap.value = res.data?.system ?? null
+    failedLogins.value = res.data?.failed_logins ?? []
+  } catch (e: any) { errorSystem.value = e.message } finally { loadingSystem.value = false }
+}
+function healthLabel(status: string) {
+  if (status === 'active') return 'Activo'
+  if (status === 'at_risk') return 'En riesgo'
+  return 'Inactivo'
+}
+function fmtDaysAgo(days: number) {
+  if (days === 0) return 'Hoy'
+  if (days === 1) return 'Ayer'
+  if (days > 900) return 'Nunca'
+  return `Hace ${days} dias`
+}
 async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: auth.refreshToken }) }) } catch {} } auth.clearSession(); router.push('/login') }
 </script>
 
@@ -109,6 +153,14 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
         <button :class="['nav-item', activeSection === 'actividad' ? 'active' : '']" @click="switchSection('actividad')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           Actividad
+        </button>
+        <button :class="['nav-item', activeSection === 'salud' ? 'active' : '']" @click="switchSection('salud')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          Salud
+        </button>
+        <button :class="['nav-item', activeSection === 'sistema' ? 'active' : '']" @click="switchSection('sistema')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Sistema
         </button>
       </nav>
       <div class="admin-footer">
@@ -308,6 +360,99 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
         </div>
       </div>
 
+      <!-- SALUD -->
+      <div v-else-if="activeSection === 'salud'" class="admin-page">
+        <div class="page-header">
+          <div><h2>Salud de cuentas</h2><p class="page-sub">Adopcion y riesgo por medico. Sin datos clinicos.</p></div>
+          <button class="btn-secondary" @click="loadHealth" :disabled="loadingHealth">{{ loadingHealth ? 'Cargando...' : 'Actualizar' }}</button>
+        </div>
+        <div v-if="loadingHealth" class="state-empty">Calculando...</div>
+        <div v-else-if="errorHealth" class="alert-error">{{ errorHealth }}</div>
+        <div v-else>
+          <div class="health-summary">
+            <button :class="['health-filter-btn', healthFilter === '' ? 'selected' : '']" @click="healthFilter = ''; loadHealth()">Todos ({{ healthSummary.active + healthSummary.at_risk + healthSummary.inactive }})</button>
+            <button :class="['health-filter-btn green', healthFilter === 'active' ? 'selected' : '']" @click="healthFilter = 'active'; loadHealth()">Activos ({{ healthSummary.active }})</button>
+            <button :class="['health-filter-btn yellow', healthFilter === 'at_risk' ? 'selected' : '']" @click="healthFilter = 'at_risk'; loadHealth()">En riesgo ({{ healthSummary.at_risk }})</button>
+            <button :class="['health-filter-btn red', healthFilter === 'inactive' ? 'selected' : '']" @click="healthFilter = 'inactive'; loadHealth()">Inactivos ({{ healthSummary.inactive }})</button>
+          </div>
+          <div v-if="health.length === 0" class="state-empty">Sin datos aun. El worker calcula cada hora.</div>
+          <div v-else class="accounts-table-wrap">
+            <table class="accounts-table">
+              <thead><tr><th>Medico</th><th>Estado</th><th>Antiguedad</th><th>Ultimo login</th><th>Sesiones/mes</th><th>Notas/mes</th><th>Recetas/mes</th><th>Pacientes</th><th>Modulos</th></tr></thead>
+              <tbody>
+                <tr v-for="a in health" :key="a.tenant_id" :class="['health-row', a.health_status]">
+                  <td class="td-email">{{ a.email }}</td>
+                  <td><span :class="['badge-state', a.health_status === 'active' ? 'badge-active' : a.health_status === 'at_risk' ? 'badge-risk' : 'badge-suspended']">{{ healthLabel(a.health_status) }}</span></td>
+                  <td>{{ a.account_age_days }} dias</td>
+                  <td>{{ fmtDaysAgo(a.days_since_login) }}</td>
+                  <td>{{ a.sessions_this_month }}<span v-if="a.sessions_last_month > 0" class="trend"> ({{ a.sessions_last_month }} ant.)</span></td>
+                  <td>{{ a.notes_this_month }}</td>
+                  <td>{{ a.prescriptions_this_month }}</td>
+                  <td>{{ a.total_patients }}</td>
+                  <td>{{ a.modules_used }}/{{ a.modules_active }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SISTEMA -->
+      <div v-else-if="activeSection === 'sistema'" class="admin-page">
+        <div class="page-header">
+          <div><h2>Estado del sistema</h2><p class="page-sub">Actualizado cada hora automaticamente.</p></div>
+          <button class="btn-secondary" @click="loadSystem" :disabled="loadingSystem">{{ loadingSystem ? 'Revisando...' : 'Revisar ahora' }}</button>
+        </div>
+        <div v-if="loadingSystem" class="state-empty">Revisando sistema...</div>
+        <div v-else-if="errorSystem" class="alert-error">{{ errorSystem }}</div>
+        <div v-else-if="!systemSnap" class="state-empty">Sin datos de sistema aun.</div>
+        <div v-else>
+          <div :class="['system-banner', systemSnap.overall_ok ? 'ok' : 'error']">
+            <span>{{ systemSnap.overall_ok ? 'Todo funciona correctamente' : systemSnap.issues }}</span>
+            <span class="system-banner-time">Revisado: {{ fmtDate(systemSnap.calculated_at) }}</span>
+          </div>
+          <div class="system-grid">
+            <div :class="['system-card', systemSnap.db_ok ? 'ok' : 'error']">
+              <div class="system-card-title">Base de datos</div>
+              <div class="system-card-desc">{{ systemSnap.db_ok ? 'Conectada y respondiendo' : 'No responde — revisar urgente' }}</div>
+            </div>
+            <div :class="['system-card', systemSnap.backup_ok ? 'ok' : 'error']">
+              <div class="system-card-title">Backups</div>
+              <div class="system-card-desc">
+                <span v-if="systemSnap.last_backup_at">Ultimo: {{ fmtDate(systemSnap.last_backup_at) }} ({{ systemSnap.last_backup_size_kb }} KB)</span>
+                <span v-else>Sin backups registrados</span>
+              </div>
+            </div>
+            <div :class="['system-card', systemSnap.metrics_ok ? 'ok' : 'error']">
+              <div class="system-card-title">Worker de metricas</div>
+              <div class="system-card-desc">
+                <span v-if="systemSnap.metrics_last_run_at">Ultimo calculo: {{ fmtDate(systemSnap.metrics_last_run_at) }}</span>
+                <span v-else>Sin calculos registrados</span>
+              </div>
+            </div>
+            <div :class="['system-card', systemSnap.disk_ok ? 'ok' : 'error']">
+              <div class="system-card-title">Espacio en disco</div>
+              <div class="system-card-desc">{{ systemSnap.disk_used_pct }}% utilizado{{ !systemSnap.disk_ok ? ' — revisar pronto' : '' }}</div>
+            </div>
+          </div>
+          <div style="margin-top:1.5rem">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:0.75rem;color:var(--color-text-secondary)">Ultimos accesos fallidos</h3>
+            <div v-if="failedLogins.length === 0" class="state-empty" style="padding:0.5rem 0">Sin intentos fallidos recientes.</div>
+            <div v-else class="accounts-table-wrap">
+              <table class="accounts-table">
+                <thead><tr><th>Correo</th><th>Fecha y hora</th></tr></thead>
+                <tbody>
+                  <tr v-for="f in failedLogins" :key="f.occurred_at">
+                    <td class="td-email">{{ f.email }}</td>
+                    <td>{{ fmtDate(f.occurred_at) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </template>
@@ -364,6 +509,26 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
 .stat-pill { font-size: 11px; background: #F1F5F9; color: var(--text-secondary); border-radius: 10px; padding: 2px 8px; }
 .activity-detail { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); padding: var(--space-5); min-height: 200px; }
 .alert-info { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: #1D4ED8; margin-bottom: var(--space-4); }
+.health-summary { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.health-filter-btn { padding: 0.35rem 0.9rem; border-radius: 6px; border: 1px solid var(--color-border); background: transparent; color: var(--color-text-secondary); cursor: pointer; font-size: 12px; }
+.health-filter-btn.selected { background: var(--color-jade, #00DFA2); color: #090C10; border-color: var(--color-jade); font-weight: 700; }
+.health-filter-btn.green.selected { background: #00DFA2; border-color: #00DFA2; }
+.health-filter-btn.yellow.selected { background: #F59E0B; border-color: #F59E0B; color: #fff; }
+.health-filter-btn.red.selected { background: #EF4444; border-color: #EF4444; color: #fff; }
+.health-row.at_risk td { background: #FFFBEB; }
+.health-row.inactive td { background: #FEF2F2; }
+.badge-risk { background: #FEF3C7; color: #92400E; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.trend { color: var(--color-text-secondary); font-size: 11px; }
+.system-banner { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: 14px; }
+.system-banner.ok { background: #ECFDF5; color: #065F46; border: 1px solid #00DFA2; }
+.system-banner.error { background: #FEF2F2; color: #991B1B; border: 1px solid #FCA5A5; }
+.system-banner-time { margin-left: auto; font-size: 12px; opacity: 0.7; }
+.system-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+.system-card { padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); }
+.system-card.ok { border-color: #00DFA2; background: #F0FDF4; }
+.system-card.error { border-color: #FCA5A5; background: #FEF2F2; }
+.system-card-title { font-weight: 700; font-size: 13px; color: #111827; margin-bottom: 0.25rem; }
+.system-card-desc { font-size: 12px; color: #6B7280; }
 .alert-success { background: #F0FDF4; border: 1px solid #86EFAC; border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: #166534; margin-bottom: var(--space-4); }
 .alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); margin-bottom: var(--space-4); }
 .state-empty { color: var(--text-secondary); padding: var(--space-8); text-align: center; font-size: 14px; }

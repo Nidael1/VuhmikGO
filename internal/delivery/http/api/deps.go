@@ -14,6 +14,7 @@ import (
 type Deps struct {
 	DB               *pgxpool.Pool
 	MetricsWorker    *workers.MetricsWorker
+	SystemWorker     *workers.SystemWorker
 	EvidenceRepo     ports.EvidenceRepository
 	UserRepo         *postgres.UserRepository
 	PatientRepo      *postgres.PatientRepository
