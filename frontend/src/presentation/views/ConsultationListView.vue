@@ -113,7 +113,7 @@ function formatDate(d: string) {
 </template>
 
 <style scoped>
-.page { max-width: 780px; }
+.page { width: 100%; max-width: 100%; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-4); }
 .page-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
 .btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }

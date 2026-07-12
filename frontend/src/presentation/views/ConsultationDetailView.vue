@@ -148,7 +148,7 @@ function formatDate(d: string) {
 </template>
 
 <style scoped>
-.page { max-width: 780px; }
+.page { width: 100%; max-width: 100%; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
 .page-sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; text-transform: capitalize; }
 .btn-back { color: var(--color-clinical-blue); font-size: 14px; text-decoration: none; white-space: nowrap; }

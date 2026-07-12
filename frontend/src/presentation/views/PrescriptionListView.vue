@@ -148,7 +148,7 @@ function imprimirRx(rxId: string) {
 </template>
 
 <style scoped>
-.page { max-width: 780px; }
+.page { width: 100%; max-width: 100%; }
 .rx-list { display: flex; flex-direction: column; gap: var(--space-3); }
 .rx-item {
   background: var(--app-surface);
