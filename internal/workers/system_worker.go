@@ -47,7 +47,80 @@ func (w *SystemWorker) Calculate() error {
 	if err := w.calculateSystemSnapshot(ctx); err != nil {
 		return fmt.Errorf("system snapshot: %w", err)
 	}
+	if err := w.calculateActivitySnapshot(ctx); err != nil {
+		return fmt.Errorf("activity snapshot: %w", err)
+	}
 	slog.Info("system snapshot calculado")
+	return nil
+}
+
+func (w *SystemWorker) calculateActivitySnapshot(ctx context.Context) error {
+	now := time.Now().UTC()
+	firstOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	// Obtener todos los tenants de medicos
+	rows, err := w.pool.Query(ctx, `SELECT tenant_id FROM users WHERE is_admin = false`)
+	if err != nil {
+		return fmt.Errorf("error al obtener tenants: %w", err)
+	}
+	defer rows.Close()
+
+	var tenants []string
+	for rows.Next() {
+		var tid string
+		if err := rows.Scan(&tid); err == nil {
+			tenants = append(tenants, tid)
+		}
+	}
+	rows.Close()
+
+	period := firstOfMonth.Format("2006-01-02")
+
+	for _, tenantID := range tenants {
+		var sessions, notes, allergies, prescriptions, exports, patients int
+
+		_ = w.pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM activity_log
+			WHERE tenant_id = $1 AND event_type = 'session_start'
+			AND occurred_at >= $2
+		`, tenantID, firstOfMonth).Scan(&sessions)
+
+		_ = w.pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM note_projections
+			WHERE tenant_id = $1 AND state = 'issued' AND issued_at >= $2
+		`, tenantID, firstOfMonth).Scan(&notes)
+
+		_ = w.pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM allergy_projections
+			WHERE tenant_id = $1 AND state = 'issued' AND issued_at >= $2
+		`, tenantID, firstOfMonth).Scan(&allergies)
+
+		_ = w.pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM prescription_projections
+			WHERE tenant_id = $1 AND state = 'issued' AND issued_at >= $2
+		`, tenantID, firstOfMonth).Scan(&prescriptions)
+
+		_ = w.pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM patients WHERE tenant_id = $1
+		`, tenantID).Scan(&patients)
+
+		_, err = w.pool.Exec(ctx, `
+			INSERT INTO activity_snapshot
+				(tenant_id, period, sessions_count, notes_count, allergies_count,
+				 prescriptions_count, exports_count, patients_count)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+			ON CONFLICT (tenant_id, period) DO UPDATE SET
+				sessions_count      = EXCLUDED.sessions_count,
+				notes_count         = EXCLUDED.notes_count,
+				allergies_count     = EXCLUDED.allergies_count,
+				prescriptions_count = EXCLUDED.prescriptions_count,
+				exports_count       = EXCLUDED.exports_count,
+				patients_count      = EXCLUDED.patients_count
+		`, tenantID, period, sessions, notes, allergies, prescriptions, exports, patients)
+		if err != nil {
+			return fmt.Errorf("error al guardar activity_snapshot %s: %w", tenantID, err)
+		}
+	}
 	return nil
 }
 

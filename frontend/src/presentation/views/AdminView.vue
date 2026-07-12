@@ -300,11 +300,31 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
           </div>
           <div v-if="metricsAccounts.length > 0" class="section-block">
             <h3 class="section-title">Detalle por cuenta</h3>
-            <div class="accounts-table-wrap">
-              <table class="accounts-table">
-                <thead><tr><th>Cuenta</th><th>Estado</th><th>MRR</th><th>Pacientes</th><th>Último registro</th></tr></thead>
+            <!-- Grupo: Plan mensual -->
+            <template v-if="metricsAccounts.filter(a => a.billing_mode === 'monthly').length > 0">
+              <div class="plan-group-header">Plan mensual</div>
+              <template v-for="price in [...new Set(metricsAccounts.filter(a => a.billing_mode === 'monthly').map(a => a.monthly_fee))].sort((a,b) => b - a)" :key="'m-' + price">
+                <div class="plan-price-header">{{ fmtMXN(price) }}/mes</div>
+                <table class="accounts-table plan-table">
+                  <thead><tr><th>Cuenta</th><th>Estado</th><th>Pacientes</th><th>Último registro</th></tr></thead>
+                  <tbody>
+                    <tr v-for="a in metricsAccounts.filter(a => a.billing_mode === 'monthly' && a.monthly_fee === price)" :key="a.tenant_id">
+                      <td class="td-email">{{ a.email }}</td>
+                      <td><span :class="['badge-state', a.state === 'active' ? 'badge-active' : 'badge-suspended']">{{ a.state === 'active' ? 'Activa' : 'Suspendida' }}</span></td>
+                      <td>{{ a.patients }}</td>
+                      <td class="td-date">{{ fmtDate(a.last_record) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </template>
+            </template>
+            <!-- Grupo: Por modulo -->
+            <template v-if="metricsAccounts.filter(a => a.billing_mode !== 'monthly').length > 0">
+              <div class="plan-group-header" :style="metricsAccounts.filter(a => a.billing_mode === 'monthly').length > 0 ? 'margin-top:1.25rem' : ''">Por módulo</div>
+              <table class="accounts-table plan-table">
+                <thead><tr><th>Cuenta</th><th>Estado</th><th>MRR módulos</th><th>Pacientes</th><th>Último registro</th></tr></thead>
                 <tbody>
-                  <tr v-for="a in metricsAccounts" :key="a.tenant_id">
+                  <tr v-for="a in metricsAccounts.filter(a => a.billing_mode !== 'monthly')" :key="a.tenant_id">
                     <td class="td-email">{{ a.email }}</td>
                     <td><span :class="['badge-state', a.state === 'active' ? 'badge-active' : 'badge-suspended']">{{ a.state === 'active' ? 'Activa' : 'Suspendida' }}</span></td>
                     <td>{{ fmtMXN(a.mrr) }}</td>
@@ -313,7 +333,7 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
                   </tr>
                 </tbody>
               </table>
-            </div>
+            </template>
           </div>
         </div>
       </div>
@@ -509,6 +529,9 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
 .stat-pill { font-size: 11px; background: #F1F5F9; color: var(--text-secondary); border-radius: 10px; padding: 2px 8px; }
 .activity-detail { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); padding: var(--space-5); min-height: 200px; }
 .alert-info { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: #1D4ED8; margin-bottom: var(--space-4); }
+.plan-group-header { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.75rem 0 0.25rem; border-top: 1px solid var(--color-border); margin-top: 0.5rem; }
+.plan-price-header { font-size: 17px; font-weight: 700; color: var(--color-jade, #00DFA2); padding: 0.4rem 0 0.2rem; }
+.plan-table { margin-bottom: 0.75rem; }
 .health-summary { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
 .health-filter-btn { padding: 0.35rem 0.9rem; border-radius: 6px; border: 1px solid var(--color-border); background: transparent; color: var(--color-text-secondary); cursor: pointer; font-size: 12px; }
 .health-filter-btn.selected { background: var(--color-jade, #00DFA2); color: #090C10; border-color: var(--color-jade); font-weight: 700; }
