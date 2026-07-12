@@ -61,7 +61,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.page { max-width: 520px; }
+.page { width: 100%; max-width: 100%; }
 .page-header { margin-bottom: var(--space-6); }
 .profile-card {
   background: var(--app-surface);

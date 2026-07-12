@@ -236,7 +236,7 @@ async function save() {
 </template>
 
 <style scoped>
-.page { max-width: 720px; }
+.page { width: 100%; max-width: 100%; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
 .page-sub { color: var(--text-secondary); font-size: 13px; margin-top: var(--space-1); }
 .btn-back { color: var(--color-clinical-blue); font-size: 14px; text-decoration: none; }
