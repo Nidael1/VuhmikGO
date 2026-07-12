@@ -1180,3 +1180,103 @@ preexistentes que bloqueaban la validación del panel admin:
 - `internal/workers/metrics_worker.go`
 - `internal/delivery/http/api/metrics_handlers.go`
 - `frontend/src/presentation/views/AdminView.vue`
+
+---
+
+## Issue #238 — Admin: editar perfil, billing mode, reset contraseña y recálculo inmediato de métricas
+
+**Rama:** `issue/238-admin-edit-profile-billing`
+**Merge a main:** `efcacc4`
+**Capa:** Delivery / Infraestructura / Asteroide (frontend). Sin cambios de Core.
+
+### Problema
+El admin no podía editar el perfil profesional de un médico existente, cambiar su
+plan de facturación, ni resetear su contraseña sin acceso directo a la BD.
+El MRR siempre mostraba $0 porque nadie tenía un plan asignado y el snapshot
+solo recalculaba cada 4 horas.
+
+### Solución
+- Migración `000027`: columnas `billing_mode` y `monthly_fee` en `users`.
+- `UserRepository`: métodos `SetBilling()`, `SetPassword()`, `FindAll()` actualizado.
+- 3 handlers nuevos: `HandleAdminUpdateProfile`, `HandleAdminSetBilling`, `HandleAdminResetPassword`.
+- `adminUserDispatcher`: enruta `PUT /admin/users/:tenant_id/{profile|billing|password}`.
+- `HandleAdminMetricsRecalculate`: `POST /admin/metrics/recalculate` fuerza snapshot inmediato.
+- `MetricsWorker`: MRR calcula según `billing_mode` (mensual fijo o suma de módulos).
+- Frontend: panel de edición inline en detalle de tenant con 3 botones.
+
+### Archivos involucrados
+- `database/migrations/000027_billing_mode.up.sql` (nuevo)
+- `internal/infrastructure/postgres/user_repository.go`
+- `internal/delivery/http/api/admin_handlers.go`
+- `internal/delivery/http/api/metrics_handlers.go`
+- `internal/delivery/http/api/router.go`
+- `cmd/vuhmik-api/main.go`
+- `frontend/src/presentation/views/AdminView.vue`
+
+---
+
+## Issues #239/#240 — Panel Salud de cuentas y Estado del sistema
+
+**Rama:** `issue/239-240-salud-cuentas-sistema`
+**Merge a main:** `b64c572`
+**Capa:** Workers / Delivery / Asteroide (frontend).
+
+### Problema
+El admin no tenía visibilidad de qué médicos estaban activos, en riesgo de churn,
+o inactivos, ni del estado operativo del sistema (BD, backups, disco, workers).
+
+### Solución
+- Migración `000028`: tablas `account_health_snapshot`, `system_snapshot`, `login_attempts`.
+- `SystemWorker` nuevo (cada hora): calcula salud por cuenta y snapshot del sistema.
+  - Salud: semáforo activo/en-riesgo/inactivo por tenant según dias sin login y uso clínico.
+  - Sistema: estado de BD, backup, worker de métricas, disco.
+- `health_handlers.go`: endpoints `GET /admin/health/accounts` y `GET /admin/system`.
+- `auth_handlers.go`: registra intentos de login fallidos en `login_attempts`.
+- Frontend: pestañas nuevas "Salud" y "Sistema" en panel admin.
+  - Salud: tabla con filtros por semáforo, antigüedad, sesiones/mes, notas/mes, módulos.
+  - Sistema: 4 tarjetas de estado + tabla de últimos accesos fallidos.
+
+### Archivos involucrados
+- `database/migrations/000028_health_system_snapshot.up.sql` (nuevo)
+- `internal/workers/system_worker.go` (nuevo)
+- `internal/delivery/http/api/health_handlers.go` (nuevo)
+- `internal/delivery/http/api/auth_handlers.go`
+- `internal/delivery/http/api/deps.go`
+- `internal/delivery/http/api/router.go`
+- `cmd/vuhmik-api/main.go`
+- `frontend/src/presentation/views/AdminView.vue`
+
+---
+
+## Issue #241 — Métricas: grupos por plan, actividad poblada, fix activity_handlers
+
+**Rama:** `issue/241-metricas-grupos-por-plan`
+**Merge a main:** `995eea1`
+**Capa:** Workers / Delivery / Asteroide (frontend).
+
+### Problema
+1. El "Detalle por cuenta" en Métricas mostraba todos los tenants mezclados sin
+   distinguir entre plan mensual y por módulo.
+2. El panel de Actividad siempre mostraba vacío — `activity_snapshot` nunca se
+   poblaba porque ningún worker lo calculaba.
+3. El drill-down mensual de Actividad devolvía `periods: []` por el mismo problema
+   de tipo `date` vs `string` de pgx v5.
+
+### Solución
+- `MetricsWorker`: agrega `billing_mode` y `monthly_fee` al struct `accountDetail`
+  y al query de `accounts_detail` para que el frontend pueda agrupar por tipo de plan.
+- `SystemWorker`: nuevo método `calculateActivitySnapshot()` — calcula conteos
+  mensuales por tenant desde las proyecciones y los guarda en `activity_snapshot`.
+- `activity_handlers.go`: cast `period::text` y `MAX(s.period)::text` para
+  compatibilidad con pgx v5 (mismo fix que se aplicó en `metrics_handlers.go`).
+- Frontend: "Detalle por cuenta" en Métricas muestra grupos visuales — título
+  "Plan mensual" con subtítulos por precio (ej. $2,500/mes), y "Por módulo" debajo.
+
+### Archivos involucrados
+- `internal/workers/system_worker.go`
+- `internal/workers/metrics_worker.go`
+- `internal/delivery/http/api/activity_handlers.go`
+- `frontend/src/presentation/views/AdminView.vue`
+
+---
+
