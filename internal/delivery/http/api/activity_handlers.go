@@ -27,7 +27,7 @@ func HandleAdminActivity(w http.ResponseWriter, r *http.Request) {
 			SUM(s.prescriptions_count) AS prescriptions_total,
 			SUM(s.exports_count)       AS exports_total,
 			SUM(s.patients_count)      AS patients_total,
-			MAX(s.period)              AS last_period
+			MAX(s.period)::text        AS last_period
 		FROM activity_snapshot s
 		GROUP BY s.tenant_id
 		ORDER BY sessions_total DESC
@@ -94,7 +94,7 @@ func HandleAdminActivityDetail(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := deps.DB.Query(r.Context(), `
 		SELECT
-			period,
+			period::text,
 			sessions_count,
 			notes_count,
 			allergies_count,

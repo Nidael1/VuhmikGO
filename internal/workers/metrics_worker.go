@@ -56,6 +56,8 @@ type accountDetail struct {
 	TenantID    string  `json:"tenant_id"`
 	Email       string  `json:"email"`
 	State       string  `json:"state"`
+	BillingMode string  `json:"billing_mode"`
+	MonthlyFee  float64 `json:"monthly_fee"`
 	MRR         float64 `json:"mrr"`
 	Patients    int     `json:"patients"`
 	LastRecord  string  `json:"last_record,omitempty"`
@@ -120,6 +122,8 @@ func (w *MetricsWorker) run(ctx context.Context) error {
 			u.tenant_id,
 			u.email,
 			CASE WHEN u.is_suspended THEN 'suspended' ELSE 'active' END AS state,
+			COALESCE(u.billing_mode, 'per_module') AS billing_mode,
+			u.monthly_fee,
 			CASE WHEN u.billing_mode = 'monthly'
 				THEN u.monthly_fee
 				ELSE COALESCE((SELECT SUM(tc2.costo) FROM tenant_capabilities tc2 WHERE tc2.tenant_id = u.tenant_id AND tc2.active = true), 0)
@@ -140,7 +144,7 @@ func (w *MetricsWorker) run(ctx context.Context) error {
 	accounts := make([]accountDetail, 0)
 	for rows.Next() {
 		var a accountDetail
-		if err := rows.Scan(&a.TenantID, &a.Email, &a.State, &a.MRR, &a.Patients, &a.LastRecord); err != nil {
+		if err := rows.Scan(&a.TenantID, &a.Email, &a.State, &a.BillingMode, &a.MonthlyFee, &a.MRR, &a.Patients, &a.LastRecord); err != nil {
 			continue
 		}
 		accounts = append(accounts, a)
