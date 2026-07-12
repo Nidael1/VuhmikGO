@@ -4,7 +4,7 @@ Registro de issues ejecutados sobre el Asteroide `crm_ui`. Cada entrada correspo
 
 ---
 
-## Estado agregado por ADR (última actualización: issue #237, 2026-07-09)
+## Estado agregado por ADR (última actualización: issue #241, 2026-07-11)
 
 Esta tabla es un tablero de estado, no un registro cronológico. Se actualiza cada vez
 que un ADR cambia de estado real (no solo cuando se documenta). Fuente: `docs/adr/*.md`
@@ -41,30 +41,40 @@ más verificación directa contra código en `main`.
 | 0027 | Audit Package ZIP síncrono | ✅ Implementado | — |
 | 0028 | Import de IPS Bundle FHIR R4 externo | ✅ Implementado | — |
 
-### ✅ Validado end-to-end en navegador (2026-07-09)
-- Notas clínicas: Create + Edit + panel lateral
-- Alergias e intolerancias: Create + Edit + Void
-- Diagnósticos CIE-10: Create + Void
+### Validado end-to-end en navegador (2026-07-11)
+
+Panel medico:
+- Notas clinicas: Create + Edit + panel lateral
+- Alergias: Create + Edit + Void
+- Diagnosticos CIE-10: Create + Void
 - Inmunizaciones: Create + Void
 - Resultados de laboratorio: Create + Void
-- Consultas médicas: Create + detalle
-- Recetas electrónicas: Backend OK — requiere perfil profesional completo en tenant
-- Panel admin — Operaciones: lista, toggles, crear médico
-- Panel admin — Métricas: snapshot real con datos
-- Panel admin — Actividad: tabla lista, se poblará con uso
+- Consultas: Create + detalle
+- Recetas: Backend OK, requiere perfil profesional completo
 
-### 🔧 Pendiente de código real
-- **ADR-0008 (firma digital / integridad):** sin ningún avance.
-- **ADR-0007 (export XML+JSON):** su alcance original quedó parcialmente
-  absorbido por IPS/FHIR (ADR-0010); requiere decisión explícita.
-- **Advertencia de controlados (ADR-0011):** bloqueada por decisión regulatoria —
-  requiere lista oficial COFEPRIS Grupo II/III validada antes de implementar.
+Panel admin (5 pestanas operativas validadas 2026-07-11):
+- Operaciones: crear medico, toggles, suspender, editar perfil,
+  billing mode (mensual/por modulo), reset contrasena
+- Metricas: MRR real, detalle agrupado por tipo de plan y precio,
+  recalculo inmediato
+- Actividad: uso real por medico mes a mes con drill-down mensual
+- Salud: semaforo activo/en-riesgo/inactivo, antiguedad, ultimo login,
+  sesiones/mes, notas/mes, modulos usados
+- Sistema: estado BD, backups, worker metricas, disco,
+  accesos fallidos, revision cada hora
 
-### 🐛 Bugs conocidos (no bloqueantes)
-- UX: secciones clínicas no se auto-expanden al guardar un registro nuevo.
-- UX: panel de notas generales no es visible hasta expandir manualmente al abrir formulario.
-- UX: `activity_snapshot` no registra conteos de diagnósticos/inmunizaciones/lab_results
-  (solo nota, alergia, receta, exportación, paciente, sesión).
+### Pendiente de codigo real
+- Advertencia de controlados (ADR-0011): requiere lista COFEPRIS validada.
+- Responsivo del panel del medico: pendiente antes del primer medico real.
+
+### Decisiones documentadas (no deuda tecnica)
+- ADR-0007: Superseded por ADR-0010 (IPS/FHIR cubre la intencion original).
+- ADR-0008: Diferido, ninguna ley mexicana exige firma digital en v1.
+
+### Bugs conocidos (no bloqueantes)
+- UX: secciones clinicas no se auto-expanden al guardar.
+- UX: panel de notas no visible hasta expandir manualmente.
+- activity_snapshot no registra diagnosticos/inmunizaciones/labs aun.
 
 ### Hallazgo colateral (no ADR)
 Falta la migración `000025` en la secuencia numérica (existe `000024` y `000026`).
