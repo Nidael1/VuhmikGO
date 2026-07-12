@@ -1,0 +1,28 @@
+[Unit]
+Description=VUHMIK Clinical SaaS
+After=network.target postgresql.service redis.service
+Requires=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=vuhmik
+Group=vuhmik
+WorkingDirectory=/opt/vuhmik
+ExecStart=/opt/vuhmik/vuhmik-api
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vuhmik
+
+# Variables de entorno — editar con valores reales antes de deploy
+EnvironmentFile=/opt/vuhmik/.env
+
+# Seguridad
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/vuhmik /tmp/vuhmik-backups
+
+[Install]
+WantedBy=multi-user.target
