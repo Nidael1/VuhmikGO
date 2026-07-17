@@ -24,6 +24,10 @@ func main() {
 		log.Fatalf("error de configuración: %v", err)
 	}
 
+	// File logging (solo en produccion cuando LOG_DIR esta configurado)
+	cleanupLogs := observability.InitFileLogging()
+	defer cleanupLogs()
+
 	// PostgreSQL
 	pool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -82,6 +86,7 @@ func main() {
 	delivery.RegisterRoutes(mux)
 	api.RegisterAPIRoutes(mux)
 	handler := delivery.Handler(mux)
+	handler = api.LoggingMiddleware(handler)
 
 	// Contexto global para workers WAR-A
 	ctx, cancel := context.WithCancel(context.Background())
