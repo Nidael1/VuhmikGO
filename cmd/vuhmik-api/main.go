@@ -82,6 +82,7 @@ func main() {
 	delivery.RegisterRoutes(mux)
 	api.RegisterAPIRoutes(mux)
 	handler := delivery.Handler(mux)
+	handler = api.LoggingMiddleware(handler)
 
 	// Contexto global para workers WAR-A
 	ctx, cancel := context.WithCancel(context.Background())
