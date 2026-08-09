@@ -174,7 +174,7 @@ func InitFileLogging() func() {
 		return func() {}
 	}
 	slog.SetDefault(slog.New(&dualHandler{
-		stdout: slog.Default().Handler(),
+		stdout: slog.NewJSONHandler(os.Stdout, nil),
 		fl:     fl,
 	}))
 	slog.Info("file logging iniciado", "log_dir", logDir)
