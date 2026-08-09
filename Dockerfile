@@ -1,4 +1,13 @@
-# Etapa 1: compilacion
+# Etapa 1: compilacion frontend
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# Etapa 2: compilacion backend
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
@@ -19,7 +28,7 @@ RUN apk add --no-cache wget \
     && rm migrate.linux-amd64.tar.gz \
     && apk del wget
 
-# Etapa 2: imagen final minima
+# Etapa 3: imagen final minima
 FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata
@@ -29,14 +38,17 @@ WORKDIR /app
 # Binario principal
 COPY --from=builder /app/vuhmik-api .
 
-# Templates HTML requeridos en runtime por handlers.go
-COPY internal/delivery/http/templates ./internal/delivery/http/templates
-
 # Herramienta de migraciones
 COPY --from=builder /app/migrate .
 
 # Archivos de migraciones
 COPY database/migrations ./migrations
+
+# Templates HTML requeridos en runtime por handlers.go
+COPY internal/delivery/http/templates ./internal/delivery/http/templates
+
+# Frontend compilado
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
 # Script de entrada
 COPY docker-entrypoint.sh .
