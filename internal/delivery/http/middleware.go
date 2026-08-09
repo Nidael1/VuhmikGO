@@ -26,12 +26,33 @@ var publicPaths = map[string]bool{
 //   - No accede al Core. Solo valida presencia de contexto.
 //   - Las rutas en publicPaths quedan exentas (solo navegación).
 //   - No contiene lógica de permisos — eso es responsabilidad del Shader.
+func isSPAPath(path string) bool {
+	prefixes := []string{
+		"/login",
+		"/patients",
+		"/evidence",
+		"/admin",
+		"/consultations",
+		"/prescriptions",
+		"/profile",
+	}
+
+	for _, prefix := range prefixes {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+
+	return false
+}
+
 func TenantContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if publicPaths[r.URL.Path] ||
 			r.URL.Path == "/api" ||
 			strings.HasPrefix(r.URL.Path, "/api/") ||
-			strings.HasPrefix(r.URL.Path, "/assets/") {
+			strings.HasPrefix(r.URL.Path, "/assets/") ||
+			isSPAPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
