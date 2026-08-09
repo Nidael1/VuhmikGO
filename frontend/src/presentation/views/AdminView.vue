@@ -72,7 +72,7 @@ async function toggleModule(tenantId: string, moduleId: string, active: boolean)
 async function createMedico() { createError.value = ''; createSuccess.value = ''; createLoading.value = true; try { const payload: Record<string, string> = { email: createForm.value.email.trim(), password: createForm.value.password, nombre_completo: createForm.value.nombre_completo.trim(), cedula_profesional: createForm.value.cedula_profesional.trim(), especialidad: createForm.value.especialidad.trim(), universidad: createForm.value.universidad.trim(), direccion: createForm.value.direccion.trim(), telefono: createForm.value.telefono.trim() }; if (createForm.value.curp.trim()) payload.curp = createForm.value.curp.trim(); const res = await http.post<any>('/admin/users', payload); createSuccess.value = `Médico creado: ${res.data?.email} — Módulos: ${res.data?.modulos_activos?.join(', ')}`; await loadTenants(); resetCreateForm(); showCreateForm.value = false } catch (e: any) { createError.value = e.message } finally { createLoading.value = false } }
 
 interface MetricsSnapshot { calculated_at: string; total_accounts: number; active_accounts: number; suspended_accounts: number; mrr: number; total_patients: number; total_notes: number; total_allergies: number; total_prescriptions: number }
-interface AccountDetail { tenant_id: string; email: string; state: string; mrr: number; patients: number; last_record: string }
+interface AccountDetail { tenant_id: string; email: string; state: string; mrr: number; patients: number; last_record: string; billing_mode?: string; monthly_fee?: number }
 const metrics = ref<MetricsSnapshot | null>(null)
 const metricsAccounts = ref<AccountDetail[]>([])
 const metricsModules = ref<Record<string, number>>({})
