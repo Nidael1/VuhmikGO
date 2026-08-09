@@ -85,6 +85,10 @@ func main() {
 	})
 	delivery.RegisterRoutes(mux)
 	api.RegisterAPIRoutes(mux)
+	delivery.RegisterFrontend(mux)
+	// SPA fallback: cualquier ruta no reconocida sirve index.html
+	// El router de Vue maneja la navegacion del lado del cliente
+	mux.HandleFunc("/", delivery.SPAHandler("frontend/dist"))
 	handler := delivery.Handler(mux)
 	handler = api.LoggingMiddleware(handler)
 
