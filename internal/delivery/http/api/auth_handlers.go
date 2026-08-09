@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -31,11 +31,12 @@ type LoginRequest struct {
 // AuthResponse es la respuesta de autenticacion.
 // Incluye access token (15min) y refresh token (7 dias).
 type AuthResponse struct {
-	Token        string `json:"token"`
-	RefreshToken string `json:"refresh_token"`
-	TenantID     string `json:"tenant_id"`
-	ActorID      string `json:"actor_id"`
-	IsAdmin      bool   `json:"is_admin"`
+	Token         string `json:"token"`
+	RefreshToken  string `json:"refresh_token"`
+	TenantID      string `json:"tenant_id"`
+	ActorID       string `json:"actor_id"`
+	IsAdmin       bool   `json:"is_admin"`
+	TermsAccepted bool   `json:"terms_accepted"`
 }
 
 func issueTokenPair(user postgres.User) (AuthResponse, error) {
@@ -64,11 +65,12 @@ func issueTokenPair(user postgres.User) (AuthResponse, error) {
 	}
 
 	return AuthResponse{
-		Token:        accessToken,
-		RefreshToken: plain,
-		TenantID:     user.TenantID,
-		ActorID:      user.ID,
-		IsAdmin:      user.IsAdmin,
+		Token:         accessToken,
+		RefreshToken:  plain,
+		TenantID:      user.TenantID,
+		ActorID:       user.ID,
+		IsAdmin:       user.IsAdmin,
+		TermsAccepted: user.TermsAcceptedAt != nil && user.TermsVersion != nil && *user.TermsVersion == CurrentTermsVersion,
 	}, nil
 }
 
@@ -190,6 +192,46 @@ func HandleMe(w http.ResponseWriter, r *http.Request) {
 		},
 		"error": nil,
 	})
+}
+
+// AcceptTermsRequest es el payload para registrar aceptacion de terminos.
+type AcceptTermsRequest struct {
+	Version string `json:"version"`
+}
+
+// HandleAcceptTerms registra la aceptación de términos y condiciones del usuario autenticado.
+//
+// El cliente debe enviar la version del documento que efectivamente mostro.
+// Si no coincide con CurrentTermsVersion se rechaza: registrar aceptacion de
+// una version distinta a la exhibida invalidaria el valor probatorio.
+//
+// POST /api/v1/auth/accept-terms
+func HandleAcceptTerms(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	claims, ok := r.Context().Value(claimsKey{}).(*auth.Claims)
+	if !ok || claims == nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+	var req AcceptTermsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "payload invalido")
+		return
+	}
+	if req.Version != CurrentTermsVersion {
+		writeError(w, http.StatusConflict, "TERMS_VERSION_MISMATCH", "version de terminos no vigente")
+		return
+	}
+	if err := deps.UserRepo.AcceptTerms(claims.ActorID, req.Version); err != nil {
+		observability.Logger.Error("error al registrar terminos", "error", err.Error())
+		writeError(w, http.StatusInternalServerError, "DB_ERROR", "error al registrar aceptacion")
+		return
+	}
+	logActivity(r.Context(), claims.TenantID, "terms_accepted")
+	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]string{"message": "terminos aceptados"}, "error": nil})
 }
 
 // hashToken calcula SHA-256 de un token en texto plano.

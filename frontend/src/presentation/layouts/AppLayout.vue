@@ -2,10 +2,12 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/app/stores/auth'
 import { useRouter } from 'vue-router'
+import TermsModal from '@/presentation/components/TermsModal.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
 const menuAbierto = ref(false)
+const showTerms = ref(false)
 
 function cerrarMenu() { menuAbierto.value = false }
 
@@ -68,9 +70,12 @@ async function logout() {
         <div class="user-info" v-if="auth.profile">
           <span class="user-actor">{{ auth.profile.actor_id }}</span>
         </div>
+        <button class="btn-terms-sidebar" @click="showTerms = true">Términos y condiciones</button>
         <button class="btn-logout" @click="logout">Cerrar sesión</button>
       </div>
     </aside>
+
+    <TermsModal :open="showTerms" @close="showTerms = false" />
 
     <main class="main-content">
       <slot />
@@ -114,6 +119,8 @@ async function logout() {
 .user-actor { font-size: 12px; color: var(--text-on-dark); opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn-logout { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-on-dark); padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; text-align: left; transition: all 0.15s; }
 .btn-logout:hover { border-color: var(--color-error); color: var(--color-error); }
+.btn-terms-sidebar { background: transparent; border: none; color: var(--text-on-dark); opacity: 0.4; font-size: 11px; cursor: pointer; text-align: left; padding: var(--space-1) 0; transition: opacity 0.15s; }
+.btn-terms-sidebar:hover { opacity: 0.7; text-decoration: underline; }
 .nav-item-profile { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); color: var(--text-on-dark); opacity: 0.6; text-decoration: none; font-size: 13px; transition: all 0.15s; }
 .nav-item-profile:hover, .nav-item-profile.router-link-active { opacity: 1; color: var(--color-turquoise); }
 

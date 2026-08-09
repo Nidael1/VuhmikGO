@@ -25,4 +25,9 @@ export const authRepository = {
     if (res.error) throw new Error(res.error.message)
     return res.data!
   },
+
+  async acceptTerms(version: string): Promise<void> {
+    const res = await http.post<ApiResponse<{ message: string }>>('/auth/accept-terms', { version })
+    if (res.error) throw new Error(res.error.message)
+  },
 }

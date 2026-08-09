@@ -11,16 +11,18 @@ import (
 
 // User representa un usuario del sistema en PostgreSQL.
 type User struct {
-	CURP         string
-	ID           string
-	TenantID     string
-	Email        string
-	PasswordHash string
-	IsAdmin      bool
-	IsSuspended  bool
-	BillingMode  string
-	MonthlyFee   float64
-	CreatedAt    time.Time
+	CURP            string
+	ID              string
+	TenantID        string
+	Email           string
+	PasswordHash    string
+	IsAdmin         bool
+	IsSuspended     bool
+	BillingMode     string
+	MonthlyFee      float64
+	CreatedAt       time.Time
+	TermsAcceptedAt *time.Time
+	TermsVersion    *string
 }
 
 // UserRepository es el adaptador PostgreSQL para usuarios.
@@ -56,15 +58,17 @@ func (r *UserRepository) Create(u User) error {
 // Retorna error si no existe.
 func (r *UserRepository) FindByEmail(email string) (User, error) {
 	sql := `
-		SELECT id, tenant_id, email, password_hash, curp, is_admin, is_suspended, created_at
+		SELECT id, tenant_id, email, password_hash, curp, is_admin, is_suspended, created_at, terms_accepted_at, terms_version
 		FROM users WHERE email = $1`
 	row := r.pool.QueryRow(context.Background(), sql, email)
 	var u User
 	var curp *string
-	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &curp, &u.IsAdmin, &u.IsSuspended, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &curp, &u.IsAdmin, &u.IsSuspended, &u.CreatedAt, &u.TermsAcceptedAt, &u.TermsVersion); err != nil {
 		return User{}, fmt.Errorf("usuario no encontrado: %w", err)
 	}
-	if curp != nil { u.CURP = *curp }
+	if curp != nil {
+		u.CURP = *curp
+	}
 	return u, nil
 }
 
@@ -79,16 +83,30 @@ func (r *UserRepository) ExistsByEmail(email string) bool {
 // FindByID busca un usuario por su ID.
 func (r *UserRepository) FindByID(id string) (User, error) {
 	sql := `
-		SELECT id, tenant_id, email, password_hash, curp, is_admin, is_suspended, created_at
+		SELECT id, tenant_id, email, password_hash, curp, is_admin, is_suspended, created_at, terms_accepted_at, terms_version
 		FROM users WHERE id = $1`
 	row := r.pool.QueryRow(context.Background(), sql, id)
 	var u User
 	var curp *string
-	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &curp, &u.IsAdmin, &u.IsSuspended, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &curp, &u.IsAdmin, &u.IsSuspended, &u.CreatedAt, &u.TermsAcceptedAt, &u.TermsVersion); err != nil {
 		return User{}, fmt.Errorf("usuario no encontrado: %w", err)
 	}
-	if curp != nil { u.CURP = *curp }
+	if curp != nil {
+		u.CURP = *curp
+	}
 	return u, nil
+}
+
+// AcceptTerms registra la fecha y hora en que el usuario aceptó los términos.
+func (r *UserRepository) AcceptTerms(userID string, version string) error {
+	_, err := r.pool.Exec(context.Background(),
+		`UPDATE users SET terms_accepted_at = NOW(), terms_version = $2 WHERE id = $1`,
+		userID, version,
+	)
+	if err != nil {
+		return fmt.Errorf("error al registrar aceptación de términos: %w", err)
+	}
+	return nil
 }
 
 // FindAll retorna todos los usuarios del sistema (para el panel admin).
@@ -151,4 +169,3 @@ func (r *UserRepository) SetPassword(userID, passwordHash string) error {
 	}
 	return nil
 }
-
