@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -15,7 +16,20 @@ import (
 	"github.com/Nidael1/VuhmikGO/internal/observability"
 )
 
-// RegisterRequest es el payload de registro.
+// Configuracion de rate limiting para login.
+// Se bloquea la IP tras 5 intentos fallidos en 15 minutos.
+// El contador vive en Redis con TTL automatico.
+const (
+	loginMaxAttempts = 5
+	loginWindowTTL   = 15 * time.Minute
+)
+
+// loginRateLimitKey retorna la clave Redis para el contador de intentos.
+func loginRateLimitKey(ip string) string {
+	return "login_attempts:" + ip
+}
+
+// registerRequest es el payload de registro.
 type RegisterRequest struct {
 	CURP     string `json:"curp"`
 	Email    string `json:"email"`
@@ -141,6 +155,27 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
 		return
 	}
+	// Rate limiting por IP: bloquear antes de tocar la base de datos.
+	// Usar IP como clave evita enumerar emails validos por diferencia de tiempo.
+	// Extraer IP sin puerto. RemoteAddr tiene formato "ip:puerto".
+	ip := r.RemoteAddr
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		ip = strings.SplitN(fwd, ",", 2)[0]
+	}
+	ip = strings.TrimSpace(ip)
+	if host, _, err := net.SplitHostPort(ip); err == nil {
+		ip = host
+	}
+	rdb := deps.RedisClient.RDB()
+	rateLimitKey := loginRateLimitKey(ip)
+
+	attempts, _ := rdb.Get(context.Background(), rateLimitKey).Int()
+	if attempts >= loginMaxAttempts {
+		observability.Logger.Warn("login bloqueado por rate limit", "ip", ip, "attempts", attempts)
+		writeError(w, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED", "demasiados intentos, intenta en 15 minutos")
+		return
+	}
+
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_JSON", "payload invalido")
@@ -149,6 +184,14 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 	u, err := deps.UserRepo.FindByEmail(req.Email)
 	if err != nil || !auth.CheckPassword(req.Password, u.PasswordHash) {
+		// Incrementar contador con TTL. INCR no resetea el TTL existente,
+		// asi que solo se setea el TTL en el primer intento.
+		pipe := rdb.Pipeline()
+		pipe.Incr(context.Background(), rateLimitKey)
+		pipe.Expire(context.Background(), rateLimitKey, loginWindowTTL)
+		if _, err := pipe.Exec(context.Background()); err != nil {
+			observability.Logger.Error("error al incrementar rate limit", "error", err.Error())
+		}
 		go func() {
 			id := fmt.Sprintf("la-%d", time.Now().UnixNano())
 			_, _ = deps.DB.Exec(context.Background(),
@@ -168,6 +211,8 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "TOKEN_ERROR", err.Error())
 		return
 	}
+	// Login exitoso: resetear contador de intentos fallidos.
+	rdb.Del(context.Background(), rateLimitKey)
 	logActivity(r.Context(), u.TenantID, "session_start")
 	writeJSON(w, http.StatusOK, map[string]any{"data": resp, "error": nil})
 }
