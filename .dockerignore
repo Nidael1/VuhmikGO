@@ -1,6 +1,5 @@
 .git
 .gitignore
-frontend/
 docs/
 deploy/
 .env
