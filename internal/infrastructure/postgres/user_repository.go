@@ -37,20 +37,42 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 
 // Create inserta un nuevo usuario en la BD.
 func (r *UserRepository) Create(u User) error {
-	sql := `
-		INSERT INTO users (id, tenant_id, email, password_hash, curp, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
-	// CURP vacío → NULL para respetar el índice unique
+	ctx := context.Background()
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("error al iniciar transaccion de usuario: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	// El tenant debe existir antes del usuario por la FK users.tenant_id -> tenants.tenant_id.
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO tenants (tenant_id) VALUES ($1)`,
+		u.TenantID,
+	); err != nil {
+		return fmt.Errorf("error al crear tenant: %w", err)
+	}
+
+	// CURP vacío → NULL para respetar el índice unique.
 	var curp *string
 	if u.CURP != "" {
 		curp = &u.CURP
 	}
-	_, err := r.pool.Exec(context.Background(), sql,
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO users (id, tenant_id, email, password_hash, curp, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
 		u.ID, u.TenantID, u.Email, u.PasswordHash, curp, u.CreatedAt,
-	)
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("error al crear usuario: %w", err)
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("error al confirmar creacion de usuario: %w", err)
+	}
+
 	return nil
 }
 
