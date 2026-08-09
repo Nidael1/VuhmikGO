@@ -303,7 +303,7 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
             <!-- Grupo: Plan mensual -->
             <template v-if="metricsAccounts.filter(a => a.billing_mode === 'monthly').length > 0">
               <div class="plan-group-header">Plan mensual</div>
-              <template v-for="price in [...new Set(metricsAccounts.filter(a => a.billing_mode === 'monthly').map(a => a.monthly_fee))].sort((a,b) => b - a)" :key="'m-' + price">
+              <template v-for="price in [...new Set(metricsAccounts.filter(a => a.billing_mode === 'monthly').map(a => a.monthly_fee ?? 0))].sort((a,b) => b - a)" :key="'m-' + price">
                 <div class="plan-price-header">{{ fmtMXN(price) }}/mes</div>
                 <table class="accounts-table plan-table">
                   <thead><tr><th>Cuenta</th><th>Estado</th><th>Pacientes</th><th>Último registro</th></tr></thead>
