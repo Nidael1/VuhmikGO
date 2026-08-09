@@ -54,6 +54,15 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/consultations/", JWTMiddleware(consultationDispatcher))
 	mux.HandleFunc("/api/v1/prescriptions", JWTMiddleware(HandlePrescriptionListAll))
 	mux.HandleFunc("/api/v1/prescriptions/", prescriptionAuthDispatcher)
+
+	// Reserva /api exclusivamente para la API.
+	// Cualquier ruta API no registrada debe devolver 404 y nunca caer al SPA de Vue.
+	mux.HandleFunc("/api", apiNotFound)
+	mux.HandleFunc("/api/", apiNotFound)
+}
+
+func apiNotFound(w http.ResponseWriter, r *http.Request) {
+	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
 }
 
 // evidenceDispatcher enruta requests con ID dinamico en el path.
@@ -332,9 +341,10 @@ func labResultDispatcher(w http.ResponseWriter, r *http.Request) {
 
 // adminUserDispatcher enruta requests de admin sobre usuarios con ID dinámico.
 // Soporta:
-//   PUT /api/v1/admin/users/:tenant_id/profile   — editar perfil profesional
-//   PUT /api/v1/admin/users/:tenant_id/billing   — cambiar modo de facturación
-//   PUT /api/v1/admin/users/:tenant_id/password  — resetear contraseña
+//
+//	PUT /api/v1/admin/users/:tenant_id/profile   — editar perfil profesional
+//	PUT /api/v1/admin/users/:tenant_id/billing   — cambiar modo de facturación
+//	PUT /api/v1/admin/users/:tenant_id/password  — resetear contraseña
 func adminUserDispatcher(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/users/")
 	parts := strings.SplitN(path, "/", 2)
