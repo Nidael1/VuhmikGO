@@ -12,9 +12,10 @@ import (
 var publicPaths = map[string]bool{
 	"/api/v1/auth/register": true,
 	"/api/v1/auth/login":    true,
-	"/":          true,
-	"/dashboard": true,
-	"/pacientes": true,
+	"/":                     true,
+	"/favicon.ico":          true,
+	"/dashboard":            true,
+	"/pacientes":            true,
 }
 
 // TenantContextMiddleware valida que cada request a rutas sensibles
@@ -27,7 +28,10 @@ var publicPaths = map[string]bool{
 //   - No contiene lógica de permisos — eso es responsabilidad del Shader.
 func TenantContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if publicPaths[r.URL.Path] || strings.HasPrefix(r.URL.Path, "/api/") {
+		if publicPaths[r.URL.Path] ||
+			r.URL.Path == "/api" ||
+			strings.HasPrefix(r.URL.Path, "/api/") ||
+			strings.HasPrefix(r.URL.Path, "/assets/") {
 			next.ServeHTTP(w, r)
 			return
 		}
