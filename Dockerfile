@@ -31,7 +31,7 @@ RUN apk add --no-cache wget \
 # Etapa 3: imagen final minima
 FROM alpine:3.21
 
-RUN apk add --no-cache ca-certificates tzdata postgresql-client wget
+RUN apk add --no-cache ca-certificates tzdata postgresql-client curl
 
 WORKDIR /app
 
