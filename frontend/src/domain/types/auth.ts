@@ -4,6 +4,7 @@ export interface AuthTokens {
   tenant_id: string
   actor_id: string
   is_admin: boolean
+  terms_accepted: boolean
 }
 
 export interface UserProfile {

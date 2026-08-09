@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/app/stores/auth'
 import { authRepository } from '@/infrastructure/repositories/authRepository'
+import TermsModal from '@/presentation/components/TermsModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -12,6 +13,8 @@ const password = ref('')
 const error = ref('')
 const loading = ref(false)
 const mode = ref<'login' | 'register'>('login')
+const showTerms = ref(false)
+const pendingNavigation = ref(false)
 
 async function submit() {
   error.value = ''
@@ -21,9 +24,33 @@ async function submit() {
       ? await authRepository.login({ email: email.value, password: password.value })
       : await authRepository.register({ email: email.value, password: password.value })
     auth.setSession(tokens)
-    router.push(auth.isAdmin ? '/admin' : '/patients')
+    if (!tokens.terms_accepted) {
+      pendingNavigation.value = true
+      showTerms.value = true
+    } else {
+      router.push(auth.isAdmin ? '/admin' : '/patients')
+    }
   } catch (e: any) {
     error.value = e.message || 'Error al iniciar sesión'
+  } finally {
+    loading.value = false
+  }
+}
+
+// El registro de aceptacion es condicion para entrar. Si falla, el Medico
+// no accede: operar sin consentimiento registrado deja al expediente sin
+// respaldo probatorio del contrato aceptado.
+async function onTermsAccepted(version: string) {
+  error.value = ''
+  loading.value = true
+  try {
+    await authRepository.acceptTerms(version)
+    auth.markTermsAccepted()
+    showTerms.value = false
+    pendingNavigation.value = false
+    router.push(auth.isAdmin ? '/admin' : '/patients')
+  } catch (e: any) {
+    error.value = e.message || 'No se pudo registrar la aceptación. Intenta de nuevo.'
   } finally {
     loading.value = false
   }
@@ -79,9 +106,21 @@ async function submit() {
         <button type="button" class="btn-toggle" @click="mode = mode === 'login' ? 'register' : 'login'">
           {{ mode === 'login' ? '¿Sin cuenta? Regístrate' : '¿Ya tienes cuenta? Entra' }}
         </button>
+
+        <p class="terms-link">
+          Al continuar aceptas nuestros
+          <button type="button" class="btn-terms" @click="showTerms = true">Términos y Condiciones</button>
+        </p>
       </form>
     </div>
   </div>
+
+  <TermsModal
+    :open="showTerms"
+    :required="pendingNavigation"
+    @accept="onTermsAccepted"
+    @close="showTerms = false"
+  />
 </template>
 
 <style scoped>
@@ -224,6 +263,22 @@ input:focus {
 }
 
 .btn-toggle:hover {
+  text-decoration: underline;
+}
+
+.terms-link {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.btn-terms {
+  background: transparent;
+  border: none;
+  color: var(--color-clinical-blue);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
   text-decoration: underline;
 }
 </style>

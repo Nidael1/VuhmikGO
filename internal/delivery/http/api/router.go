@@ -14,6 +14,7 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/auth/me", JWTMiddleware(HandleMe))
 	mux.HandleFunc("/api/v1/auth/refresh", HandleRefresh)
 	mux.HandleFunc("/api/v1/auth/logout", HandleLogout)
+	mux.HandleFunc("/api/v1/auth/accept-terms", JWTMiddleware(HandleAcceptTerms))
 	mux.HandleFunc("/api/v1/evidence", JWTMiddleware(HandleEvidenceList))
 	mux.HandleFunc("/api/v1/evidence/draft", JWTMiddleware(HandleEvidenceDraft))
 
