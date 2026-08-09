@@ -9,7 +9,6 @@ import (
 // Solo define navegación base; sin lógica clínica ni reglas del Core.
 // Toda ruta sensible queda protegida por TenantContextMiddleware.
 func RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/", handleIndex)
 	mux.HandleFunc("/dashboard", handleDashboard)
 	mux.HandleFunc("/pacientes", handlePacientes)
 	mux.HandleFunc("/ece/nuevo", handleECENuevo)

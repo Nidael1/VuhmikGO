@@ -31,7 +31,7 @@ RUN apk add --no-cache wget \
 # Etapa 3: imagen final minima
 FROM alpine:3.21
 
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata postgresql-client
 
 WORKDIR /app
 
@@ -56,7 +56,11 @@ RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 8080
 
-RUN addgroup -S vuhmik && adduser -S vuhmik -G vuhmik
+RUN addgroup -S vuhmik \
+    && adduser -S vuhmik -G vuhmik \
+    && mkdir -p /app/logs \
+    && chown -R vuhmik:vuhmik /app/logs
+
 USER vuhmik
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
