@@ -29,6 +29,9 @@ WORKDIR /app
 # Binario principal
 COPY --from=builder /app/vuhmik-api .
 
+# Templates HTML requeridos en runtime por handlers.go
+COPY internal/delivery/http/templates ./internal/delivery/http/templates
+
 # Herramienta de migraciones
 COPY --from=builder /app/migrate .
 
