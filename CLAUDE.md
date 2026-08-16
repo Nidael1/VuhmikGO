@@ -51,7 +51,7 @@ Core (internal/core/evidence/) — motor agnóstico, append-only, inmutable
 
 ## Stack oficial
 
-- **Backend**: Go 1.22+, `net/http` + `ServeMux`, binario único.
+- **Backend**: Go 1.25.0, `net/http` + `ServeMux`, binario único.
 - **Base de datos**: PostgreSQL con `pgx/v5`. Cast `::text` para `date`, `::float8` para `numeric`.
 - **Migraciones**: `golang-migrate`, forward-only. Sin `.down.sql`.
 - **Cache/Tokens**: Redis (obligatorio en producción — WAR-A).
