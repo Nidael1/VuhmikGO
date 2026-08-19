@@ -194,7 +194,11 @@ func HandlePatientUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 		p.FechaNacimiento = req.FechaNacimiento
 	}
-	if req.Sexo == "M" || req.Sexo == "F" || req.Sexo == "I" {
+	if req.Sexo != "" {
+		if req.Sexo != "M" && req.Sexo != "F" && req.Sexo != "I" {
+			writeError(w, http.StatusBadRequest, "INVALID_FIELDS", "sexo debe ser M, F o I")
+			return
+		}
 		p.Sexo = req.Sexo
 	}
 	p.UpdatedAt = time.Now().UTC()
