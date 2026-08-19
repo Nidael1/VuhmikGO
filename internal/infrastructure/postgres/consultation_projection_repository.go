@@ -85,6 +85,18 @@ func (r *ConsultationProjectionRepository) ListAll(tenantID string) ([]ports.Con
 	return r.scanAll(sql, tenantID)
 }
 
+// ListToday retorna todas las consultas del tenant para la fecha dada (YYYY-MM-DD),
+// en cualquier estado, ordenadas por hora de creación. Usado por el widget de agenda.
+func (r *ConsultationProjectionRepository) ListToday(tenantID string, date string) ([]ports.ConsultationProjection, error) {
+	sql := `
+		SELECT evidence_id, tenant_id, patient_id, ta, fc, fr, temp, peso, talla, sao2,
+		       state, created_at, issued_at, tiene_receta
+		FROM consultation_projections
+		WHERE tenant_id = $1 AND created_at::date = $2::date
+		ORDER BY created_at ASC`
+	return r.scanAll(sql, tenantID, date)
+}
+
 func (r *ConsultationProjectionRepository) scanAll(sql string, args ...any) ([]ports.ConsultationProjection, error) {
 	rows, err := r.pool.Query(context.Background(), sql, args...)
 	if err != nil {

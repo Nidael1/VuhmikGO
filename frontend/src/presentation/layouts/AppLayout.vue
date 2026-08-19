@@ -39,11 +39,7 @@ function localDateToday(): string {
 async function cargarAgenda() {
   if (!auth.token) return
   try {
-    const todas = await consultationRepository.listAll()
-    const hoy = localDateToday()
-    consultasHoy.value = todas
-      .filter(c => c.created_at.slice(0, 10) === hoy)
-      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    consultasHoy.value = await consultationRepository.listToday(localDateToday())
   } catch { /* silencioso — el widget no bloquea la app */ }
 }
 
@@ -114,12 +110,20 @@ watch(() => route.fullPath, cargarAgenda)
           :key="c.id"
           :to="`/consultations/${c.id}`"
           class="agenda-item"
-          :class="{ 'agenda-item--issued': c.state === 'issued' }"
+          :class="{
+            'agenda-item--issued': c.state === 'issued',
+            'agenda-item--voided': c.state === 'voided',
+            'agenda-item--draft':  c.state === 'draft',
+          }"
           @click="cerrarMenu"
         >
+          <span class="agenda-dot" :class="{
+            'dot--green':  c.state === 'issued',
+            'dot--yellow': c.state === 'voided',
+            'dot--red':    c.state === 'draft',
+          }" />
           <span class="agenda-hora">{{ horaCorta(c.created_at) }}</span>
           <span class="agenda-paciente">{{ nombreCorto(c.patient_nombre) }}</span>
-          <span v-if="c.state === 'issued'" class="agenda-check">✓</span>
         </RouterLink>
       </div>
 
@@ -191,13 +195,21 @@ watch(() => route.fullPath, cargarAgenda)
 .agenda-titulo { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-on-dark); opacity: 0.45; }
 .agenda-conteo { font-size: 11px; color: var(--color-jade); opacity: 0.8; font-variant-numeric: tabular-nums; }
 .agenda-vacio { font-size: 12px; color: var(--text-on-dark); opacity: 0.3; padding: var(--space-2) var(--space-2); font-style: italic; }
-.agenda-item { display: flex; align-items: center; gap: var(--space-2); padding: 5px var(--space-2); border-radius: var(--radius-sm); text-decoration: none; transition: background 0.12s; }
+.agenda-item { display: flex; align-items: center; gap: var(--space-2); padding: 5px var(--space-2); border-radius: var(--radius-sm); text-decoration: none; transition: background 0.12s; border-left: 2px solid transparent; }
 .agenda-item:hover { background: rgba(255,255,255,0.06); }
-.agenda-hora { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--color-turquoise); opacity: 0.75; min-width: 36px; }
-.agenda-paciente { font-size: 12px; color: var(--text-on-dark); opacity: 0.75; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.agenda-check { font-size: 10px; color: var(--color-jade); }
+.agenda-item--issued { border-left-color: #22c55e; }
+.agenda-item--voided { border-left-color: #eab308; }
+.agenda-item--draft  { border-left-color: #ef4444; }
+.agenda-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot--green  { background: #22c55e; }
+.dot--yellow { background: #eab308; }
+.dot--red    { background: #ef4444; }
+.agenda-hora { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-on-dark); opacity: 0.55; min-width: 34px; }
+.agenda-paciente { font-size: 12px; color: var(--text-on-dark); opacity: 0.8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agenda-item--issued .agenda-paciente { opacity: 0.45; }
-.agenda-item--issued .agenda-hora { opacity: 0.4; }
+.agenda-item--issued .agenda-hora { opacity: 0.35; }
+.agenda-item--voided .agenda-paciente { opacity: 0.4; text-decoration: line-through; }
+.agenda-item--voided .agenda-hora { opacity: 0.35; }
 
 /* Contenido principal */
 .main-content { flex: 1; margin-left: 240px; padding: var(--space-8); min-height: 100vh; }

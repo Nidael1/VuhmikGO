@@ -234,6 +234,10 @@ func consultationDispatcher(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/consultations/")
 	parts := strings.SplitN(path, "/", 2)
 	if len(parts) == 1 {
+		if parts[0] == "today" {
+			HandleConsultationToday(w, r)
+			return
+		}
 		HandleConsultationDetail(w, r)
 		return
 	}

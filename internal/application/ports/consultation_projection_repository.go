@@ -27,5 +27,6 @@ type ConsultationProjectionRepository interface {
 	UpdateState(tenantID, evidenceID, state string) error
 	ListByPatient(tenantID, patientID string) ([]ConsultationProjection, error)
 	ListAll(tenantID string) ([]ConsultationProjection, error)
+	ListToday(tenantID string, date string) ([]ConsultationProjection, error)
 	FindByID(tenantID, evidenceID string) (ConsultationProjection, error)
 }

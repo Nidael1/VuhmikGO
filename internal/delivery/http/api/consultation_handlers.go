@@ -140,6 +140,40 @@ func HandleConsultationListByPatient(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleConsultationToday lista las consultas del tenant para la fecha de hoy (todos los estados).
+// Usado por el widget de agenda del sidebar.
+//
+// GET /api/v1/consultations/today?date=YYYY-MM-DD
+func HandleConsultationToday(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		return
+	}
+	tenantID := TenantIDFromContext(r)
+	if tenantID == "" {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "no autenticado")
+		return
+	}
+	date := r.URL.Query().Get("date")
+	if date == "" {
+		date = time.Now().UTC().Format("2006-01-02")
+	}
+	items, err := deps.ConsultationService.ListToday(tenantID, date)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "error al listar consultas del dia")
+		return
+	}
+	dtos := make([]ConsultationItem, 0, len(items))
+	for _, p := range items {
+		item := toConsultationItem(p)
+		if pat, err := deps.PatientRepo.FindByID(tenantID, p.PatientID); err == nil {
+			item.PatientNombre = pat.Nombre
+		}
+		dtos = append(dtos, item)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"items": dtos}, "error": nil})
+}
+
 // HandleConsultationListAll lista todas las consultas del tenant.
 //
 // GET /api/v1/consultations

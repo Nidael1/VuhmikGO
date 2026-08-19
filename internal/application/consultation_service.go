@@ -76,6 +76,10 @@ func (s *ConsultationService) ListByPatient(tenantID, patientID string) ([]ports
 	return s.proj.ListByPatient(tenantID, patientID)
 }
 
+func (s *ConsultationService) ListToday(tenantID, date string) ([]ports.ConsultationProjection, error) {
+	return s.proj.ListToday(tenantID, date)
+}
+
 func (s *ConsultationService) ListAll(tenantID string) ([]ports.ConsultationProjection, error) {
 	return s.proj.ListAll(tenantID)
 }
