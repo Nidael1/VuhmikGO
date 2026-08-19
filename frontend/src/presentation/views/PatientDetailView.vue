@@ -31,6 +31,8 @@ const error = ref('')
 
 const editingName = ref(false)
 const nameValue = ref('')
+const editingSexo = ref(false)
+const sexoValue = ref('')
 
 const allergies = ref<Allergy[]>([])
 const prescriptions = ref<Prescription[]>([])
@@ -110,6 +112,7 @@ onMounted(async () => {
     ])
     patient.value = p
     nameValue.value = p.nombre
+    sexoValue.value = p.sexo
     allNotes.value = notes
     allergies.value = algs
     prescriptions.value = rxs
@@ -131,9 +134,6 @@ async function saveName() {
   try {
     const updated = await patientRepository.update(patient.value!.id, {
       nombre: trimmed.toUpperCase(),
-      fecha_nacimiento: patient.value!.fecha_nacimiento,
-      sexo: patient.value!.sexo,
-      curp: patient.value!.curp,
     })
     if (patient.value) patient.value.nombre = updated.nombre
     nameValue.value = updated.nombre
@@ -142,6 +142,26 @@ async function saveName() {
     error.value = e.message
   } finally {
     editingName.value = false
+  }
+}
+
+async function saveSexo() {
+  if (!sexoValue.value || sexoValue.value === patient.value?.sexo) {
+    editingSexo.value = false
+    return
+  }
+  const nuevoSexo = sexoValue.value
+  editingSexo.value = false
+  try {
+    const updated = await patientRepository.update(patient.value!.id, {
+      sexo: nuevoSexo,
+    })
+    if (patient.value) patient.value.sexo = updated.sexo
+    sexoValue.value = updated.sexo
+  } catch (e: any) {
+    sexoValue.value = patient.value?.sexo ?? ''
+    editingSexo.value = true
+    error.value = e.message
   }
 }
 
@@ -467,7 +487,34 @@ async function exportExpediente() {
         <div class="patient-meta">
           <span>{{ calcEdad(patient.fecha_nacimiento) }} años</span>
           <span class="sep">·</span>
-          <span>{{ sexoLabel[patient.sexo] }}</span>
+          <span style="display:inline-flex; align-items:center; gap:4px;">
+            <select
+              v-if="editingSexo"
+              v-model="sexoValue"
+              autofocus
+              @change="saveSexo"
+              @keydown.esc="() => { sexoValue = patient!.sexo; editingSexo = false }"
+              style="font-size:inherit; border:none; border-bottom:2px solid #00DFA2; outline:none; background:transparent; cursor:pointer;"
+            >
+              <option value="M">Masculino</option>
+              <option value="F">Femenino</option>
+              <option value="I">Indeterminado</option>
+            </select>
+            <span v-else>{{ sexoLabel[patient.sexo] }}</span>
+            <button
+              v-if="!editingSexo"
+              @click="editingSexo = true"
+              title="Editar sexo"
+              style="background:none; border:none; cursor:pointer; padding:2px; color:#9ca3af; display:inline-flex; align-items:center;"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+          </span>
           <span class="sep">·</span>
           <span class="mono">{{ patient.num_expediente }}</span>
         </div>
