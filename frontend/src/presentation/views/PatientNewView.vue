@@ -12,10 +12,19 @@ const curp = ref('')
 const error = ref('')
 const saving = ref(false)
 
+function localDateToday(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 async function save() {
   error.value = ''
   if (!nombre.value.trim()) { error.value = 'El nombre es obligatorio'; return }
   if (!fechaNacimiento.value) { error.value = 'La fecha de nacimiento es obligatoria'; return }
+  if (fechaNacimiento.value > localDateToday()) { error.value = 'La fecha de nacimiento no puede ser futura'; return }
   saving.value = true
   try {
     const p = await patientRepository.create({
@@ -47,7 +56,7 @@ async function save() {
         </div>
         <div class="form-group">
           <label>Fecha de nacimiento *</label>
-          <input v-model="fechaNacimiento" type="date" />
+          <input v-model="fechaNacimiento" type="date" :max="localDateToday()" />
         </div>
         <div class="form-group">
           <label>Sexo *</label>
