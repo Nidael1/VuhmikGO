@@ -150,12 +150,12 @@ async function saveSexo() {
     editingSexo.value = false
     return
   }
+  const p = patient.value
+  if (!p) { editingSexo.value = false; return }
   const nuevoSexo = sexoValue.value
   editingSexo.value = false
   try {
-    const updated = await patientRepository.update(patient.value!.id, {
-      sexo: nuevoSexo,
-    })
+    const updated = await patientRepository.update(p.id, { sexo: nuevoSexo })
     if (patient.value) patient.value.sexo = updated.sexo
     sexoValue.value = updated.sexo
   } catch (e: any) {
