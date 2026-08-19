@@ -1,5 +1,10 @@
 package shaders
 
+import (
+	"fmt"
+	"time"
+)
+
 // MedicalBasicShader es el Shader médico básico.
 //
 // Implementa el contrato Shader para operaciones clínicas estándar.
@@ -52,4 +57,26 @@ func (s *MedicalBasicShader) Evaluate(ctx ShaderContext) ShaderDecision {
 // NewMedicalBasicShader retorna una instancia del Shader médico básico.
 func NewMedicalBasicShader() Shader {
 	return &MedicalBasicShader{}
+}
+
+// ErrShaderDemographic es el error_code para validaciones demográficas (ADR-0030).
+const ErrShaderDemographic = "ER-SHADER-010"
+
+// ValidatePatientDemographics valida datos demográficos de un paciente
+// conforme a NOM-024-SSA3-2012. Solo valida campos no vacíos (soporta PATCH parcial).
+// Retorna nil si los datos son válidos.
+func ValidatePatientDemographics(nombre, fechaNacimiento, sexo string) error {
+	if fechaNacimiento != "" {
+		fn, err := time.Parse("2006-01-02", fechaNacimiento)
+		if err != nil {
+			return fmt.Errorf("%s: fecha_nacimiento debe tener formato YYYY-MM-DD", ErrShaderDemographic)
+		}
+		if fn.After(time.Now().UTC().Truncate(24 * time.Hour)) {
+			return fmt.Errorf("%s: fecha_nacimiento no puede ser futura", ErrShaderDemographic)
+		}
+	}
+	if sexo != "" && sexo != "M" && sexo != "F" && sexo != "I" {
+		return fmt.Errorf("%s: sexo debe ser M, F o I", ErrShaderDemographic)
+	}
+	return nil
 }
