@@ -8,6 +8,21 @@ Para el historial de capacidades por sprint ver → [CHANGELOG.md](../versiones/
 
 ## 2026-08-19
 
+### Issue #163 — Widget "Agenda de hoy" en el menú lateral
+
+**¿Qué se agregó?**
+En el menú lateral izquierdo, debajo de los enlaces de navegación (Pacientes, Consultas, Recetas), ahora aparece una sección llamada "Hoy" que muestra todas las consultas del día en curso.
+
+Cada consulta muestra la hora en que fue registrada, el nombre corto del paciente (por ejemplo "Juan G.") y una palomita (✓) si ya fue emitida. Las consultas emitidas se ven más tenues para que visualmente el médico identifique de un vistazo cuántas le quedan pendientes. En el encabezado aparece el conteo "completadas/total" del día.
+
+**¿Cómo se actualiza?**
+Cada vez que el médico navega a una pantalla diferente — por ejemplo, después de registrar una nueva consulta — el widget se refresca automáticamente. No requiere recargar la página.
+
+**¿Por qué importa?**
+El médico puede saber en cualquier momento cuántas consultas tiene hoy y en qué estado están, sin salir de la pantalla donde está trabajando.
+
+---
+
 ### Issue #156 — Corrección de bug: editar nombre y sexo del paciente al mismo tiempo podía corromper datos
 
 **¿Qué estaba pasando?**

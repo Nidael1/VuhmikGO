@@ -4,6 +4,21 @@ Registro acumulativo de lo que aporta cada issue/merge. Actualizar al cerrar cad
 
 ---
 
+## Sprint 9.5 — Corrección de bugs + Widget Agenda
+
+### #163 — Widget "Agenda de hoy" en sidebar global
+**Fecha:** 2026-08-19  
+**Commit:** `e0e0c69`  
+**Aporta:**
+- Sidebar muestra las consultas del día en curso debajo de la navegación.
+- Muestra hora, nombre corto del paciente y estado (✓ = emitida, opaco = en borrador).
+- Contador `completadas/total` en el encabezado del widget.
+- Se refresca automáticamente al navegar entre rutas (sin polling, usando `watch(route)`).
+- Backend: `ConsultationItem` incluye `patient_nombre` enriquecido con lookup al `PatientRepo` en `HandleConsultationListAll`.
+- Tipo TypeScript `Consultation` actualizado con `patient_nombre?: string`.
+
+---
+
 ## Sprint 9.5 — Corrección de bugs de integridad en expediente
 
 ### #156 — Bugfix: PATCH parcial en edición inline de paciente

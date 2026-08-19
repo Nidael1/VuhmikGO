@@ -84,6 +84,9 @@ Entregables de bloque:
         (si sexo no es M/F/I y viene en el payload, responde 400 INVALID_FIELDS)
   #161  bugfix fecha maxima del picker en hora local no UTC
         (localDateToday() con getFullYear/getMonth/getDate en PatientNewView)
+  #163  widget agenda de hoy en sidebar global
+        (consultas del dia filtradas por fecha local; patient_nombre en DTO;
+         refresco automatico al navegar; conteo completadas/total)
   #162  validacion demografica de paciente al Shader med_basic (ADR-0030)
         (ValidatePatientDemographics en medical_basic.go; ER-SHADER-010;
          handlers delegan al Shader; ADR-0030 aceptado)
