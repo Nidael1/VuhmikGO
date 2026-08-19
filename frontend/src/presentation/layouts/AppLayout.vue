@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/app/stores/auth'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import TermsModal from '@/presentation/components/TermsModal.vue'
+import { consultationRepository } from '@/infrastructure/repositories/consultationRepository'
+import type { Consultation } from '@/domain/types/consultation'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const menuAbierto = ref(false)
 const showTerms = ref(false)
 
@@ -24,6 +27,43 @@ async function logout() {
   auth.clearSession()
   router.push('/login')
 }
+
+// --- Agenda de hoy ---
+const consultasHoy = ref<Consultation[]>([])
+
+function localDateToday(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+async function cargarAgenda() {
+  if (!auth.token) return
+  try {
+    const todas = await consultationRepository.listAll()
+    const hoy = localDateToday()
+    consultasHoy.value = todas
+      .filter(c => c.created_at.slice(0, 10) === hoy)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+  } catch { /* silencioso — el widget no bloquea la app */ }
+}
+
+const totalHoy = computed(() => consultasHoy.value.length)
+const completadasHoy = computed(() => consultasHoy.value.filter(c => c.state === 'issued').length)
+
+function horaCorta(iso: string): string {
+  const d = new Date(iso)
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+}
+
+function nombreCorto(nombre?: string): string {
+  if (!nombre) return '—'
+  const partes = nombre.trim().split(' ')
+  return partes.length >= 2 ? `${partes[0]} ${partes[1][0]}.` : partes[0]
+}
+
+onMounted(cargarAgenda)
+// Refresca cada vez que cambia la ruta (el médico registró una consulta y navega)
+watch(() => route.fullPath, cargarAgenda)
 </script>
 
 <template>
@@ -62,6 +102,27 @@ async function logout() {
           <span>Recetas</span>
         </RouterLink>
       </nav>
+      <!-- Agenda de hoy -->
+      <div class="agenda-hoy">
+        <div class="agenda-header">
+          <span class="agenda-titulo">Hoy</span>
+          <span class="agenda-conteo">{{ completadasHoy }}/{{ totalHoy }}</span>
+        </div>
+        <div v-if="consultasHoy.length === 0" class="agenda-vacio">Sin consultas registradas</div>
+        <RouterLink
+          v-for="c in consultasHoy"
+          :key="c.id"
+          :to="`/consultations/${c.id}`"
+          class="agenda-item"
+          :class="{ 'agenda-item--issued': c.state === 'issued' }"
+          @click="cerrarMenu"
+        >
+          <span class="agenda-hora">{{ horaCorta(c.created_at) }}</span>
+          <span class="agenda-paciente">{{ nombreCorto(c.patient_nombre) }}</span>
+          <span v-if="c.state === 'issued'" class="agenda-check">✓</span>
+        </RouterLink>
+      </div>
+
       <div class="sidebar-footer">
         <RouterLink to="/profile" class="nav-item-profile" @click="cerrarMenu">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -123,6 +184,20 @@ async function logout() {
 .btn-terms-sidebar:hover { opacity: 0.7; text-decoration: underline; }
 .nav-item-profile { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); color: var(--text-on-dark); opacity: 0.6; text-decoration: none; font-size: 13px; transition: all 0.15s; }
 .nav-item-profile:hover, .nav-item-profile.router-link-active { opacity: 1; color: var(--color-turquoise); }
+
+/* Agenda de hoy */
+.agenda-hoy { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: var(--space-3); }
+.agenda-header { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-2) var(--space-2); }
+.agenda-titulo { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-on-dark); opacity: 0.45; }
+.agenda-conteo { font-size: 11px; color: var(--color-jade); opacity: 0.8; font-variant-numeric: tabular-nums; }
+.agenda-vacio { font-size: 12px; color: var(--text-on-dark); opacity: 0.3; padding: var(--space-2) var(--space-2); font-style: italic; }
+.agenda-item { display: flex; align-items: center; gap: var(--space-2); padding: 5px var(--space-2); border-radius: var(--radius-sm); text-decoration: none; transition: background 0.12s; }
+.agenda-item:hover { background: rgba(255,255,255,0.06); }
+.agenda-hora { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--color-turquoise); opacity: 0.75; min-width: 36px; }
+.agenda-paciente { font-size: 12px; color: var(--text-on-dark); opacity: 0.75; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agenda-check { font-size: 10px; color: var(--color-jade); }
+.agenda-item--issued .agenda-paciente { opacity: 0.45; }
+.agenda-item--issued .agenda-hora { opacity: 0.4; }
 
 /* Contenido principal */
 .main-content { flex: 1; margin-left: 240px; padding: var(--space-8); min-height: 100vh; }

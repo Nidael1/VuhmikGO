@@ -12,20 +12,21 @@ import (
 
 // ConsultationItem es el DTO de respuesta para una consulta.
 type ConsultationItem struct {
-	ID          string     `json:"id"`
-	TenantID    string     `json:"tenant_id"`
-	PatientID   string     `json:"patient_id"`
-	TA          string     `json:"ta,omitempty"`
-	FC          string     `json:"fc,omitempty"`
-	FR          string     `json:"fr,omitempty"`
-	Temp        string     `json:"temp,omitempty"`
-	Peso        string     `json:"peso,omitempty"`
-	Talla       string     `json:"talla,omitempty"`
-	SAO2        string     `json:"sao2,omitempty"`
-	State       string     `json:"state"`
-	CreatedAt   time.Time  `json:"created_at"`
-	IssuedAt    *time.Time `json:"issued_at,omitempty"`
-	TieneReceta bool       `json:"tiene_receta"`
+	ID             string     `json:"id"`
+	TenantID       string     `json:"tenant_id"`
+	PatientID      string     `json:"patient_id"`
+	PatientNombre  string     `json:"patient_nombre,omitempty"`
+	TA             string     `json:"ta,omitempty"`
+	FC             string     `json:"fc,omitempty"`
+	FR             string     `json:"fr,omitempty"`
+	Temp           string     `json:"temp,omitempty"`
+	Peso           string     `json:"peso,omitempty"`
+	Talla          string     `json:"talla,omitempty"`
+	SAO2           string     `json:"sao2,omitempty"`
+	State          string     `json:"state"`
+	CreatedAt      time.Time  `json:"created_at"`
+	IssuedAt       *time.Time `json:"issued_at,omitempty"`
+	TieneReceta    bool       `json:"tiene_receta"`
 }
 
 func toConsultationItem(p ports.ConsultationProjection) ConsultationItem {
@@ -161,7 +162,11 @@ func HandleConsultationListAll(w http.ResponseWriter, r *http.Request) {
 
 	dtos := make([]ConsultationItem, 0, len(items))
 	for _, p := range items {
-		dtos = append(dtos, toConsultationItem(p))
+		item := toConsultationItem(p)
+		if pat, err := deps.PatientRepo.FindByID(tenantID, p.PatientID); err == nil {
+			item.PatientNombre = pat.Nombre
+		}
+		dtos = append(dtos, item)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"data":  map[string]any{"items": dtos},

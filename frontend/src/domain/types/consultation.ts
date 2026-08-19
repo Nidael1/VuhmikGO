@@ -2,6 +2,7 @@ export interface Consultation {
   id: string
   tenant_id: string
   patient_id: string
+  patient_nombre?: string
   ta?: string
   fc?: string
   fr?: string
