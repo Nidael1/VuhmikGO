@@ -97,6 +97,13 @@ func HandlePatientCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_FIELDS", "fecha_nacimiento es obligatoria")
 		return
 	}
+	if fn, err := time.Parse("2006-01-02", req.FechaNacimiento); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_FIELDS", "fecha_nacimiento debe tener formato YYYY-MM-DD")
+		return
+	} else if fn.After(time.Now().UTC().Truncate(24 * time.Hour)) {
+		writeError(w, http.StatusBadRequest, "INVALID_FIELDS", "fecha_nacimiento no puede ser futura")
+		return
+	}
 	if req.Sexo != "M" && req.Sexo != "F" && req.Sexo != "I" {
 		writeError(w, http.StatusBadRequest, "INVALID_FIELDS", "sexo debe ser M, F o I")
 		return
@@ -176,6 +183,15 @@ func HandlePatientUpdate(w http.ResponseWriter, r *http.Request) {
 		p.Nombre = req.Nombre
 	}
 	if strings.TrimSpace(req.FechaNacimiento) != "" {
+		fn, err := time.Parse("2006-01-02", req.FechaNacimiento)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "INVALID_FIELDS", "fecha_nacimiento debe tener formato YYYY-MM-DD")
+			return
+		}
+		if fn.After(time.Now().UTC().Truncate(24 * time.Hour)) {
+			writeError(w, http.StatusBadRequest, "INVALID_FIELDS", "fecha_nacimiento no puede ser futura")
+			return
+		}
 		p.FechaNacimiento = req.FechaNacimiento
 	}
 	if req.Sexo == "M" || req.Sexo == "F" || req.Sexo == "I" {
