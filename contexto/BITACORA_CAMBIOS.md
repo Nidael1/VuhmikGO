@@ -8,6 +8,19 @@ Para el historial de capacidades por sprint ver → [CHANGELOG.md](../versiones/
 
 ## 2026-08-19
 
+### Issue #164 — El widget de agenda ahora muestra el estado de cada consulta con colores
+
+**¿Qué se agregó?**
+Cada consulta en el widget "Hoy" del menú lateral ahora tiene un punto de color y una franja de color en el borde izquierdo que indica su estado:
+
+- 🔴 **Rojo** — pendiente (el médico aún no la ha atendido).
+- 🟢 **Verde** — atendida (la consulta fue emitida con registros).
+- 🟡 **Amarillo** — cancelada (la consulta fue anulada). El nombre del paciente aparece tachado.
+
+El sistema también fue mejorado por dentro: ahora existe un endpoint específico para traer las consultas del día en todos sus estados, en lugar de traer todas las del historial y filtrarlas en el navegador. Esto hace el widget más rápido y correcto.
+
+---
+
 ### Issue #163 — Widget "Agenda de hoy" en el menú lateral
 
 **¿Qué se agregó?**

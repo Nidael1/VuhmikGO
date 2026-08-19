@@ -6,6 +6,18 @@ Registro acumulativo de lo que aporta cada issue/merge. Actualizar al cerrar cad
 
 ## Sprint 9.5 — Corrección de bugs + Widget Agenda
 
+### #164 — Colores de estado en widget de agenda + endpoint /consultations/today
+**Fecha:** 2026-08-19  
+**Commit:** `439f4e4`  
+**Aporta:**
+- Punto y borde izquierdo de color por estado: 🟢 verde = atendida (issued), 🟡 amarillo = cancelada (voided), 🔴 rojo = pendiente (draft).
+- Las consultas canceladas (`voided`) aparecen en el widget con el nombre tachado.
+- Nuevo endpoint `GET /api/v1/consultations/today?date=YYYY-MM-DD` que retorna todos los estados del día (no solo issued).
+- Nuevo método `ListToday` en port, repositorio y service. Query filtra por `created_at::date` en PostgreSQL — sin carga completa en memoria.
+- Widget usa `listToday()` en lugar de `listAll()` + filtro en frontend.
+
+---
+
 ### #163 — Widget "Agenda de hoy" en sidebar global
 **Fecha:** 2026-08-19  
 **Commit:** `e0e0c69`  

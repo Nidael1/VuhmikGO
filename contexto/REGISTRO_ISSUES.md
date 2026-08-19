@@ -84,6 +84,8 @@ Entregables de bloque:
         (si sexo no es M/F/I y viene en el payload, responde 400 INVALID_FIELDS)
   #161  bugfix fecha maxima del picker en hora local no UTC
         (localDateToday() con getFullYear/getMonth/getDate en PatientNewView)
+  #164  colores de estado en agenda + endpoint /consultations/today
+        (verde=issued, amarillo=voided, rojo=draft; ListToday en port/repo/service)
   #163  widget agenda de hoy en sidebar global
         (consultas del dia filtradas por fecha local; patient_nombre en DTO;
          refresco automatico al navegar; conteo completadas/total)
