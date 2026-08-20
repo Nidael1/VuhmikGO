@@ -171,14 +171,38 @@ const estadoLabel: Record<string, string> = {
 .badge--no_show   { background: #fef9c3; color: #854d0e; }
 .cita-fecha { font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-1); }
 .cita-motivo { font-size: 13px; color: var(--text-secondary); font-style: italic; margin-bottom: var(--space-2); }
-.cita-acciones { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
-.btn-accion { font-size: 13px; font-weight: 500; padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm); cursor: pointer; border: 1.5px solid transparent; text-decoration: none; transition: all 0.15s; }
-.btn-accion--primary { background: var(--color-obsidian); color: #fff; border-color: var(--color-obsidian); }
+.cita-acciones { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-3); align-items: center; }
+.btn-accion { cursor: pointer; text-decoration: none; transition: all 0.15s; border: none; background: none; font-family: var(--font-body); }
+
+/* Primaria: peso alto — acción esperada */
+.btn-accion--primary {
+  font-size: 13px; font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-obsidian); color: #fff;
+  border: 1.5px solid var(--color-obsidian);
+}
 .btn-accion--primary:hover { opacity: 0.85; }
-.btn-accion--ghost { background: transparent; border-color: #E2E8F0; color: var(--text-secondary); }
+
+/* Ghost: peso medio — acción secundaria */
+.btn-accion--ghost {
+  font-size: 13px; font-weight: 500;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1.5px solid #E2E8F0;
+  color: var(--text-secondary);
+}
 .btn-accion--ghost:hover { border-color: var(--color-turquoise); color: var(--color-turquoise); }
-.btn-accion--danger { background: transparent; border-color: #fecaca; color: var(--color-error); }
-.btn-accion--danger:hover { background: #fef2f2; }
+
+/* Danger: peso mínimo — acción destructiva discreta */
+.btn-accion--danger {
+  font-size: 12px; font-weight: 500;
+  padding: 0; background: none; border: none;
+  color: var(--color-error); opacity: 0.6;
+  text-decoration: underline; text-decoration-color: transparent;
+}
+.btn-accion--danger:hover { opacity: 1; text-decoration-color: var(--color-error); }
 .state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); }
 .alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); }
 </style>
