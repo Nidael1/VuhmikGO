@@ -29,4 +29,8 @@ export const appointmentRepository = {
   async noShow(id: string): Promise<void> {
     await http.patch(`/appointments/${id}/state`, { state: 'no_show' })
   },
+
+  async complete(id: string): Promise<void> {
+    await http.patch(`/appointments/${id}/state`, { state: 'completed' })
+  },
 }

@@ -6,12 +6,14 @@ import { patientRepository } from '@/infrastructure/repositories/patientReposito
 import { consultationRepository } from '@/infrastructure/repositories/consultationRepository'
 import { evidenceRepository } from '@/infrastructure/repositories/evidenceRepository'
 import { prescriptionRepository } from '@/infrastructure/repositories/prescriptionRepository'
+import { appointmentRepository } from '@/infrastructure/repositories/appointmentRepository'
 import { useAuthStore } from '@/app/stores/auth'
 import type { Patient } from '@/domain/types/patient'
 
 const router = useRouter()
 const route = useRoute()
 const patientId = route.query.patient as string | undefined
+const appointmentId = route.query.appointment as string | undefined
 const auth = useAuthStore()
 
 const patients = ref<Patient[]>([])
@@ -100,7 +102,14 @@ async function save() {
       rxId = draft.id
     }
 
-    // 4. Abrir PDF si hay receta
+    // 4. Marcar cita como completada si viene desde una cita agendada
+    if (appointmentId) {
+      try {
+        await appointmentRepository.complete(appointmentId)
+      } catch { /* no bloquea el flujo si falla */ }
+    }
+
+    // 5. Abrir PDF si hay receta
     if (rxId) {
       window.open(`/api/v1/prescriptions/${rxId}/print?token=${auth.token}`, '_blank')
     }

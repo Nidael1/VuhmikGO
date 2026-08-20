@@ -241,9 +241,9 @@ func HandleAppointmentUpdateState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowed := map[string]bool{"cancelled": true, "no_show": true}
+	allowed := map[string]bool{"cancelled": true, "no_show": true, "completed": true}
 	if !allowed[body.State] {
-		writeError(w, http.StatusBadRequest, "INVALID_STATE", "state debe ser cancelled o no_show")
+		writeError(w, http.StatusBadRequest, "INVALID_STATE", "state debe ser cancelled, no_show o completed")
 		return
 	}
 
