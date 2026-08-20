@@ -71,20 +71,11 @@ const filtered = computed(() => {
             placeholder="Buscar por nombre o expediente..."
             class="search-input"
           />
-          <div class="sort-buttons">
-            <button
-              :class="['btn-sort', sortBy === 'nombre' && 'active']"
-              @click="sortBy = 'nombre'"
-            >Alfabético</button>
-            <button
-              :class="['btn-sort', sortBy === 'expediente' && 'active']"
-              @click="sortBy = 'expediente'"
-            >Antiguo</button>
-            <button
-              :class="['btn-sort', sortBy === 'reciente' && 'active']"
-              @click="sortBy = 'reciente'"
-            >Reciente</button>
-          </div>
+          <select v-model="sortBy" class="sort-select">
+            <option value="nombre">Alfabético</option>
+            <option value="expediente">Más antiguo</option>
+            <option value="reciente">Más reciente</option>
+          </select>
         </div>
 
         <div v-if="filtered.length === 0 && patients.length === 0" class="state-empty">
@@ -127,10 +118,8 @@ const filtered = computed(() => {
 .controls { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); align-items: center; }
 .search-input { flex: 1; font-family: var(--font-body); padding: var(--space-3) var(--space-4); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); font-size: 15px; color: var(--text-primary); background: var(--app-surface); outline: none; }
 .search-input:focus { border-color: var(--color-turquoise); }
-.sort-buttons { display: flex; gap: var(--space-1); }
-.btn-sort { background: var(--app-surface); border: 1.5px solid #E2E8F0; color: var(--text-secondary); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-.btn-sort:hover { border-color: var(--color-turquoise); color: var(--color-turquoise); }
-.btn-sort.active { background: var(--color-obsidian); border-color: var(--color-obsidian); color: #fff; }
+.sort-select { font-family: var(--font-body); font-size: 13px; color: var(--text-secondary); background: var(--app-surface); border: 1.5px solid #E2E8F0; border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); outline: none; cursor: pointer; transition: border-color 0.15s; }
+.sort-select:focus { border-color: var(--color-turquoise); color: var(--text-primary); }
 .state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
 .alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-md); padding: var(--space-4); color: var(--color-error); font-size: 14px; }
 .patient-list { display: flex; flex-direction: column; gap: var(--space-3); }
