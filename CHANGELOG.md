@@ -40,6 +40,8 @@ más verificación directa contra código en `main`.
 | 0026 | Referencia de vendedor en tenant | ✅ Implementado | — |
 | 0027 | Audit Package ZIP síncrono | ✅ Implementado | — |
 | 0028 | Import de IPS Bundle FHIR R4 externo | ✅ Implementado | — |
+| 0030 | Validación demográfica en Shader | ✅ Implementado | issue #162 |
+| 0031 | Agendamiento de citas (scheduler_ui) | ✅ Implementado | issues #165–#170 |
 
 ### Validado end-to-end en navegador (2026-07-11)
 
@@ -1290,3 +1292,91 @@ o inactivos, ni del estado operativo del sistema (BD, backups, disco, workers).
 
 ---
 
+## Issues #165–#170 — Módulo de agendamiento de citas (scheduler_ui, ADR-0031)
+
+**Sprint 10 — 2026-08-20**
+
+Implementación completa del Asteroide `scheduler_ui`: permite al médico agendar citas
+con anticipación, gestionar su agenda del día y vincular citas con consultas.
+
+### Issue #165 — Migración tabla appointments y ADR-0031
+
+- Migración forward-only `000032_appointments.up.sql`: tabla `appointments` con
+  estados (`scheduled`, `completed`, `cancelled`, `no_show`), FK a `patients`,
+  relación opcional a `consultation_projections`, e índices por tenant/fecha/estado.
+- ADR-0031 redactado: decisión de no usar el Core (citas no son evidencia clínica).
+
+**Archivos:**
+- `database/migrations/000032_appointments.up.sql` (nuevo)
+- `docs/adr/ADR-0031-agendamiento-citas.md` (nuevo)
+
+### Issue #166 — Backend: endpoints CRUD de citas
+
+- Port `AppointmentRepository` con contrato de acceso.
+- Implementación PostgreSQL `AppointmentRepository`.
+- Handlers: `POST /api/v1/appointments`, `GET /api/v1/appointments`,
+  `GET /api/v1/appointments/today`, `GET /api/v1/patients/:id/appointments`,
+  `PATCH /api/v1/appointments/:id/state`.
+- Validaciones: fecha futura, duración 5–480 min, paciente pertenece al tenant.
+
+**Archivos:**
+- `internal/application/ports/appointment_repository.go` (nuevo)
+- `internal/infrastructure/postgres/appointment_repository.go` (nuevo)
+- `internal/delivery/http/api/appointment_handlers.go` (nuevo)
+- `internal/delivery/http/api/deps.go` (AppointmentRepo)
+- `internal/delivery/http/api/router.go` (rutas /appointments)
+- `cmd/vuhmik-api/main.go` (NewAppointmentRepository)
+
+### Issue #167 — Widget de agenda integrado con citas
+
+- El sidebar ahora carga `appointments/today` en paralelo con `consultations/today`.
+- Citas agendadas pendientes aparecen con punto azul; consultas conservan sus colores.
+- Mensaje vacío actualizado a "Sin actividad registrada".
+- `httpClient` extendido con método `patch`.
+- Tipo `Appointment` y `appointmentRepository` creados en el frontend.
+
+**Archivos:**
+- `frontend/src/domain/types/appointment.ts` (nuevo)
+- `frontend/src/infrastructure/repositories/appointmentRepository.ts` (nuevo)
+- `frontend/src/infrastructure/api/httpClient.ts` (patch)
+- `frontend/src/presentation/layouts/AppLayout.vue` (widget unificado)
+
+### Issue #168 — Sección Citas en sidebar
+
+- `AppointmentListView`: lista con filtros Hoy/Próximas/Todas/Canceladas,
+  búsqueda por nombre, badges de estado, acciones (Iniciar consulta, No se presentó, Cancelar).
+- `AppointmentNewView`: formulario con paciente, fecha/hora, duración, motivo, notas.
+  Pre-llena paciente si viene de `?patient=`.
+- Ruta `/appointments` y `/appointments/new` registradas en el router.
+- Link "Citas" con ícono de calendario agregado al sidebar entre Consultas y Recetas.
+
+**Archivos:**
+- `frontend/src/presentation/views/AppointmentListView.vue` (nuevo)
+- `frontend/src/presentation/views/AppointmentNewView.vue` (nuevo)
+- `frontend/src/router/index.ts` (rutas appointments)
+- `frontend/src/presentation/layouts/AppLayout.vue` (nav link)
+
+### Issue #169 — Botón Agendar cita en perfil del paciente
+
+- Botón "Agendar cita" (azul, con ícono calendario) en el header de `PatientDetailView`.
+- Enlaza a `/appointments/new?patient=:id` con el paciente pre-seleccionado.
+
+**Archivos:**
+- `frontend/src/presentation/views/PatientDetailView.vue`
+
+### Issue #170 — Vínculo cita→consulta al iniciar consulta
+
+- Al hacer clic en "Iniciar consulta" desde `AppointmentListView`, el flujo pasa
+  `?appointment=:id` a `ConsultationNewView`.
+- Al crear la consulta, se llama `PATCH /appointments/:id/state` con `completed`
+  para cerrar el ciclo. Si falla, no bloquea el flujo clínico.
+- Handler de estado extendido para aceptar `completed` además de `cancelled`/`no_show`.
+
+**ADR:** ADR-0031
+
+**Archivos:**
+- `internal/delivery/http/api/appointment_handlers.go` (estado completed)
+- `frontend/src/infrastructure/repositories/appointmentRepository.ts` (complete)
+- `frontend/src/presentation/views/ConsultationNewView.vue` (appointmentId)
+
+---

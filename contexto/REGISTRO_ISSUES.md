@@ -93,6 +93,30 @@ Entregables de bloque:
         (ValidatePatientDemographics en medical_basic.go; ER-SHADER-010;
          handlers delegan al Shader; ADR-0030 aceptado)
 
+## Sprint 10 — Módulo de citas scheduler_ui (ADR-0031) — 2026-08-20
+
+  #165  migración tabla appointments y ADR-0031
+        (000032_appointments.up.sql; estados scheduled/completed/cancelled/no_show;
+         FK a patients; índices por tenant/fecha/estado; ADR-0031 aceptado)
+  #166  backend endpoints CRUD de citas
+        (AppointmentRepository port+postgres; handlers POST/GET/PATCH;
+         validaciones: fecha futura, duración 5-480min, paciente del tenant;
+         rutas /api/v1/appointments y /api/v1/patients/:id/appointments)
+  #167  widget agenda integrado con citas del día
+        (cargarAgenda llama appointments/today+consultations/today en paralelo;
+         citas agendadas = punto azul; httpClient.patch; tipo Appointment;
+         appointmentRepository en frontend)
+  #168  sección Citas en sidebar con lista y formulario
+        (AppointmentListView con filtros Hoy/Próximas/Todas/Canceladas;
+         AppointmentNewView con paciente pre-seleccionable;
+         nav link en sidebar; rutas /appointments y /appointments/new)
+  #169  botón Agendar cita en perfil del paciente
+        (btn-agendar en header de PatientDetailView; enlaza a
+         /appointments/new?patient=:id con paciente pre-seleccionado)
+  #170  vínculo cita→consulta al iniciar desde AppointmentListView
+        (ConsultationNewView lee ?appointment=; llama complete() al crear;
+         handler acepta state=completed; ciclo de vida cita cerrado)
+
 ---
 
 ## Sprint 8.3 — WAR-A + integridad + preparación IPS (#117-#123)

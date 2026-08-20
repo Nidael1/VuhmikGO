@@ -125,3 +125,29 @@ Cualquier ruta nueva de ingreso de datos de paciente que llame esta función her
 ---
 
 *Para agregar una entrada nueva: copiar el bloque de fecha, rellenar el número de issue y explicar en lenguaje llano.*
+
+---
+
+## 2026-08-20
+
+### Issues #165–#170 — El médico ahora puede agendar citas antes de que llegue el paciente
+
+**¿Qué se agregó?**
+Se implementó el módulo completo de agendamiento de citas (`scheduler_ui`), que existía como módulo en la arquitectura desde el inicio pero nunca había sido construido.
+
+**¿Qué problema resuelve?**
+Antes, el widget de agenda siempre decía "Sin consultas registradas" porque no había manera de reservar un horario con anticipación. El médico solo podía crear la consulta en el momento de atender al paciente. Ahora puede planear su día con anticipación.
+
+**¿Qué puede hacer el médico ahora?**
+
+1. **Desde el menú lateral → "Citas"**: ver todas sus citas ordenadas, filtrar por Hoy/Próximas/Todas/Canceladas, y crear una nueva seleccionando al paciente por nombre.
+
+2. **Desde el perfil de un paciente**: botón "Agendar cita" (azul) en la parte superior que abre el formulario con el paciente ya pre-seleccionado.
+
+3. **En cada cita agendada**: tres acciones disponibles — "Iniciar consulta" (abre el flujo de consulta y marca la cita como atendida automáticamente), "No se presentó" y "Cancelar".
+
+4. **En el widget de hoy del menú lateral**: las citas agendadas para el día aparecen ahora con un punto azul, distinguiéndose de las consultas ya iniciadas (verde/rojo/amarillo).
+
+**¿Qué NO cambia?**
+El flujo de crear una consulta directamente (sin cita previa) sigue funcionando igual. Las citas no son expediente clínico — no pasan por el Core de evidencia ni por los Shaders.
+
