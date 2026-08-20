@@ -191,7 +191,7 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
             <div class="form-group"><label>Universidad *</label><input v-model="createForm.universidad" class="input-field" /></div>
             <div class="form-group"><label>Teléfono *</label><input v-model="createForm.telefono" class="input-field" /></div>
             <div class="form-group form-group--full"><label>Dirección del consultorio *</label><input v-model="createForm.direccion" class="input-field" /></div>
-            <div class="form-group"><label>CURP <span class="optional">(opcional)</span></label><input v-model="createForm.curp" class="input-field" maxlength="18" style="text-transform:uppercase" /></div>
+            <div class="form-group"><label>CURP <span class="optional">(opcional)</span></label><input v-model="createForm.curp" class="input-field input-uppercase" maxlength="18" /></div>
           </div>
           <div class="form-modules-note">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -210,7 +210,7 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
           <p v-if="filtered.length === 0" class="state-empty">Sin resultados.</p>
           <div v-else class="tenant-list">
             <div v-for="t in filtered" :key="t.tenant_id" class="tenant-card">
-              <div class="tenant-header" @click="toggleExpand(t.tenant_id)" style="cursor:pointer;">
+              <div class="tenant-header tenant-header--clickable" @click="toggleExpand(t.tenant_id)">
                 <div class="tenant-header-left">
                   <span class="tenant-expand">{{ expandedTenants.has(t.tenant_id) ? '▾' : '▸' }}</span>
                   <span class="tenant-email">{{ t.email }}</span>
@@ -249,7 +249,7 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
                       <button :class="['billing-btn', editBillingForm.billing_mode === 'per_module' ? 'active' : '']" @click="editBillingForm.billing_mode = 'per_module'">Por módulo</button>
                       <button :class="['billing-btn', editBillingForm.billing_mode === 'monthly' ? 'active' : '']" @click="editBillingForm.billing_mode = 'monthly'">Plan mensual</button>
                     </div>
-                    <div v-if="editBillingForm.billing_mode === 'monthly'" class="form-row" style="margin-top:0.75rem">
+                    <div v-if="editBillingForm.billing_mode === 'monthly'" class="form-row form-row--mt">
                       <label>Cuota mensual (MXN)</label>
                       <input v-model.number="editBillingForm.monthly_fee" type="number" min="0" step="50" class="input" placeholder="499" />
                     </div>
@@ -320,7 +320,7 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
             </template>
             <!-- Grupo: Por modulo -->
             <template v-if="metricsAccounts.filter(a => a.billing_mode !== 'monthly').length > 0">
-              <div class="plan-group-header" :style="metricsAccounts.filter(a => a.billing_mode === 'monthly').length > 0 ? 'margin-top:1.25rem' : ''">Por módulo</div>
+              <div class="plan-group-header" :class="{ 'plan-group-header--mt': metricsAccounts.filter(a => a.billing_mode === 'monthly').length > 0 }">Por módulo</div>
               <table class="accounts-table plan-table">
                 <thead><tr><th>Cuenta</th><th>Estado</th><th>MRR módulos</th><th>Pacientes</th><th>Último registro</th></tr></thead>
                 <tbody>
@@ -455,9 +455,9 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
               <div class="system-card-desc">{{ systemSnap.disk_used_pct }}% utilizado{{ !systemSnap.disk_ok ? ' — revisar pronto' : '' }}</div>
             </div>
           </div>
-          <div style="margin-top:1.5rem">
-            <h3 style="font-size:14px;font-weight:700;margin-bottom:0.75rem;color:var(--color-text-secondary)">Ultimos accesos fallidos</h3>
-            <div v-if="failedLogins.length === 0" class="state-empty" style="padding:0.5rem 0">Sin intentos fallidos recientes.</div>
+          <div class="failed-logins-section">
+            <h3 class="failed-logins-title">Últimos accesos fallidos</h3>
+            <div v-if="failedLogins.length === 0" class="state-empty state-empty--compact">Sin intentos fallidos recientes.</div>
             <div v-else class="accounts-table-wrap">
               <table class="accounts-table">
                 <thead><tr><th>Correo</th><th>Fecha y hora</th></tr></thead>
@@ -530,6 +530,7 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
 .activity-detail { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); padding: var(--space-5); min-height: 200px; }
 .alert-info { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: #1D4ED8; margin-bottom: var(--space-4); }
 .plan-group-header { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.75rem 0 0.25rem; border-top: 1px solid var(--color-border); margin-top: 0.5rem; }
+.plan-group-header--mt { margin-top: 1.25rem; }
 .plan-price-header { font-size: 17px; font-weight: 700; color: var(--color-jade, #00DFA2); padding: 0.4rem 0 0.2rem; }
 .plan-table { margin-bottom: 0.75rem; }
 .health-summary { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
@@ -577,6 +578,7 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
 .tenant-list { display: flex; flex-direction: column; gap: var(--space-4); }
 .tenant-card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); overflow: hidden; }
 .tenant-header { display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-6); background: #FAFBFC; border-bottom: 1px solid #E2E8F0; }
+.tenant-header--clickable { cursor: pointer; }
 .tenant-header-left { display: flex; align-items: center; gap: var(--space-2); }
 .tenant-expand { font-size: 12px; color: var(--text-secondary); width: 14px; }
 .tenant-email { font-weight: 600; font-size: 14px; }
@@ -606,4 +608,9 @@ async function logout() { if (auth.refreshToken) { try { await fetch('/api/v1/au
 .edit-panel .btn-primary { background: #00DFA2; color: #090C10; border: none; border-radius: 6px; padding: 0.5rem 1.2rem; font-size: 13px; font-weight: 700; cursor: pointer; }
 .edit-panel .btn-secondary { background: #fff; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.5rem 1.2rem; font-size: 13px; cursor: pointer; }
 .edit-panel input[type="password"], .edit-panel input[type="number"] { background: #fff; color: #111827; border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 13px; width: 100%; }
+.input-uppercase { text-transform: uppercase; }
+.form-row--mt { margin-top: 0.75rem; }
+.failed-logins-section { margin-top: 1.5rem; }
+.failed-logins-title { font-size: 14px; font-weight: 700; margin-bottom: 0.75rem; color: var(--color-text-secondary); }
+.state-empty--compact { padding: 0.5rem 0; }
 </style>
