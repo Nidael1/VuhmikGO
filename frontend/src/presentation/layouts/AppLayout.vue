@@ -4,7 +4,9 @@ import { useAuthStore } from '@/app/stores/auth'
 import { useRouter, useRoute } from 'vue-router'
 import TermsModal from '@/presentation/components/TermsModal.vue'
 import { consultationRepository } from '@/infrastructure/repositories/consultationRepository'
+import { appointmentRepository } from '@/infrastructure/repositories/appointmentRepository'
 import type { Consultation } from '@/domain/types/consultation'
+import type { Appointment } from '@/domain/types/appointment'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -30,6 +32,7 @@ async function logout() {
 
 // --- Agenda de hoy ---
 const consultasHoy = ref<Consultation[]>([])
+const citasHoy = ref<Appointment[]>([])
 
 function localDateToday(): string {
   const d = new Date()
@@ -39,12 +42,22 @@ function localDateToday(): string {
 async function cargarAgenda() {
   if (!auth.token) return
   try {
-    consultasHoy.value = await consultationRepository.listToday(localDateToday())
+    const [consultas, citas] = await Promise.all([
+      consultationRepository.listToday(localDateToday()),
+      appointmentRepository.listToday(localDateToday()),
+    ])
+    consultasHoy.value = consultas
+    citasHoy.value = citas
   } catch { /* silencioso — el widget no bloquea la app */ }
 }
 
-const totalHoy = computed(() => consultasHoy.value.length)
+// Citas scheduled sin consulta asociada (no completadas aún)
+const citasPendientes = computed(() =>
+  citasHoy.value.filter(c => c.state === 'scheduled')
+)
+const totalHoy = computed(() => consultasHoy.value.length + citasPendientes.value.length)
 const completadasHoy = computed(() => consultasHoy.value.filter(c => c.state === 'issued').length)
+const hayEntradas = computed(() => consultasHoy.value.length > 0 || citasPendientes.value.length > 0)
 
 function horaCorta(iso: string): string {
   const d = new Date(iso)
@@ -93,6 +106,10 @@ watch(() => route.fullPath, cargarAgenda)
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           <span>Consultas</span>
         </RouterLink>
+        <RouterLink to="/appointments" class="nav-item" @click="cerrarMenu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Citas</span>
+        </RouterLink>
         <RouterLink to="/prescriptions" class="nav-item" @click="cerrarMenu">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           <span>Recetas</span>
@@ -104,7 +121,20 @@ watch(() => route.fullPath, cargarAgenda)
           <span class="agenda-titulo">Hoy</span>
           <span class="agenda-conteo">{{ completadasHoy }}/{{ totalHoy }}</span>
         </div>
-        <div v-if="consultasHoy.length === 0" class="agenda-vacio">Sin consultas registradas</div>
+        <div v-if="!hayEntradas" class="agenda-vacio">Sin actividad registrada</div>
+        <!-- Citas agendadas pendientes -->
+        <RouterLink
+          v-for="a in citasPendientes"
+          :key="a.id"
+          to="/appointments"
+          class="agenda-item agenda-item--cita"
+          @click="cerrarMenu"
+        >
+          <span class="agenda-dot dot--blue" />
+          <span class="agenda-hora">{{ horaCorta(a.scheduled_at) }}</span>
+          <span class="agenda-paciente">{{ nombreCorto(a.patient_nombre) }}</span>
+        </RouterLink>
+        <!-- Consultas del día -->
         <RouterLink
           v-for="c in consultasHoy"
           :key="c.id"
@@ -204,6 +234,8 @@ watch(() => route.fullPath, cargarAgenda)
 .dot--green  { background: #22c55e; }
 .dot--yellow { background: #eab308; }
 .dot--red    { background: #ef4444; }
+.dot--blue   { background: #3b82f6; }
+.agenda-item--cita { border-left-color: #3b82f6; }
 .agenda-hora { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-on-dark); opacity: 0.55; min-width: 34px; }
 .agenda-paciente { font-size: 12px; color: var(--text-on-dark); opacity: 0.8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agenda-item--issued .agenda-paciente { opacity: 0.45; }

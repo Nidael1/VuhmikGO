@@ -36,6 +36,7 @@ type Deps struct {
 	LabResultProjectionRepo    ports.LabResultProjectionRepository
 	ConsultationService        *application.ConsultationService
 	ConsultationProjectionRepo ports.ConsultationProjectionRepository
+	AppointmentRepo            ports.AppointmentRepository
 	TenantRepo                 ports.TenantRepository
 	VendorRepo                 ports.VendorRepository
 }

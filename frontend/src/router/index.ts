@@ -92,6 +92,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/appointments',
+      name: 'appointment-list',
+      component: () => import('@/presentation/views/AppointmentListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/appointments/new',
+      name: 'appointment-new',
+      component: () => import('@/presentation/views/AppointmentNewView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('@/presentation/views/ProfileView.vue'),

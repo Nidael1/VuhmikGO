@@ -75,6 +75,7 @@ func main() {
 		LabResultService:           application.NewLabResultService(postgres.NewEvidenceRepository(pool), postgres.NewLabResultProjectionRepository(pool), capabilityRepo),
 		LabResultProjectionRepo:    postgres.NewLabResultProjectionRepository(pool),
 		ProfileRepo:                postgres.NewProfileRepository(pool),
+		AppointmentRepo:            postgres.NewAppointmentRepository(pool),
 		TenantRepo:                 postgres.NewTenantRepository(pool),
 		VendorRepo:                 postgres.NewVendorRepository(pool),
 	})
