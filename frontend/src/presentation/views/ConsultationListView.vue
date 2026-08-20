@@ -77,11 +77,11 @@ function formatDate(d: string) {
       <div v-else>
         <div class="controls">
           <input v-model="search" type="text" placeholder="Buscar por paciente..." class="search-input" />
-          <div class="sort-buttons">
-            <button :class="['btn-sort', sortBy === 'az' && 'active']" @click="sortBy = 'az'">Alfabético</button>
-            <button :class="['btn-sort', sortBy === 'antiguo' && 'active']" @click="sortBy = 'antiguo'">Antiguo</button>
-            <button :class="['btn-sort', sortBy === 'reciente' && 'active']" @click="sortBy = 'reciente'">Reciente</button>
-          </div>
+          <select v-model="sortBy" class="sort-select">
+            <option value="az">Alfabético</option>
+            <option value="antiguo">Más antiguo</option>
+            <option value="reciente">Más reciente</option>
+          </select>
         </div>
 
         <div v-if="sorted.length === 0" class="state-empty">
@@ -120,10 +120,8 @@ function formatDate(d: string) {
 .controls { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); align-items: center; }
 .search-input { flex: 1; font-family: var(--font-body); padding: var(--space-3) var(--space-4); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); font-size: 15px; color: var(--text-primary); background: var(--app-surface); outline: none; }
 .search-input:focus { border-color: var(--color-turquoise); }
-.sort-buttons { display: flex; gap: var(--space-1); }
-.btn-sort { background: var(--app-surface); border: 1.5px solid #E2E8F0; color: var(--text-secondary); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-.btn-sort:hover { border-color: var(--color-turquoise); color: var(--color-turquoise); }
-.btn-sort.active { background: var(--color-obsidian); border-color: var(--color-obsidian); color: #fff; }
+.sort-select { font-family: var(--font-body); font-size: 13px; color: var(--text-secondary); background: var(--app-surface); border: 1.5px solid #E2E8F0; border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); outline: none; cursor: pointer; transition: border-color 0.15s; }
+.sort-select:focus { border-color: var(--color-turquoise); color: var(--text-primary); }
 .consultation-list { display: flex; flex-direction: column; gap: var(--space-3); }
 .consultation-card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); padding: var(--space-4) var(--space-6); cursor: pointer; transition: border-color 0.15s; text-decoration: none; display: block; }
 .consultation-card:hover { border-color: var(--color-turquoise); }
