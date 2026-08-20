@@ -4,7 +4,9 @@ import { useAuthStore } from '@/app/stores/auth'
 import { useRouter, useRoute } from 'vue-router'
 import TermsModal from '@/presentation/components/TermsModal.vue'
 import { consultationRepository } from '@/infrastructure/repositories/consultationRepository'
+import { appointmentRepository } from '@/infrastructure/repositories/appointmentRepository'
 import type { Consultation } from '@/domain/types/consultation'
+import type { Appointment } from '@/domain/types/appointment'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -30,6 +32,7 @@ async function logout() {
 
 // --- Agenda de hoy ---
 const consultasHoy = ref<Consultation[]>([])
+const citasHoy = ref<Appointment[]>([])
 
 function localDateToday(): string {
   const d = new Date()
@@ -39,12 +42,22 @@ function localDateToday(): string {
 async function cargarAgenda() {
   if (!auth.token) return
   try {
-    consultasHoy.value = await consultationRepository.listToday(localDateToday())
+    const [consultas, citas] = await Promise.all([
+      consultationRepository.listToday(localDateToday()),
+      appointmentRepository.listToday(localDateToday()),
+    ])
+    consultasHoy.value = consultas
+    citasHoy.value = citas
   } catch { /* silencioso — el widget no bloquea la app */ }
 }
 
-const totalHoy = computed(() => consultasHoy.value.length)
+// Citas scheduled sin consulta asociada (no completadas aún)
+const citasPendientes = computed(() =>
+  citasHoy.value.filter(c => c.state === 'scheduled')
+)
+const totalHoy = computed(() => consultasHoy.value.length + citasPendientes.value.length)
 const completadasHoy = computed(() => consultasHoy.value.filter(c => c.state === 'issued').length)
+const hayEntradas = computed(() => consultasHoy.value.length > 0 || citasPendientes.value.length > 0)
 
 function horaCorta(iso: string): string {
   const d = new Date(iso)
@@ -104,7 +117,20 @@ watch(() => route.fullPath, cargarAgenda)
           <span class="agenda-titulo">Hoy</span>
           <span class="agenda-conteo">{{ completadasHoy }}/{{ totalHoy }}</span>
         </div>
-        <div v-if="consultasHoy.length === 0" class="agenda-vacio">Sin consultas registradas</div>
+        <div v-if="!hayEntradas" class="agenda-vacio">Sin actividad registrada</div>
+        <!-- Citas agendadas pendientes -->
+        <RouterLink
+          v-for="a in citasPendientes"
+          :key="a.id"
+          to="/appointments"
+          class="agenda-item agenda-item--cita"
+          @click="cerrarMenu"
+        >
+          <span class="agenda-dot dot--blue" />
+          <span class="agenda-hora">{{ horaCorta(a.scheduled_at) }}</span>
+          <span class="agenda-paciente">{{ nombreCorto(a.patient_nombre) }}</span>
+        </RouterLink>
+        <!-- Consultas del día -->
         <RouterLink
           v-for="c in consultasHoy"
           :key="c.id"
@@ -204,6 +230,8 @@ watch(() => route.fullPath, cargarAgenda)
 .dot--green  { background: #22c55e; }
 .dot--yellow { background: #eab308; }
 .dot--red    { background: #ef4444; }
+.dot--blue   { background: #3b82f6; }
+.agenda-item--cita { border-left-color: #3b82f6; }
 .agenda-hora { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-on-dark); opacity: 0.55; min-width: 34px; }
 .agenda-paciente { font-size: 12px; color: var(--text-on-dark); opacity: 0.8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agenda-item--issued .agenda-paciente { opacity: 0.45; }
