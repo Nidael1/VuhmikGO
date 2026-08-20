@@ -480,7 +480,13 @@ async function exportExpediente() {
               <button class="btn-accion" @click="exportExpediente">Descargar</button>
             </div>
           </div>
-          <RouterLink to="/patients" class="btn-back">← Pacientes</RouterLink>
+          <div style="display:flex; gap:var(--space-2); align-items:center;">
+            <RouterLink :to="`/appointments/new?patient=${id}`" class="btn-agendar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Agendar cita
+            </RouterLink>
+            <RouterLink to="/patients" class="btn-back">← Pacientes</RouterLink>
+          </div>
         </div>
 
         <!-- Datos del paciente en línea -->
@@ -1071,6 +1077,8 @@ async function exportExpediente() {
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-2); }
 .page-sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
 .btn-back { color: var(--color-clinical-blue); font-size: 14px; text-decoration: none; white-space: nowrap; }
+.btn-agendar { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: #1d4ed8; background: #dbeafe; border: 1.5px solid #bfdbfe; border-radius: var(--radius-sm); padding: 5px 12px; text-decoration: none; transition: all 0.15s; white-space: nowrap; }
+.btn-agendar:hover { background: #bfdbfe; border-color: #93c5fd; }
 
 .patient-meta {
   display: flex;
