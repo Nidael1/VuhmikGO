@@ -69,14 +69,14 @@ const editingAllergyId = ref<string | null>(null)
 const editAllergyForm = ref({ agente: '', tipo_reaccion: '', criticidad: '', certeza: '' })
 const auth = useAuthStore()
 
-// Secciones colapsables — todas cerradas por defecto
+// Consultas abierta por defecto — es la sección más visitada
 const seccionesAbiertas = ref<Record<string, boolean>>({
   alergias: false,
   recetas: false,
   diagnosticos: false,
   inmunizaciones: false,
   laboratorio: false,
-  consultas: false,
+  consultas: true,
 })
 
 // Panel lateral de notas generales — visible por defecto, toggle con doble clic
@@ -523,10 +523,63 @@ async function exportExpediente() {
           <span v-for="a in allergies" :key="a.id" class="allergy-chip">{{ a.agente }}</span>
         </div>
 
+        <!-- Zona de acción inmediata -->
+        <div class="accion-inmediata">
+          <RouterLink :to="`/consultations/new?patient=${id}`" class="btn-nueva-consulta">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nueva consulta
+          </RouterLink>
+        </div>
+
         <!-- LAYOUT DOS COLUMNAS: expediente (izq) + notas generales (der) -->
         <div class="expediente-layout" :class="{ 'expediente-layout--collapsed': !notasPanelAbierto }">
           <div class="expediente-main">
 
+            <!-- ZONA 2: Cronología clínica — primera y abierta por defecto -->
+            <!-- SECCIÓN: Consultas -->
+            <div class="seccion seccion--consultas">
+              <div class="seccion-header" @click="toggleSeccion('consultas')">
+                <div class="seccion-titulo">
+                  <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 2v4"/><path d="M16 2v4"/>
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                    <path d="M9 16l2 2 4-4"/>
+                  </svg>
+                  <h3>Consultas</h3>
+                  <span class="seccion-count">{{ consultations.length }}</span>
+                </div>
+                <svg class="seccion-chevron" :class="{ 'seccion-chevron--open': seccionesAbiertas['consultas'] }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div v-show="seccionesAbiertas['consultas']">
+                <div v-if="consultations.length === 0" class="state-empty-sm">Sin consultas registradas para este paciente.</div>
+                <div class="con-lista">
+                  <RouterLink v-for="con in consultations" :key="con.id" :to="`/consultations/${con.id}`" class="con-card">
+                    <div class="nota-meta">
+                      <span class="nota-fecha">{{ formatDate(con.issued_at ?? con.created_at) }}</span>
+                    </div>
+                    <div v-if="con.ta || con.fc || con.fr || con.temp || con.peso || con.talla || con.sao2" class="vitals-row">
+                      <span v-if="con.ta" class="vital-chip"><strong>T/A</strong> {{ con.ta }} mmHg</span>
+                      <span v-if="con.fc" class="vital-chip"><strong>FC</strong> {{ con.fc }} lpm</span>
+                      <span v-if="con.fr" class="vital-chip"><strong>FR</strong> {{ con.fr }} rpm</span>
+                      <span v-if="con.temp" class="vital-chip"><strong>Temp</strong> {{ con.temp }}°C</span>
+                      <span v-if="con.peso" class="vital-chip"><strong>Peso</strong> {{ con.peso }} kg</span>
+                      <span v-if="con.talla" class="vital-chip"><strong>Talla</strong> {{ con.talla }} m</span>
+                      <span v-if="con.sao2" class="vital-chip"><strong>SAO2</strong> {{ con.sao2 }}%</span>
+                    </div>
+                    <div class="nota-contenido">
+                      {{ activeNotes.find(n => {
+                        try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
+                      })?.content ? parseNoteContent(activeNotes.find(n => {
+                        try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
+                      })!.content) : 'sin nota' }}
+                    </div>
+                  </RouterLink>
+                </div>
+              </div>
+            </div>
+
+            <!-- ZONA 3: Perfil clínico activo -->
             <!-- SECCIÓN: Alergias e intolerancias -->
             <div class="seccion seccion--alergias">
               <div class="seccion-header" @click="toggleSeccion('alergias')">
@@ -714,6 +767,7 @@ async function exportExpediente() {
               </div>
             </div>
 
+            <!-- ZONA 4: Expediente complementario -->
             <!-- SECCIÓN: Inmunizaciones -->
             <div class="seccion seccion--inmunizaciones">
               <div class="seccion-header" @click="toggleSeccion('inmunizaciones')">
@@ -791,51 +845,6 @@ async function exportExpediente() {
               </div>
             </div>
 
-            <!-- SECCIÓN: Consultas — cronología clínica -->
-            <div class="seccion seccion--consultas">
-              <div class="seccion-header" @click="toggleSeccion('consultas')">
-                <div class="seccion-titulo">
-                  <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M8 2v4"/><path d="M16 2v4"/>
-                    <rect x="3" y="4" width="18" height="18" rx="2"/>
-                    <line x1="3" y1="10" x2="21" y2="10"/>
-                    <path d="M9 16l2 2 4-4"/>
-                  </svg>
-                  <h3>Consultas</h3>
-                  <span class="seccion-count">{{ consultations.length }}</span>
-                </div>
-                <svg class="seccion-chevron" :class="{ 'seccion-chevron--open': seccionesAbiertas['consultas'] }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </div>
-              <div v-show="seccionesAbiertas['consultas']">
-                <div class="seccion-action-bar">
-                  <RouterLink :to="`/consultations/new?patient=${id}`" class="btn-accion-add" @click.stop>+ Nueva consulta</RouterLink>
-                </div>
-                <div v-if="consultations.length === 0" class="state-empty-sm">Sin consultas registradas para este paciente.</div>
-                <div class="con-lista">
-                  <RouterLink v-for="con in consultations" :key="con.id" :to="`/consultations/${con.id}`" class="con-card">
-                    <div class="nota-meta">
-                      <span class="nota-fecha">{{ formatDate(con.issued_at ?? con.created_at) }}</span>
-                    </div>
-                    <div v-if="con.ta || con.fc || con.fr || con.temp || con.peso || con.talla || con.sao2" class="vitals-row">
-                      <span v-if="con.ta" class="vital-chip"><strong>T/A</strong> {{ con.ta }} mmHg</span>
-                      <span v-if="con.fc" class="vital-chip"><strong>FC</strong> {{ con.fc }} lpm</span>
-                      <span v-if="con.fr" class="vital-chip"><strong>FR</strong> {{ con.fr }} rpm</span>
-                      <span v-if="con.temp" class="vital-chip"><strong>Temp</strong> {{ con.temp }}°C</span>
-                      <span v-if="con.peso" class="vital-chip"><strong>Peso</strong> {{ con.peso }} kg</span>
-                      <span v-if="con.talla" class="vital-chip"><strong>Talla</strong> {{ con.talla }} m</span>
-                      <span v-if="con.sao2" class="vital-chip"><strong>SAO2</strong> {{ con.sao2 }}%</span>
-                    </div>
-                    <div class="nota-contenido">
-                      {{ activeNotes.find(n => {
-                        try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
-                      })?.content ? parseNoteContent(activeNotes.find(n => {
-                        try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
-                      })!.content) : 'sin nota' }}
-                    </div>
-                  </RouterLink>
-                </div>
-              </div>
-            </div>
 
           </div><!-- fin .expediente-main -->
 
@@ -997,6 +1006,22 @@ async function exportExpediente() {
 
 /* Acciones de edición de nota */
 .edit-nota-acciones { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+
+/* Zona de acción inmediata */
+.accion-inmediata {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.btn-nueva-consulta {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-brand); font-size: 14px; font-weight: 700;
+  background: var(--action-primary-bg); color: var(--action-primary-text);
+  border: none; border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-5);
+  text-decoration: none; cursor: pointer; transition: opacity 0.15s;
+}
+.btn-nueva-consulta:hover { opacity: 0.88; }
 
 /* Layout dos columnas: expediente 65% + notas generales 35% (ADR-0026) */
 .expediente-layout {
