@@ -14,8 +14,8 @@ export interface Patient {
 }
 
 export interface PatientRequest {
-  nombre: string
-  fecha_nacimiento: string
-  sexo: string
+  nombre?: string
+  fecha_nacimiento?: string
+  sexo?: string
   curp?: string
 }

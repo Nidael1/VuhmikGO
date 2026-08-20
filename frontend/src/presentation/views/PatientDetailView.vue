@@ -450,37 +450,31 @@ async function exportExpediente() {
       <template v-else-if="patient">
         <!-- Encabezado del paciente -->
         <div class="page-header">
-          <div>
-            <div style="display:flex; align-items:center; gap:6px;">
+          <div class="patient-header-left">
+            <div class="patient-name-row">
               <input
                 v-if="editingName"
                 v-model="nameValue"
                 autofocus
+                class="patient-name-input"
                 @blur="saveName"
                 @keydown.enter.prevent="saveName"
                 @keydown.esc="() => { nameValue = patient!.nombre; editingName = false }"
-                style="font-size:1.25rem; font-weight:700; border:none; border-bottom:2px solid #00DFA2; outline:none; background:transparent; min-width:8ch; max-width:320px; text-transform:uppercase;"
               />
-              <h2 v-else style="margin:0;">{{ nameValue }}</h2>
-              <button
-                @click="editingName = true"
-                title="Editar nombre"
-                style="background:none; border:none; cursor:pointer; padding:2px; color:#9ca3af; display:flex; align-items:center; flex-shrink:0;"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <h2 v-else class="patient-name-text">{{ nameValue }}</h2>
+              <button class="btn-edit-inline" @click="editingName = true" title="Editar nombre">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
               </button>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <p class="page-sub" style="margin:0;">Expediente {{ patient.num_expediente }}</p>
+            <div class="patient-exp-row">
+              <p class="page-sub">Expediente {{ patient.num_expediente }}</p>
               <button class="btn-accion" @click="exportExpediente">Descargar</button>
             </div>
           </div>
-          <div style="display:flex; gap:var(--space-2); align-items:center;">
+          <div class="header-actions">
             <RouterLink :to="`/appointments/new?patient=${id}`" class="btn-agendar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Agendar cita
@@ -493,29 +487,22 @@ async function exportExpediente() {
         <div class="patient-meta">
           <span>{{ calcEdad(patient.fecha_nacimiento) }} años</span>
           <span class="sep">·</span>
-          <span style="display:inline-flex; align-items:center; gap:4px;">
+          <span class="sexo-inline">
             <select
               v-if="editingSexo"
               v-model="sexoValue"
               autofocus
+              class="sexo-select"
               @change="saveSexo"
               @keydown.esc="() => { sexoValue = patient!.sexo; editingSexo = false }"
-              style="font-size:inherit; border:none; border-bottom:2px solid #00DFA2; outline:none; background:transparent; cursor:pointer;"
             >
               <option value="M">Masculino</option>
               <option value="F">Femenino</option>
               <option value="I">Indeterminado</option>
             </select>
             <span v-else>{{ sexoLabel[patient.sexo] }}</span>
-            <button
-              v-if="!editingSexo"
-              @click="editingSexo = true"
-              title="Editar sexo"
-              style="background:none; border:none; cursor:pointer; padding:2px; color:#9ca3af; display:inline-flex; align-items:center;"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button v-if="!editingSexo" class="btn-edit-inline" @click="editingSexo = true" title="Editar sexo">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
@@ -533,361 +520,327 @@ async function exportExpediente() {
             <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
           <span class="safety-label">Alergias:</span>
-          <span v-for="a in allergies" :key="a.id" class="allergy-chip">
-            {{ a.agente }}
-          </span>
+          <span v-for="a in allergies" :key="a.id" class="allergy-chip">{{ a.agente }}</span>
         </div>
 
         <!-- LAYOUT DOS COLUMNAS: expediente (izq) + notas generales (der) -->
         <div class="expediente-layout" :class="{ 'expediente-layout--collapsed': !notasPanelAbierto }">
           <div class="expediente-main">
 
-        <!-- SECCIÓN: Alergias e intolerancias -->
-        <div class="seccion seccion--alergias">
-          <div class="seccion-header">
-            <div class="seccion-titulo" @click="toggleSeccion('alergias')" style="cursor:pointer;flex:1;">
-              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-              <h3>Alergias e intolerancias</h3>
-              <span class="seccion-count">{{ allergies.length }}</span>
-            </div>
-            <button class="btn-primary" @click.stop="showAllergyForm = !showAllergyForm">
-              {{ showAllergyForm ? 'Cancelar' : '+ Nueva alergia' }}
-            </button>
-          </div>
-
-          <div v-show="seccionesAbiertas['alergias']">
-          <div v-if="showAllergyForm" class="allergy-form">
-            <div class="alert-error" v-if="allergyError">{{ allergyError }}</div>
-            <div class="form-row">
-              <label>Agente *</label>
-              <input v-model="allergyForm.agente" placeholder="p. ej. penicilina" class="input" />
-            </div>
-            <div class="form-row">
-              <label>Tipo de reacción *</label>
-              <input v-model="allergyForm.tipo_reaccion" placeholder="p. ej. rash, anafilaxia" class="input" />
-            </div>
-            <div class="form-row">
-              <label>Criticidad</label>
-              <select v-model="allergyForm.criticidad" class="input">
-                <option value="">— opcional —</option>
-                <option value="leve">Leve</option>
-                <option value="moderada">Moderada</option>
-                <option value="grave">Grave</option>
-              </select>
-            </div>
-            <div class="form-row">
-              <label>Certeza</label>
-              <select v-model="allergyForm.certeza" class="input">
-                <option value="">— opcional —</option>
-                <option value="confirmada">Confirmada</option>
-                <option value="sospecha">Sospecha</option>
-                <option value="descartada">Descartada</option>
-              </select>
-            </div>
-            <button class="btn-primary" @click="createAllergy" :disabled="allergyLoading">
-              {{ allergyLoading ? 'Guardando...' : 'Registrar alergia' }}
-            </button>
-          </div>
-
-          <div v-if="allergies.length === 0 && !showAllergyForm" class="state-empty-sm">
-            Sin alergias registradas.
-          </div>
-          <div v-else class="allergy-list">
-            <div v-for="a in allergies" :key="a.id" class="allergy-item">
-              <template v-if="editingAllergyId === a.id">
-                <div class="allergy-edit-form">
-                  <input v-model="editAllergyForm.agente" class="input" placeholder="Agente" autofocus />
-                  <input v-model="editAllergyForm.tipo_reaccion" class="input" placeholder="Tipo de reacción" />
-                  <select v-model="editAllergyForm.criticidad" class="input">
-                    <option value="">— criticidad —</option>
-                    <option value="leve">Leve</option>
-                    <option value="moderada">Moderada</option>
-                    <option value="grave">Grave</option>
-                  </select>
-                  <select v-model="editAllergyForm.certeza" class="input">
-                    <option value="">— certeza —</option>
-                    <option value="confirmada">Confirmada</option>
-                    <option value="sospecha">Sospecha</option>
-                    <option value="descartada">Descartada</option>
-                  </select>
-                  <div class="allergy-edit-acciones">
-                    <button class="btn-primary" @click="saveEditAllergy(a)">Guardar</button>
-                    <button class="btn-accion" @click="cancelEditAllergy">Cancelar</button>
-                  </div>
+            <!-- SECCIÓN: Alergias e intolerancias -->
+            <div class="seccion seccion--alergias">
+              <div class="seccion-header" @click="toggleSeccion('alergias')">
+                <div class="seccion-titulo">
+                  <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <h3>Alergias e intolerancias</h3>
+                  <span class="seccion-count">{{ allergies.length }}</span>
                 </div>
-              </template>
-              <template v-else>
-                <div class="allergy-meta">
-                  <div class="allergy-main">
-                    <span class="allergy-agente">{{ a.agente }}</span>
-                    <span v-if="a.criticidad" class="allergy-badge" :class="a.criticidad">
-                      {{ a.criticidad }}
-                    </span>
-                  </div>
-                  <div class="allergy-acciones">
-                    <button class="btn-accion" @click="startEditAllergy(a)">Editar</button>
-                    <button class="btn-accion" @click="quitarAllergy(a)">Quitar</button>
-                  </div>
-                </div>
-                <div class="allergy-sub">{{ a.tipo_reaccion }}</div>
-                <div v-if="a.certeza" class="allergy-certeza">Certeza: {{ a.certeza }}</div>
-              </template>
-            </div>
-          </div>
-          </div>
-        </div>
-
-        <!-- SECCIÓN: Recetas electrónicas -->
-        <div class="seccion seccion--recetas">
-          <div class="seccion-header">
-            <div class="seccion-titulo" @click="toggleSeccion('recetas')" style="cursor:pointer;flex:1;">
-              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 2v4"/><path d="M16 2v4"/>
-                <rect x="3" y="6" width="18" height="16" rx="2"/>
-                <line x1="9" y1="13" x2="15" y2="13"/>
-                <line x1="9" y1="17" x2="15" y2="17"/>
-              </svg>
-              <h3>Recetas electrónicas</h3>
-              <span class="seccion-count">{{ prescriptions.length }}</span>
-            </div>
-            <button class="btn-primary" @click.stop="showRxForm = !showRxForm">
-              {{ showRxForm ? 'Cancelar' : '+ Nueva receta' }}
-            </button>
-          </div>
-
-          <div v-show="seccionesAbiertas['recetas']">
-          <div v-if="showRxForm" class="allergy-form">
-            <div class="alert-error" v-if="rxError">{{ rxError }}</div>
-            <div class="form-row">
-              <label>Medicamento genérico *</label>
-              <input v-model="rxForm.medicamento_generico" class="input" placeholder="p. ej. Paracetamol" />
-            </div>
-            <div class="form-row">
-              <label>Dosis *</label>
-              <input v-model="rxForm.dosis" class="input" placeholder="p. ej. 500mg cada 8h por 3 días" />
-            </div>
-            <div class="form-row">
-              <label>Diagnóstico</label>
-              <input v-model="rxForm.diagnostico" class="input" placeholder="p. ej. Faringitis aguda" />
-            </div>
-            <div class="form-row">
-              <label>Indicaciones</label>
-              <input v-model="rxForm.indicaciones" class="input" placeholder="p. ej. Reposo e hidratación" />
-            </div>
-            <div class="form-row">
-              <label>Seguimiento</label>
-              <input v-model="rxForm.seguimiento" class="input" placeholder="p. ej. Control en 7 días" />
-            </div>
-            <button class="btn-primary" @click="createPrescription" :disabled="rxLoading">
-              {{ rxLoading ? 'Emitiendo...' : 'Emitir receta' }}
-            </button>
-          </div>
-
-          <div v-if="prescriptions.length === 0 && !showRxForm" class="state-empty-sm">
-            Sin recetas emitidas.
-          </div>
-          <div v-else class="rx-grid">
-            <RouterLink v-for="rx in prescriptions" :key="rx.id" :to="`/prescriptions/${rx.id}`" class="rx-card">
-              <div class="rx-card-header">
-                <span class="rx-medicamento">{{ rx.medicamento_generico }}</span>
-                <div class="rx-card-acciones">
-                  <span class="rx-estado">emitida</span>
-                  <button class="btn-reimprimir-sm" @click.stop="reimprimirRx(rx.id)">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="6 9 6 2 18 2 18 9"/>
-                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                      <rect x="6" y="14" width="12" height="8"/>
-                    </svg>
-                    Imprimir
+                <svg class="seccion-chevron" :class="{ 'seccion-chevron--open': seccionesAbiertas['alergias'] }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div v-show="seccionesAbiertas['alergias']">
+                <div class="seccion-action-bar">
+                  <button class="btn-accion-add" @click.stop="showAllergyForm = !showAllergyForm">
+                    {{ showAllergyForm ? 'Cancelar' : '+ Nueva alergia' }}
                   </button>
                 </div>
-              </div>
-              <div class="rx-dosis-text">{{ rx.dosis }}</div>
-              <div v-if="rx.diagnostico" class="rx-dx">Dx: {{ rx.diagnostico }}</div>
-            </RouterLink>
-          </div>
-          </div>
-        </div>
-
-
-        <!-- SECCIÓN: Diagnósticos -->
-        <div class="seccion seccion--diagnosticos">
-          <div class="seccion-header">
-            <div class="seccion-titulo" @click="toggleSeccion('diagnosticos')" style="cursor:pointer;flex:1;">
-              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-              <h3>Diagnósticos</h3>
-              <span class="seccion-count">{{ diagnoses.length }}</span>
-            </div>
-            <button class="btn-primary" @click.stop="showDiagnosisForm = !showDiagnosisForm">{{ showDiagnosisForm ? 'Cancelar' : '+ Nuevo diagnóstico' }}</button>
-          </div>
-          <div v-show="seccionesAbiertas['diagnosticos']">
-            <div v-if="showDiagnosisForm" class="allergy-form">
-              <div class="alert-error" v-if="diagnosisError">{{ diagnosisError }}</div>
-              <div class="form-row"><label>Descripción *</label><input v-model="diagnosisForm.descripcion" class="input" placeholder="p. ej. Hipertensión arterial esencial" /></div>
-              <div class="form-row"><label>Código CIE-10</label><input v-model="diagnosisForm.codigo_cie10" class="input" placeholder="p. ej. I10" /></div>
-              <div class="form-row"><label>Estado</label><select v-model="diagnosisForm.estado_problema" class="input"><option value="activo">Activo</option><option value="resuelto">Resuelto</option><option value="cronico">Crónico</option></select></div>
-              <div class="form-row"><label>Fecha de inicio</label><input v-model="diagnosisForm.fecha_inicio" type="date" class="input" /></div>
-              <div class="form-row"><label>Notas</label><input v-model="diagnosisForm.notas" class="input" placeholder="Observaciones" /></div>
-              <button class="btn-primary" @click="createDiagnosis" :disabled="diagnosisLoading">{{ diagnosisLoading ? 'Guardando...' : 'Registrar diagnóstico' }}</button>
-            </div>
-            <div v-if="diagnoses.length === 0 && !showDiagnosisForm" class="state-empty-sm">Sin diagnósticos registrados.</div>
-            <div v-else class="allergy-list">
-              <div v-for="d in diagnoses" :key="d.id" class="allergy-item">
-                <div class="allergy-meta">
-                  <div class="allergy-main">
-                    <span class="allergy-agente">{{ d.descripcion }}</span>
-                    <span v-if="d.codigo_cie10" class="allergy-badge moderada">{{ d.codigo_cie10 }}</span>
-                    <span v-if="d.estado_problema" class="allergy-badge" :class="d.estado_problema === 'activo' ? 'leve' : ''">{{ d.estado_problema }}</span>
+                <div v-if="showAllergyForm" class="allergy-form">
+                  <div class="alert-error" v-if="allergyError">{{ allergyError }}</div>
+                  <div class="form-row"><label>Agente *</label><input v-model="allergyForm.agente" placeholder="p. ej. penicilina" class="input" /></div>
+                  <div class="form-row"><label>Tipo de reacción *</label><input v-model="allergyForm.tipo_reaccion" placeholder="p. ej. rash, anafilaxia" class="input" /></div>
+                  <div class="form-row">
+                    <label>Criticidad</label>
+                    <select v-model="allergyForm.criticidad" class="input">
+                      <option value="">— opcional —</option>
+                      <option value="leve">Leve</option>
+                      <option value="moderada">Moderada</option>
+                      <option value="grave">Grave</option>
+                    </select>
                   </div>
-                  <div class="allergy-acciones"><button class="btn-accion" @click="voidDiagnosis(d)">Quitar</button></div>
+                  <div class="form-row">
+                    <label>Certeza</label>
+                    <select v-model="allergyForm.certeza" class="input">
+                      <option value="">— opcional —</option>
+                      <option value="confirmada">Confirmada</option>
+                      <option value="sospecha">Sospecha</option>
+                      <option value="descartada">Descartada</option>
+                    </select>
+                  </div>
+                  <button class="btn-primary" @click="createAllergy" :disabled="allergyLoading">
+                    {{ allergyLoading ? 'Guardando...' : 'Registrar alergia' }}
+                  </button>
                 </div>
-                <div v-if="d.fecha_inicio" class="allergy-sub">Desde: {{ d.fecha_inicio }}</div>
-                <div v-if="d.notas" class="allergy-certeza">{{ d.notas }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SECCIÓN: Inmunizaciones -->
-        <div class="seccion seccion--inmunizaciones">
-          <div class="seccion-header">
-            <div class="seccion-titulo" @click="toggleSeccion('inmunizaciones')" style="cursor:pointer;flex:1;">
-              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 9-2 2-4-4 2-2a2 2 0 0 1 2.828 0l1.172 1.172a2 2 0 0 1 0 2.828z"/><path d="m13 11-8.5 8.5a2.121 2.121 0 0 0 3 3L16 14"/><path d="m14 14 2 2"/></svg>
-              <h3>Inmunizaciones</h3>
-              <span class="seccion-count">{{ immunizations.length }}</span>
-            </div>
-            <button class="btn-primary" @click.stop="showImmunizationForm = !showImmunizationForm">{{ showImmunizationForm ? 'Cancelar' : '+ Nueva vacuna' }}</button>
-          </div>
-          <div v-show="seccionesAbiertas['inmunizaciones']">
-            <div v-if="showImmunizationForm" class="allergy-form">
-              <div class="alert-error" v-if="immunizationError">{{ immunizationError }}</div>
-              <div class="form-row"><label>Vacuna *</label><input v-model="immunizationForm.vacuna" class="input" placeholder="p. ej. Influenza trivalente" /></div>
-              <div class="form-row"><label>Fecha de aplicación *</label><input v-model="immunizationForm.fecha_aplicacion" type="date" class="input" /></div>
-              <div class="form-row"><label>Dosis</label><input v-model="immunizationForm.dosis" class="input" placeholder="p. ej. 0.5 ml" /></div>
-              <div class="form-row"><label>Vía</label><input v-model="immunizationForm.via" class="input" placeholder="p. ej. intramuscular" /></div>
-              <div class="form-row"><label>Lote</label><input v-model="immunizationForm.lote" class="input" placeholder="p. ej. AB12345" /></div>
-              <div class="form-row"><label>Aplicada por</label><input v-model="immunizationForm.aplicada_por" class="input" placeholder="p. ej. Dr. García" /></div>
-              <button class="btn-primary" @click="createImmunization" :disabled="immunizationLoading">{{ immunizationLoading ? 'Guardando...' : 'Registrar vacuna' }}</button>
-            </div>
-            <div v-if="immunizations.length === 0 && !showImmunizationForm" class="state-empty-sm">Sin inmunizaciones registradas.</div>
-            <div v-else class="allergy-list">
-              <div v-for="imm in immunizations" :key="imm.id" class="allergy-item">
-                <div class="allergy-meta">
-                  <div class="allergy-main"><span class="allergy-agente">{{ imm.vacuna }}</span><span v-if="imm.dosis" class="allergy-badge moderada">{{ imm.dosis }}</span></div>
-                  <div class="allergy-acciones"><button class="btn-accion" @click="voidImmunization(imm)">Quitar</button></div>
+                <div v-if="allergies.length === 0 && !showAllergyForm" class="state-empty-sm">Sin alergias registradas.</div>
+                <div v-else class="allergy-list">
+                  <div v-for="a in allergies" :key="a.id" class="allergy-item">
+                    <template v-if="editingAllergyId === a.id">
+                      <div class="allergy-edit-form">
+                        <input v-model="editAllergyForm.agente" class="input" placeholder="Agente" autofocus />
+                        <input v-model="editAllergyForm.tipo_reaccion" class="input" placeholder="Tipo de reacción" />
+                        <select v-model="editAllergyForm.criticidad" class="input">
+                          <option value="">— criticidad —</option>
+                          <option value="leve">Leve</option>
+                          <option value="moderada">Moderada</option>
+                          <option value="grave">Grave</option>
+                        </select>
+                        <select v-model="editAllergyForm.certeza" class="input">
+                          <option value="">— certeza —</option>
+                          <option value="confirmada">Confirmada</option>
+                          <option value="sospecha">Sospecha</option>
+                          <option value="descartada">Descartada</option>
+                        </select>
+                        <div class="allergy-edit-acciones">
+                          <button class="btn-primary" @click="saveEditAllergy(a)">Guardar</button>
+                          <button class="btn-accion" @click="cancelEditAllergy">Cancelar</button>
+                        </div>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="allergy-meta">
+                        <div class="allergy-main">
+                          <span class="allergy-agente">{{ a.agente }}</span>
+                          <span v-if="a.criticidad" class="allergy-badge" :class="a.criticidad">{{ a.criticidad }}</span>
+                        </div>
+                        <div class="allergy-acciones">
+                          <button class="btn-accion" @click="startEditAllergy(a)">Editar</button>
+                          <button class="btn-accion" @click="quitarAllergy(a)">Quitar</button>
+                        </div>
+                      </div>
+                      <div class="allergy-sub">{{ a.tipo_reaccion }}</div>
+                      <div v-if="a.certeza" class="allergy-certeza">Certeza: {{ a.certeza }}</div>
+                    </template>
+                  </div>
                 </div>
-                <div class="allergy-sub">{{ imm.fecha_aplicacion }}<span v-if="imm.via"> · {{ imm.via }}</span><span v-if="imm.lote"> · Lote: {{ imm.lote }}</span></div>
-                <div v-if="imm.aplicada_por" class="allergy-certeza">Aplicada por: {{ imm.aplicada_por }}</div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <!-- SECCIÓN: Resultados de laboratorio -->
-        <div class="seccion seccion--laboratorio">
-          <div class="seccion-header">
-            <div class="seccion-titulo" @click="toggleSeccion('laboratorio')" style="cursor:pointer;flex:1;">
-              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v6l-2 4v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8l-2-4V2"/><line x1="6" y1="10" x2="14" y2="10"/></svg>
-              <h3>Resultados de laboratorio</h3>
-              <span class="seccion-count">{{ labResults.length }}</span>
-            </div>
-            <button class="btn-primary" @click.stop="showLabResultForm = !showLabResultForm">{{ showLabResultForm ? 'Cancelar' : '+ Nuevo resultado' }}</button>
-          </div>
-          <div v-show="seccionesAbiertas['laboratorio']">
-            <div v-if="showLabResultForm" class="allergy-form">
-              <div class="alert-error" v-if="labResultError">{{ labResultError }}</div>
-              <div class="form-row"><label>Estudio *</label><input v-model="labResultForm.estudio" class="input" placeholder="p. ej. Biometría hemática" /></div>
-              <div class="form-row"><label>Fecha del estudio *</label><input v-model="labResultForm.fecha_estudio" type="date" class="input" /></div>
-              <div class="form-row"><label>Resultado</label><input v-model="labResultForm.resultado" class="input" placeholder="p. ej. Hemoglobina 14.2 g/dL" /></div>
-              <div class="form-row"><label>Laboratorio</label><input v-model="labResultForm.laboratorio" class="input" placeholder="p. ej. Lab Clínica Central" /></div>
-              <div class="form-row"><label>Unidades</label><input v-model="labResultForm.unidades" class="input" placeholder="p. ej. g/dL" /></div>
-              <div class="form-row"><label>Valor de referencia</label><input v-model="labResultForm.valor_referencia" class="input" placeholder="p. ej. 12-17 g/dL" /></div>
-              <div class="form-row"><label>Notas</label><input v-model="labResultForm.notas" class="input" placeholder="Observaciones" /></div>
-              <button class="btn-primary" @click="createLabResult" :disabled="labResultLoading">{{ labResultLoading ? 'Guardando...' : 'Registrar resultado' }}</button>
-            </div>
-            <div v-if="labResults.length === 0 && !showLabResultForm" class="state-empty-sm">Sin resultados de laboratorio registrados.</div>
-            <div v-else class="allergy-list">
-              <div v-for="lab in labResults" :key="lab.id" class="allergy-item">
-                <div class="allergy-meta">
-                  <div class="allergy-main"><span class="allergy-agente">{{ lab.estudio }}</span><span v-if="lab.laboratorio" class="allergy-badge moderada">{{ lab.laboratorio }}</span></div>
-                  <div class="allergy-acciones"><button class="btn-accion" @click="voidLabResult(lab)">Quitar</button></div>
+            <!-- SECCIÓN: Recetas electrónicas -->
+            <div class="seccion seccion--recetas">
+              <div class="seccion-header" @click="toggleSeccion('recetas')">
+                <div class="seccion-titulo">
+                  <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 2v4"/><path d="M16 2v4"/>
+                    <rect x="3" y="6" width="18" height="16" rx="2"/>
+                    <line x1="9" y1="13" x2="15" y2="13"/>
+                    <line x1="9" y1="17" x2="15" y2="17"/>
+                  </svg>
+                  <h3>Recetas electrónicas</h3>
+                  <span class="seccion-count">{{ prescriptions.length }}</span>
                 </div>
-                <div v-if="lab.resultado" class="allergy-sub">{{ lab.resultado }}<span v-if="lab.unidades"> {{ lab.unidades }}</span><span v-if="lab.valor_referencia"> (ref: {{ lab.valor_referencia }})</span></div>
-                <div class="allergy-certeza">{{ lab.fecha_estudio }}</div>
+                <svg class="seccion-chevron" :class="{ 'seccion-chevron--open': seccionesAbiertas['recetas'] }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div v-show="seccionesAbiertas['recetas']">
+                <div class="seccion-action-bar">
+                  <button class="btn-accion-add" @click.stop="showRxForm = !showRxForm">
+                    {{ showRxForm ? 'Cancelar' : '+ Nueva receta' }}
+                  </button>
+                </div>
+                <div v-if="showRxForm" class="allergy-form">
+                  <div class="alert-error" v-if="rxError">{{ rxError }}</div>
+                  <div class="form-row"><label>Medicamento genérico *</label><input v-model="rxForm.medicamento_generico" class="input" placeholder="p. ej. Paracetamol" /></div>
+                  <div class="form-row"><label>Dosis *</label><input v-model="rxForm.dosis" class="input" placeholder="p. ej. 500mg cada 8h por 3 días" /></div>
+                  <div class="form-row"><label>Diagnóstico</label><input v-model="rxForm.diagnostico" class="input" placeholder="p. ej. Faringitis aguda" /></div>
+                  <div class="form-row"><label>Indicaciones</label><input v-model="rxForm.indicaciones" class="input" placeholder="p. ej. Reposo e hidratación" /></div>
+                  <div class="form-row"><label>Seguimiento</label><input v-model="rxForm.seguimiento" class="input" placeholder="p. ej. Control en 7 días" /></div>
+                  <button class="btn-primary" @click="createPrescription" :disabled="rxLoading">
+                    {{ rxLoading ? 'Emitiendo...' : 'Emitir receta' }}
+                  </button>
+                </div>
+                <div v-if="prescriptions.length === 0 && !showRxForm" class="state-empty-sm">Sin recetas emitidas.</div>
+                <div v-else class="rx-grid">
+                  <RouterLink v-for="rx in prescriptions" :key="rx.id" :to="`/prescriptions/${rx.id}`" class="rx-card">
+                    <div class="rx-card-header">
+                      <span class="rx-medicamento">{{ rx.medicamento_generico }}</span>
+                      <div class="rx-card-acciones">
+                        <span class="rx-estado">emitida</span>
+                        <button class="btn-reimprimir-sm" @click.stop="reimprimirRx(rx.id)">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 6 2 18 2 18 9"/>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                            <rect x="6" y="14" width="12" height="8"/>
+                          </svg>
+                          Imprimir
+                        </button>
+                      </div>
+                    </div>
+                    <div class="rx-dosis-text">{{ rx.dosis }}</div>
+                    <div v-if="rx.diagnostico" class="rx-dx">Dx: {{ rx.diagnostico }}</div>
+                  </RouterLink>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <!-- SECCIÓN: Consultas — cronología clínica -->
-        <div class="seccion seccion--consultas">
-          <div class="seccion-header">
-            <div class="seccion-titulo" @click="toggleSeccion('consultas')" style="cursor:pointer;flex:1;">
-              <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 2v4"/><path d="M16 2v4"/>
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-                <path d="M9 16l2 2 4-4"/>
-              </svg>
-              <h3>Consultas</h3>
-              <span class="seccion-count">{{ consultations.length }}</span>
+            <!-- SECCIÓN: Diagnósticos -->
+            <div class="seccion seccion--diagnosticos">
+              <div class="seccion-header" @click="toggleSeccion('diagnosticos')">
+                <div class="seccion-titulo">
+                  <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  <h3>Diagnósticos</h3>
+                  <span class="seccion-count">{{ diagnoses.length }}</span>
+                </div>
+                <svg class="seccion-chevron" :class="{ 'seccion-chevron--open': seccionesAbiertas['diagnosticos'] }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div v-show="seccionesAbiertas['diagnosticos']">
+                <div class="seccion-action-bar">
+                  <button class="btn-accion-add" @click.stop="showDiagnosisForm = !showDiagnosisForm">{{ showDiagnosisForm ? 'Cancelar' : '+ Nuevo diagnóstico' }}</button>
+                </div>
+                <div v-if="showDiagnosisForm" class="allergy-form">
+                  <div class="alert-error" v-if="diagnosisError">{{ diagnosisError }}</div>
+                  <div class="form-row"><label>Descripción *</label><input v-model="diagnosisForm.descripcion" class="input" placeholder="p. ej. Hipertensión arterial esencial" /></div>
+                  <div class="form-row"><label>Código CIE-10</label><input v-model="diagnosisForm.codigo_cie10" class="input" placeholder="p. ej. I10" /></div>
+                  <div class="form-row"><label>Estado</label><select v-model="diagnosisForm.estado_problema" class="input"><option value="activo">Activo</option><option value="resuelto">Resuelto</option><option value="cronico">Crónico</option></select></div>
+                  <div class="form-row"><label>Fecha de inicio</label><input v-model="diagnosisForm.fecha_inicio" type="date" class="input" /></div>
+                  <div class="form-row"><label>Notas</label><input v-model="diagnosisForm.notas" class="input" placeholder="Observaciones" /></div>
+                  <button class="btn-primary" @click="createDiagnosis" :disabled="diagnosisLoading">{{ diagnosisLoading ? 'Guardando...' : 'Registrar diagnóstico' }}</button>
+                </div>
+                <div v-if="diagnoses.length === 0 && !showDiagnosisForm" class="state-empty-sm">Sin diagnósticos registrados.</div>
+                <div v-else class="allergy-list">
+                  <div v-for="d in diagnoses" :key="d.id" class="allergy-item">
+                    <div class="allergy-meta">
+                      <div class="allergy-main">
+                        <span class="allergy-agente">{{ d.descripcion }}</span>
+                        <span v-if="d.codigo_cie10" class="allergy-badge moderada">{{ d.codigo_cie10 }}</span>
+                        <span v-if="d.estado_problema" class="allergy-badge" :class="d.estado_problema === 'activo' ? 'leve' : ''">{{ d.estado_problema }}</span>
+                      </div>
+                      <div class="allergy-acciones"><button class="btn-accion" @click="voidDiagnosis(d)">Quitar</button></div>
+                    </div>
+                    <div v-if="d.fecha_inicio" class="allergy-sub">Desde: {{ d.fecha_inicio }}</div>
+                    <div v-if="d.notas" class="allergy-certeza">{{ d.notas }}</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <RouterLink :to="`/consultations/new?patient=${id}`" class="btn-primary" @click.stop>
-              + Nueva consulta
-            </RouterLink>
-          </div>
 
-          <div v-show="seccionesAbiertas['consultas']">
-          <div v-if="consultations.length === 0" class="state-empty-sm">
-            Sin consultas registradas para este paciente.
-          </div>
-
-          <div class="con-lista">
-            <RouterLink
-              v-for="con in consultations"
-              :key="con.id"
-              :to="`/consultations/${con.id}`"
-              class="con-card"
-            >
-              <div class="nota-meta">
-                <span class="nota-fecha">{{ formatDate(con.issued_at ?? con.created_at) }}</span>
+            <!-- SECCIÓN: Inmunizaciones -->
+            <div class="seccion seccion--inmunizaciones">
+              <div class="seccion-header" @click="toggleSeccion('inmunizaciones')">
+                <div class="seccion-titulo">
+                  <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 9-2 2-4-4 2-2a2 2 0 0 1 2.828 0l1.172 1.172a2 2 0 0 1 0 2.828z"/><path d="m13 11-8.5 8.5a2.121 2.121 0 0 0 3 3L16 14"/><path d="m14 14 2 2"/></svg>
+                  <h3>Inmunizaciones</h3>
+                  <span class="seccion-count">{{ immunizations.length }}</span>
+                </div>
+                <svg class="seccion-chevron" :class="{ 'seccion-chevron--open': seccionesAbiertas['inmunizaciones'] }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
-
-              <div v-if="con.ta || con.fc || con.fr || con.temp || con.peso || con.talla || con.sao2" class="vitals-row">
-                <span v-if="con.ta" class="vital-chip"><strong>T/A</strong> {{ con.ta }} mmHg</span>
-                <span v-if="con.fc" class="vital-chip"><strong>FC</strong> {{ con.fc }} lpm</span>
-                <span v-if="con.fr" class="vital-chip"><strong>FR</strong> {{ con.fr }} rpm</span>
-                <span v-if="con.temp" class="vital-chip"><strong>Temp</strong> {{ con.temp }}°C</span>
-                <span v-if="con.peso" class="vital-chip"><strong>Peso</strong> {{ con.peso }} kg</span>
-                <span v-if="con.talla" class="vital-chip"><strong>Talla</strong> {{ con.talla }} m</span>
-                <span v-if="con.sao2" class="vital-chip"><strong>SAO2</strong> {{ con.sao2 }}%</span>
+              <div v-show="seccionesAbiertas['inmunizaciones']">
+                <div class="seccion-action-bar">
+                  <button class="btn-accion-add" @click.stop="showImmunizationForm = !showImmunizationForm">{{ showImmunizationForm ? 'Cancelar' : '+ Nueva vacuna' }}</button>
+                </div>
+                <div v-if="showImmunizationForm" class="allergy-form">
+                  <div class="alert-error" v-if="immunizationError">{{ immunizationError }}</div>
+                  <div class="form-row"><label>Vacuna *</label><input v-model="immunizationForm.vacuna" class="input" placeholder="p. ej. Influenza trivalente" /></div>
+                  <div class="form-row"><label>Fecha de aplicación *</label><input v-model="immunizationForm.fecha_aplicacion" type="date" class="input" /></div>
+                  <div class="form-row"><label>Dosis</label><input v-model="immunizationForm.dosis" class="input" placeholder="p. ej. 0.5 ml" /></div>
+                  <div class="form-row"><label>Vía</label><input v-model="immunizationForm.via" class="input" placeholder="p. ej. intramuscular" /></div>
+                  <div class="form-row"><label>Lote</label><input v-model="immunizationForm.lote" class="input" placeholder="p. ej. AB12345" /></div>
+                  <div class="form-row"><label>Aplicada por</label><input v-model="immunizationForm.aplicada_por" class="input" placeholder="p. ej. Dr. García" /></div>
+                  <button class="btn-primary" @click="createImmunization" :disabled="immunizationLoading">{{ immunizationLoading ? 'Guardando...' : 'Registrar vacuna' }}</button>
+                </div>
+                <div v-if="immunizations.length === 0 && !showImmunizationForm" class="state-empty-sm">Sin inmunizaciones registradas.</div>
+                <div v-else class="allergy-list">
+                  <div v-for="imm in immunizations" :key="imm.id" class="allergy-item">
+                    <div class="allergy-meta">
+                      <div class="allergy-main"><span class="allergy-agente">{{ imm.vacuna }}</span><span v-if="imm.dosis" class="allergy-badge moderada">{{ imm.dosis }}</span></div>
+                      <div class="allergy-acciones"><button class="btn-accion" @click="voidImmunization(imm)">Quitar</button></div>
+                    </div>
+                    <div class="allergy-sub">{{ imm.fecha_aplicacion }}<span v-if="imm.via"> · {{ imm.via }}</span><span v-if="imm.lote"> · Lote: {{ imm.lote }}</span></div>
+                    <div v-if="imm.aplicada_por" class="allergy-certeza">Aplicada por: {{ imm.aplicada_por }}</div>
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <div class="nota-contenido">
-                {{ activeNotes.find(n => {
-                  try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
-                })?.content ? parseNoteContent(activeNotes.find(n => {
-                  try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
-                })!.content) : 'sin nota' }}
+            <!-- SECCIÓN: Resultados de laboratorio -->
+            <div class="seccion seccion--laboratorio">
+              <div class="seccion-header" @click="toggleSeccion('laboratorio')">
+                <div class="seccion-titulo">
+                  <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v6l-2 4v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8l-2-4V2"/><line x1="6" y1="10" x2="14" y2="10"/></svg>
+                  <h3>Resultados de laboratorio</h3>
+                  <span class="seccion-count">{{ labResults.length }}</span>
+                </div>
+                <svg class="seccion-chevron" :class="{ 'seccion-chevron--open': seccionesAbiertas['laboratorio'] }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
-            </RouterLink>
-          </div>
-          </div>
-        </div>
+              <div v-show="seccionesAbiertas['laboratorio']">
+                <div class="seccion-action-bar">
+                  <button class="btn-accion-add" @click.stop="showLabResultForm = !showLabResultForm">{{ showLabResultForm ? 'Cancelar' : '+ Nuevo resultado' }}</button>
+                </div>
+                <div v-if="showLabResultForm" class="allergy-form">
+                  <div class="alert-error" v-if="labResultError">{{ labResultError }}</div>
+                  <div class="form-row"><label>Estudio *</label><input v-model="labResultForm.estudio" class="input" placeholder="p. ej. Biometría hemática" /></div>
+                  <div class="form-row"><label>Fecha del estudio *</label><input v-model="labResultForm.fecha_estudio" type="date" class="input" /></div>
+                  <div class="form-row"><label>Resultado</label><input v-model="labResultForm.resultado" class="input" placeholder="p. ej. Hemoglobina 14.2 g/dL" /></div>
+                  <div class="form-row"><label>Laboratorio</label><input v-model="labResultForm.laboratorio" class="input" placeholder="p. ej. Lab Clínica Central" /></div>
+                  <div class="form-row"><label>Unidades</label><input v-model="labResultForm.unidades" class="input" placeholder="p. ej. g/dL" /></div>
+                  <div class="form-row"><label>Valor de referencia</label><input v-model="labResultForm.valor_referencia" class="input" placeholder="p. ej. 12-17 g/dL" /></div>
+                  <div class="form-row"><label>Notas</label><input v-model="labResultForm.notas" class="input" placeholder="Observaciones" /></div>
+                  <button class="btn-primary" @click="createLabResult" :disabled="labResultLoading">{{ labResultLoading ? 'Guardando...' : 'Registrar resultado' }}</button>
+                </div>
+                <div v-if="labResults.length === 0 && !showLabResultForm" class="state-empty-sm">Sin resultados de laboratorio registrados.</div>
+                <div v-else class="allergy-list">
+                  <div v-for="lab in labResults" :key="lab.id" class="allergy-item">
+                    <div class="allergy-meta">
+                      <div class="allergy-main"><span class="allergy-agente">{{ lab.estudio }}</span><span v-if="lab.laboratorio" class="allergy-badge moderada">{{ lab.laboratorio }}</span></div>
+                      <div class="allergy-acciones"><button class="btn-accion" @click="voidLabResult(lab)">Quitar</button></div>
+                    </div>
+                    <div v-if="lab.resultado" class="allergy-sub">{{ lab.resultado }}<span v-if="lab.unidades"> {{ lab.unidades }}</span><span v-if="lab.valor_referencia"> (ref: {{ lab.valor_referencia }})</span></div>
+                    <div class="allergy-certeza">{{ lab.fecha_estudio }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECCIÓN: Consultas — cronología clínica -->
+            <div class="seccion seccion--consultas">
+              <div class="seccion-header" @click="toggleSeccion('consultas')">
+                <div class="seccion-titulo">
+                  <svg class="seccion-icono" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 2v4"/><path d="M16 2v4"/>
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                    <path d="M9 16l2 2 4-4"/>
+                  </svg>
+                  <h3>Consultas</h3>
+                  <span class="seccion-count">{{ consultations.length }}</span>
+                </div>
+                <svg class="seccion-chevron" :class="{ 'seccion-chevron--open': seccionesAbiertas['consultas'] }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div v-show="seccionesAbiertas['consultas']">
+                <div class="seccion-action-bar">
+                  <RouterLink :to="`/consultations/new?patient=${id}`" class="btn-accion-add" @click.stop>+ Nueva consulta</RouterLink>
+                </div>
+                <div v-if="consultations.length === 0" class="state-empty-sm">Sin consultas registradas para este paciente.</div>
+                <div class="con-lista">
+                  <RouterLink v-for="con in consultations" :key="con.id" :to="`/consultations/${con.id}`" class="con-card">
+                    <div class="nota-meta">
+                      <span class="nota-fecha">{{ formatDate(con.issued_at ?? con.created_at) }}</span>
+                    </div>
+                    <div v-if="con.ta || con.fc || con.fr || con.temp || con.peso || con.talla || con.sao2" class="vitals-row">
+                      <span v-if="con.ta" class="vital-chip"><strong>T/A</strong> {{ con.ta }} mmHg</span>
+                      <span v-if="con.fc" class="vital-chip"><strong>FC</strong> {{ con.fc }} lpm</span>
+                      <span v-if="con.fr" class="vital-chip"><strong>FR</strong> {{ con.fr }} rpm</span>
+                      <span v-if="con.temp" class="vital-chip"><strong>Temp</strong> {{ con.temp }}°C</span>
+                      <span v-if="con.peso" class="vital-chip"><strong>Peso</strong> {{ con.peso }} kg</span>
+                      <span v-if="con.talla" class="vital-chip"><strong>Talla</strong> {{ con.talla }} m</span>
+                      <span v-if="con.sao2" class="vital-chip"><strong>SAO2</strong> {{ con.sao2 }}%</span>
+                    </div>
+                    <div class="nota-contenido">
+                      {{ activeNotes.find(n => {
+                        try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
+                      })?.content ? parseNoteContent(activeNotes.find(n => {
+                        try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
+                      })!.content) : 'sin nota' }}
+                    </div>
+                  </RouterLink>
+                </div>
+              </div>
+            </div>
 
           </div><!-- fin .expediente-main -->
 
-          <!-- PANEL LATERAL: Notas generales del paciente (consultation_id = NULL) -->
-          <div
-            v-if="notasPanelAbierto"
-            class="expediente-notas-panel"
-            @dblclick="toggleNotasPanel"
-            title="Doble clic para contraer"
-          >
+          <!-- PANEL LATERAL: Notas generales -->
+          <div v-if="notasPanelAbierto" class="expediente-notas-panel">
             <div class="notas-panel-inner">
               <div class="notas-panel-header">
                 <div class="seccion-titulo">
@@ -901,34 +854,27 @@ async function exportExpediente() {
                   <h3>Notas generales</h3>
                   <span class="seccion-count">{{ notasExpediente.length }}</span>
                 </div>
-                <button class="btn-primary" @click.stop="showNotaForm = !showNotaForm; notaError = ''">
+                <button class="btn-panel-toggle" @click="toggleNotasPanel" title="Contraer panel">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+              </div>
+              <div class="seccion-action-bar">
+                <button class="btn-accion-add" @click.stop="showNotaForm = !showNotaForm; notaError = ''">
                   {{ showNotaForm ? 'Cancelar' : '+ Nueva nota' }}
                 </button>
               </div>
-
               <div v-if="showNotaForm" class="allergy-form">
                 <div class="alert-error" v-if="notaError">{{ notaError }}</div>
                 <div class="form-row">
                   <label>Nota clínica</label>
-                  <textarea
-                    v-model="notaForm"
-                    class="input"
-                    rows="4"
-                    placeholder="Observación clínica, seguimiento, nota de progreso..."
-                    maxlength="2000"
-                    style="resize:vertical;"
-                  />
-                  <span style="font-size:12px;color:var(--text-secondary);text-align:right">{{ notaForm.length }} / 2000</span>
+                  <textarea v-model="notaForm" class="input textarea-nota" rows="4" placeholder="Observación clínica, seguimiento, nota de progreso..." maxlength="2000" />
+                  <span class="char-count">{{ notaForm.length }} / 2000</span>
                 </div>
                 <button class="btn-primary" @click="crearNota" :disabled="notaLoading">
                   {{ notaLoading ? 'Guardando...' : 'Guardar nota' }}
                 </button>
               </div>
-
-              <div v-if="notasExpediente.length === 0 && !showNotaForm" class="state-empty-sm">
-                Sin notas generales registradas.
-              </div>
-
+              <div v-if="notasExpediente.length === 0 && !showNotaForm" class="state-empty-sm">Sin notas generales registradas.</div>
               <div v-else class="hoja">
                 <div v-for="nota in notasExpediente" :key="nota.id" class="nota-entrada">
                   <div class="nota-meta">
@@ -936,15 +882,8 @@ async function exportExpediente() {
                     <button v-if="editingNotaId !== nota.id" class="btn-accion" @click.stop="startEditNota(nota)">Editar</button>
                   </div>
                   <template v-if="editingNotaId === nota.id">
-                    <textarea
-                      v-model="editNotaForm"
-                      class="input"
-                      rows="4"
-                      style="resize:vertical;width:100%;margin-bottom:var(--space-2)"
-                      maxlength="2000"
-                      @dblclick.stop
-                    />
-                    <div style="display:flex;gap:var(--space-2)">
+                    <textarea v-model="editNotaForm" class="input textarea-nota" rows="4" maxlength="2000" />
+                    <div class="edit-nota-acciones">
                       <button class="btn-primary" @click.stop="saveEditNota(nota)" :disabled="notaLoading">
                         {{ notaLoading ? 'Guardando...' : 'Guardar' }}
                       </button>
@@ -957,21 +896,14 @@ async function exportExpediente() {
             </div>
           </div>
 
-          <!-- Indicador para reabrir panel (cuando está contraído) -->
-          <div
-            v-else
-            class="expediente-notas-collapsed"
-            @dblclick="toggleNotasPanel"
-            title="Doble clic para expandir notas"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- Panel contraído: botón visible para reabrir -->
+          <button v-else class="expediente-notas-collapsed" @click="toggleNotasPanel" title="Expandir notas">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
             </svg>
-          </div>
+            <svg class="collapsed-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
 
         </div><!-- fin .expediente-layout -->
 
@@ -982,6 +914,89 @@ async function exportExpediente() {
 
 <style scoped>
 .page { max-width: 1200px; }
+
+/* Header del paciente */
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-2); }
+.patient-header-left { display: flex; flex-direction: column; gap: var(--space-1); }
+.patient-name-row { display: flex; align-items: center; gap: 6px; }
+.patient-name-text { margin: 0; }
+.patient-name-input {
+  font-size: 1.25rem; font-weight: 700;
+  border: none; border-bottom: 2px solid var(--color-turquoise);
+  outline: none; background: transparent;
+  min-width: 8ch; max-width: 320px;
+  text-transform: uppercase;
+  font-family: var(--font-brand);
+}
+.patient-exp-row { display: flex; align-items: center; gap: 8px; }
+.patient-exp-row .page-sub { margin: 0; }
+.header-actions { display: flex; gap: var(--space-2); align-items: center; }
+
+/* Botón editar inline (lápiz) */
+.btn-edit-inline {
+  background: none; border: none; cursor: pointer;
+  padding: 2px; color: var(--text-secondary);
+  display: inline-flex; align-items: center; flex-shrink: 0;
+  border-radius: var(--radius-sm); transition: color 0.15s;
+}
+.btn-edit-inline:hover { color: var(--color-turquoise); }
+
+/* Sexo inline */
+.sexo-inline { display: inline-flex; align-items: center; gap: 4px; }
+.sexo-select {
+  font-size: inherit; font-family: var(--font-body);
+  border: none; border-bottom: 2px solid var(--color-turquoise);
+  outline: none; background: transparent; cursor: pointer;
+}
+
+/* Chevron de sección */
+.seccion-chevron { color: var(--text-secondary); flex-shrink: 0; transition: transform 0.2s ease; }
+.seccion-chevron--open { transform: rotate(90deg); }
+
+/* Barra de acción dentro de la sección (reemplaza btn en header) */
+.seccion-action-bar {
+  display: flex; justify-content: flex-end;
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid #F1F5F9;
+}
+.btn-accion-add {
+  font-size: 13px; font-weight: 600;
+  color: var(--color-turquoise); background: transparent;
+  border: 1.5px solid var(--color-turquoise);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm); cursor: pointer;
+  font-family: var(--font-body); transition: all 0.15s;
+  text-decoration: none; display: inline-flex; align-items: center;
+}
+.btn-accion-add:hover { background: var(--color-turquoise); color: var(--color-obsidian); }
+
+/* Toggle del panel de notas */
+.btn-panel-toggle {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-secondary); padding: 4px;
+  display: flex; align-items: center; border-radius: var(--radius-sm);
+  transition: color 0.15s;
+}
+.btn-panel-toggle:hover { color: var(--text-primary); }
+
+/* Panel contraído */
+.expediente-notas-collapsed {
+  flex: 0 0 32px; position: sticky; top: var(--space-4);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: #F8F5FF; border: 1px solid #E2E8F0; border-left: 3px solid #8B5CF6;
+  border-radius: var(--radius-lg); padding: var(--space-4) var(--space-2);
+  cursor: pointer; color: #8B5CF6; min-height: 60px;
+  transition: background 0.15s; font-size: 0;
+}
+.expediente-notas-collapsed:hover { background: #F0ECFF; }
+.collapsed-arrow { color: #8B5CF6; }
+
+/* Textarea y contador de caracteres */
+.textarea-nota { resize: vertical; width: 100%; }
+.char-count { font-size: 12px; color: var(--text-secondary); text-align: right; }
+
+/* Acciones de edición de nota */
+.edit-nota-acciones { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
 
 /* Layout dos columnas: expediente 65% + notas generales 35% (ADR-0026) */
 .expediente-layout {
@@ -1074,7 +1089,6 @@ async function exportExpediente() {
     flex: 1 1 100%;
   }
 }
-.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-2); }
 .page-sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
 .btn-back { color: var(--color-clinical-blue); font-size: 14px; text-decoration: none; white-space: nowrap; }
 .btn-agendar { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: #1d4ed8; background: #dbeafe; border: 1.5px solid #bfdbfe; border-radius: var(--radius-sm); padding: 5px 12px; text-decoration: none; transition: all 0.15s; white-space: nowrap; }
