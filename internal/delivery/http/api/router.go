@@ -52,6 +52,8 @@ func RegisterAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/admin/activity/", JWTMiddleware(AdminMiddleware(HandleAdminActivityDetail)))
 	mux.HandleFunc("/api/v1/consultations", JWTMiddleware(consultationBaseDispatcher))
 	mux.HandleFunc("/api/v1/consultations/", JWTMiddleware(consultationDispatcher))
+	mux.HandleFunc("/api/v1/appointments", JWTMiddleware(appointmentBaseDispatcher))
+	mux.HandleFunc("/api/v1/appointments/", JWTMiddleware(appointmentDispatcher))
 	mux.HandleFunc("/api/v1/prescriptions", JWTMiddleware(HandlePrescriptionListAll))
 	mux.HandleFunc("/api/v1/prescriptions/", prescriptionAuthDispatcher)
 
@@ -141,6 +143,12 @@ func patientDispatcher(w http.ResponseWriter, r *http.Request) {
 		HandlePatientExportTransfer(w, r)
 	case "export/zip":
 		HandlePatientExportZIP(w, r)
+	case "appointments":
+		if r.Method == http.MethodGet {
+			HandleAppointmentListByPatient(w, r)
+		} else {
+			writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+		}
 	case "consultations":
 		switch r.Method {
 		case http.MethodGet:
@@ -227,6 +235,37 @@ func profileDispatcher(w http.ResponseWriter, r *http.Request) {
 // consultationBaseDispatcher maneja GET /api/v1/consultations
 func consultationBaseDispatcher(w http.ResponseWriter, r *http.Request) {
 	HandleConsultationListAll(w, r)
+}
+
+// appointmentBaseDispatcher maneja GET y POST /api/v1/appointments
+func appointmentBaseDispatcher(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		HandleAppointmentListAll(w, r)
+	case http.MethodPost:
+		HandleAppointmentCreate(w, r)
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "metodo no permitido")
+	}
+}
+
+// appointmentDispatcher enruta requests de citas con ID dinamico.
+func appointmentDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/appointments/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 1 {
+		if parts[0] == "today" {
+			HandleAppointmentToday(w, r)
+			return
+		}
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
+		return
+	}
+	if parts[1] == "state" {
+		HandleAppointmentUpdateState(w, r)
+		return
+	}
+	writeError(w, http.StatusNotFound, "NOT_FOUND", "ruta no encontrada")
 }
 
 // consultationDispatcher enruta requests de consultas con ID dinamico.
