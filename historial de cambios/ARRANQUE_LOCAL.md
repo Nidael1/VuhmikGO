@@ -1,20 +1,20 @@
 # Guía de arranque local — VUHMÍK
 
 Para correr el proyecto en cualquier máquina desde cero.  
-Incluye instrucciones para **Mac** y **Windows**.
+Incluye instrucciones para **Mac**, **Windows** y **Linux**.
 
 ---
 
 ## Requisitos
 
-| Herramienta | Versión | Mac | Windows |
-|---|---|---|---|
-| Go | 1.25+ | `brew install go` | [go.dev/dl](https://go.dev/dl) → installer |
-| Node.js | 22 | NVM (ver abajo) | NVM for Windows (ver abajo) |
-| PostgreSQL | 15+ | `brew install postgresql@15` | [postgresql.org/download/windows](https://www.postgresql.org/download/windows/) → installer |
-| Redis | 7+ | `brew install redis` | [github.com/tporadowski/redis/releases](https://github.com/tporadowski/redis/releases) → .msi |
-| golang-migrate | 4.18+ | `brew install golang-migrate` | Descargar binario (ver abajo) |
-| Git | cualquiera | `brew install git` | [git-scm.com](https://git-scm.com/download/win) |
+| Herramienta | Versión | Mac | Windows | Linux (Ubuntu/Debian) |
+|---|---|---|---|---|
+| Go | 1.25+ | `brew install go` | [go.dev/dl](https://go.dev/dl) → installer | `sudo snap install go --classic` |
+| Node.js | 22 | NVM (ver abajo) | NVM for Windows (ver abajo) | NVM (ver abajo) |
+| PostgreSQL | 15+ | `brew install postgresql@15` | [postgresql.org/download/windows](https://www.postgresql.org/download/windows/) | `sudo apt install postgresql` |
+| Redis | 7+ | `brew install redis` | [github.com/tporadowski/redis/releases](https://github.com/tporadowski/redis/releases) → .msi | `sudo apt install redis-server` |
+| golang-migrate | 4.18+ | `brew install golang-migrate` | Binario en releases | `curl` (ver abajo) |
+| Git | cualquiera | `brew install git` | [git-scm.com](https://git-scm.com/download/win) | `sudo apt install git` |
 
 ---
 
@@ -32,12 +32,14 @@ cd VuhmikGO
 ```bash
 # Mac / Linux
 cp .env.example .env
+nano .env   # o el editor que prefieras
 
 # Windows (PowerShell)
 Copy-Item .env.example .env
+notepad .env
 ```
 
-**Solo necesitas cambiar `tu_password`** — el resto ya está configurado con los nombres correctos (`vuhmik` como usuario y nombre de BD).
+**Solo necesitas cambiar `tu_password`** — el resto ya está configurado (`vuhmik` como usuario y nombre de BD).
 
 ---
 
@@ -48,9 +50,26 @@ Copy-Item .env.example .env
 ```bash
 brew services start postgresql@15
 
-# Crear usuario y base de datos
 psql postgres -c "CREATE USER vuhmik WITH PASSWORD 'tu_password';"
 psql postgres -c "CREATE DATABASE vuhmik OWNER vuhmik;"
+
+export $(cat .env | grep -v '#' | xargs)
+migrate -path database/migrations -database "$DATABASE_URL" up
+```
+
+### Linux (Ubuntu/Debian)
+
+```bash
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+# Crear usuario y base de datos
+sudo -u postgres psql -c "CREATE USER vuhmik WITH PASSWORD 'tu_password';"
+sudo -u postgres psql -c "CREATE DATABASE vuhmik OWNER vuhmik;"
+
+# Instalar golang-migrate
+curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.linux-amd64.tar.gz | tar xvz
+sudo mv migrate /usr/local/bin/
 
 # Correr migraciones
 export $(cat .env | grep -v '#' | xargs)
@@ -61,17 +80,15 @@ migrate -path database/migrations -database "$DATABASE_URL" up
 
 ```powershell
 # PostgreSQL se instala como servicio — ya corre automáticamente.
-# Abre pgAdmin (instalado con PostgreSQL) o usa psql:
+# Usar pgAdmin o psql:
 
 psql -U postgres -c "CREATE USER vuhmik WITH PASSWORD 'tu_password';"
 psql -U postgres -c "CREATE DATABASE vuhmik OWNER vuhmik;"
 
-# golang-migrate en Windows:
-# Descargar migrate.windows-amd64.zip de:
+# golang-migrate: descargar migrate.windows-amd64.zip de:
 # https://github.com/golang-migrate/migrate/releases
-# Extraer migrate.exe y ponerlo en C:\tools\ o en el PATH
+# Extraer migrate.exe y agregar al PATH (ej. C:\tools\)
 
-# Correr migraciones (ajustar DATABASE_URL con tu contraseña real):
 $env:DATABASE_URL = "postgres://vuhmik:tu_password@localhost:5432/vuhmik?sslmode=disable"
 migrate.exe -path database/migrations -database $env:DATABASE_URL up
 ```
@@ -86,11 +103,21 @@ migrate.exe -path database/migrations -database $env:DATABASE_URL up
 brew services start redis
 ```
 
+### Linux (Ubuntu/Debian)
+
+```bash
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
+
+# Verificar
+redis-cli ping   # → PONG
+```
+
 ### Windows
 
 Instalar con el `.msi` de [github.com/tporadowski/redis/releases](https://github.com/tporadowski/redis/releases).  
-Redis se instala como servicio de Windows y arranca automáticamente.  
-Para verificar: `redis-cli ping` → debe responder `PONG`.
+Redis se instala como servicio y arranca automáticamente.  
+Verificar: `redis-cli ping` → `PONG`.
 
 ---
 
@@ -101,7 +128,7 @@ Para verificar: `redis-cli ping` → debe responder `PONG`.
 ```bash
 export $(cat .env | grep -v '#' | xargs)
 go run ./cmd/vuhmik-api/
-# → escucha en http://localhost:8080
+# → http://localhost:8080
 ```
 
 ### Windows (PowerShell)
@@ -114,13 +141,18 @@ Get-Content .env | Where-Object { $_ -notmatch '^#' -and $_ -ne '' } | ForEach-O
 }
 
 go run ./cmd/vuhmik-api/
-# → escucha en http://localhost:8080
+# → http://localhost:8080
 ```
 
-> **Nota Windows:** si los directorios `BACKUP_DIR` / `LOG_DIR` no existen, créalos antes de arrancar:
+> **Nota Windows:** crear los directorios antes de arrancar:
 > ```powershell
 > mkdir C:\Users\$env:USERNAME\vuhmik-backups
 > mkdir C:\Users\$env:USERNAME\vuhmik-logs
+> ```
+
+> **Nota Linux:** crear los directorios si no existen:
+> ```bash
+> mkdir -p /tmp/vuhmik-backups /tmp/vuhmik-logs
 > ```
 
 ---
@@ -140,11 +172,26 @@ npm run dev
 # → http://localhost:5173
 ```
 
+### Linux — NVM estándar
+
+```bash
+# Instalar NVM (si no está instalado)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc   # o ~/.zshrc si usas zsh
+
+nvm install 22
+nvm use 22
+
+cd frontend
+npm install
+npm run dev
+# → http://localhost:5173
+```
+
 ### Windows — NVM for Windows
 
 ```powershell
-# Instalar NVM for Windows desde:
-# https://github.com/coreybutler/nvm-windows/releases → nvm-setup.exe
+# Instalar desde: https://github.com/coreybutler/nvm-windows/releases → nvm-setup.exe
 
 nvm install 22
 nvm use 22
@@ -163,8 +210,8 @@ npm run dev
 # Backend
 curl http://localhost:8080/api/v1/health
 
-# Frontend — abrir en el navegador:
-# http://localhost:5173
+# Frontend
+# Abrir en el navegador: http://localhost:5173
 ```
 
 > Usar **siempre** `localhost:5173` en desarrollo, no `:8080` directamente.  
@@ -174,7 +221,7 @@ curl http://localhost:8080/api/v1/health
 
 ## Producción (VPS Hetzner via Coolify)
 
-El despliegue es automático via Docker — no se necesita hacer nada manual.
+El despliegue es automático via Docker — no se hace nada manual.
 
 ```bash
 # Build manual solo para probar la imagen:
