@@ -1,18 +1,20 @@
 # Guía de arranque local — VUHMÍK
 
-Para poder correr el proyecto en cualquier máquina desde cero.
+Para correr el proyecto en cualquier máquina desde cero.  
+Incluye instrucciones para **Mac** y **Windows**.
 
 ---
 
 ## Requisitos
 
-| Herramienta | Versión | Notas |
-|---|---|---|
-| Go | 1.25+ | `brew install go` |
-| Node.js | 22 | Usar NVM (ver abajo) |
-| PostgreSQL | 15+ | `brew install postgresql` |
-| Redis | 7+ | `brew install redis` |
-| golang-migrate | 4.18+ | `brew install golang-migrate` |
+| Herramienta | Versión | Mac | Windows |
+|---|---|---|---|
+| Go | 1.25+ | `brew install go` | [go.dev/dl](https://go.dev/dl) → installer |
+| Node.js | 22 | NVM (ver abajo) | NVM for Windows (ver abajo) |
+| PostgreSQL | 15+ | `brew install postgresql@15` | [postgresql.org/download/windows](https://www.postgresql.org/download/windows/) → installer |
+| Redis | 7+ | `brew install redis` | [github.com/tporadowski/redis/releases](https://github.com/tporadowski/redis/releases) → .msi |
+| golang-migrate | 4.18+ | `brew install golang-migrate` | Descargar binario (ver abajo) |
+| Git | cualquiera | `brew install git` | [git-scm.com](https://git-scm.com/download/win) |
 
 ---
 
@@ -28,113 +30,170 @@ cd VuhmikGO
 ## 2. Variables de entorno
 
 ```bash
+# Mac / Linux
 cp .env.example .env
-# Edita .env con tus valores reales
+
+# Windows (PowerShell)
+Copy-Item .env.example .env
 ```
 
-Variables requeridas:
-- `DATABASE_URL` — PostgreSQL connection string
-- `REDIS_URL` — Redis URL (redis://localhost:6379 en dev)
-- `JWT_SECRET` — Secreto JWT (mín. 32 chars). Genera con: `openssl rand -hex 32`
-- `BACKUP_DIR` — Ruta de backups (ej. `/tmp/vuhmik-backups`)
-- `LOG_DIR` — Ruta de logs (ej. `/tmp/vuhmik-logs`)
+**Solo necesitas cambiar `tu_password`** — el resto ya está configurado con los nombres correctos (`vuhmik` como usuario y nombre de BD).
 
 ---
 
-## 3. Base de datos
+## 3. Base de datos (PostgreSQL)
+
+### Mac
 
 ```bash
-# Crear la base de datos
-createdb vuhmik
+brew services start postgresql@15
+
+# Crear usuario y base de datos
+psql postgres -c "CREATE USER vuhmik WITH PASSWORD 'tu_password';"
+psql postgres -c "CREATE DATABASE vuhmik OWNER vuhmik;"
 
 # Correr migraciones
+export $(cat .env | grep -v '#' | xargs)
 migrate -path database/migrations -database "$DATABASE_URL" up
+```
+
+### Windows (PowerShell)
+
+```powershell
+# PostgreSQL se instala como servicio — ya corre automáticamente.
+# Abre pgAdmin (instalado con PostgreSQL) o usa psql:
+
+psql -U postgres -c "CREATE USER vuhmik WITH PASSWORD 'tu_password';"
+psql -U postgres -c "CREATE DATABASE vuhmik OWNER vuhmik;"
+
+# golang-migrate en Windows:
+# Descargar migrate.windows-amd64.zip de:
+# https://github.com/golang-migrate/migrate/releases
+# Extraer migrate.exe y ponerlo en C:\tools\ o en el PATH
+
+# Correr migraciones (ajustar DATABASE_URL con tu contraseña real):
+$env:DATABASE_URL = "postgres://vuhmik:tu_password@localhost:5432/vuhmik?sslmode=disable"
+migrate.exe -path database/migrations -database $env:DATABASE_URL up
 ```
 
 ---
 
 ## 4. Redis
 
+### Mac
+
 ```bash
-redis-server
+brew services start redis
 ```
+
+### Windows
+
+Instalar con el `.msi` de [github.com/tporadowski/redis/releases](https://github.com/tporadowski/redis/releases).  
+Redis se instala como servicio de Windows y arranca automáticamente.  
+Para verificar: `redis-cli ping` → debe responder `PONG`.
 
 ---
 
 ## 5. Backend (Go)
 
-```bash
-# Cargar variables de entorno
-export $(cat .env | grep -v '#' | xargs)
+### Mac / Linux
 
-# Correr el servidor
+```bash
+export $(cat .env | grep -v '#' | xargs)
 go run ./cmd/vuhmik-api/
-# → escucha en :8080
+# → escucha en http://localhost:8080
 ```
+
+### Windows (PowerShell)
+
+```powershell
+# Cargar variables de entorno desde .env
+Get-Content .env | Where-Object { $_ -notmatch '^#' -and $_ -ne '' } | ForEach-Object {
+    $parts = $_ -split '=', 2
+    [System.Environment]::SetEnvironmentVariable($parts[0], $parts[1], 'Process')
+}
+
+go run ./cmd/vuhmik-api/
+# → escucha en http://localhost:8080
+```
+
+> **Nota Windows:** si los directorios `BACKUP_DIR` / `LOG_DIR` no existen, créalos antes de arrancar:
+> ```powershell
+> mkdir C:\Users\$env:USERNAME\vuhmik-backups
+> mkdir C:\Users\$env:USERNAME\vuhmik-logs
+> ```
 
 ---
 
 ## 6. Frontend (Vue 3 + Vite)
 
+### Mac — NVM en `/Volumes/D/nvm`
+
 ```bash
-# NVM — cargar Node 22
-export NVM_DIR="/Volumes/D/nvm"   # Mac local NDT
-# En otra máquina: export NVM_DIR="$HOME/.nvm"
+export NVM_DIR="/Volumes/D/nvm"
 source "$NVM_DIR/nvm.sh"
 nvm use 22
 
 cd frontend
 npm install
 npm run dev
-# → escucha en http://localhost:5173
+# → http://localhost:5173
 ```
 
-> La app en desarrollo apunta al backend en `:8080` vía proxy Vite.
-> Usar **siempre** `localhost:5173` para desarrollo, no `:8080` directamente.
+### Windows — NVM for Windows
+
+```powershell
+# Instalar NVM for Windows desde:
+# https://github.com/coreybutler/nvm-windows/releases → nvm-setup.exe
+
+nvm install 22
+nvm use 22
+
+cd frontend
+npm install
+npm run dev
+# → http://localhost:5173
+```
 
 ---
 
 ## 7. Verificar que todo funciona
 
 ```bash
-# Backend health
+# Backend
 curl http://localhost:8080/api/v1/health
 
-# Frontend
-open http://localhost:5173
+# Frontend — abrir en el navegador:
+# http://localhost:5173
 ```
+
+> Usar **siempre** `localhost:5173` en desarrollo, no `:8080` directamente.  
+> Vite hace proxy automático al backend.
 
 ---
 
 ## Producción (VPS Hetzner via Coolify)
 
-El despliegue en producción es automático via Docker:
+El despliegue es automático via Docker — no se necesita hacer nada manual.
 
 ```bash
-# Build manual (solo si es necesario probar la imagen)
+# Build manual solo para probar la imagen:
 docker build -t vuhmik .
 docker run -p 8080:8080 --env-file .env vuhmik
 ```
 
-El `Dockerfile` multi-etapa:
-1. Compila el frontend con Node 22.
-2. Compila el binario Go.
-3. Descarga `golang-migrate` para Linux amd64.
-4. Imagen final Alpine mínima con el binario, migraciones y frontend compilado.
-
-El `docker-entrypoint.sh` corre las migraciones automáticamente antes de arrancar.
-
-Las variables de entorno se configuran directamente en Coolify — **no en el repositorio**.
+Las variables de entorno de producción se configuran en el panel de Coolify — **nunca en el repositorio**.
 
 ---
 
-## .gitignore recomendado
+## Resumen de puertos
 
-```
-.env
-*.env.local
-dump.rdb
-```
+| Servicio | Puerto |
+|---|---|
+| API (Go) | 8080 |
+| Frontend (Vite dev) | 5173 |
+| PostgreSQL | 5432 |
+| Redis | 6379 |
 
 ---
 
