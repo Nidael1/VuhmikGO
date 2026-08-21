@@ -141,7 +141,7 @@ function cancelar() {
 </template>
 
 <style scoped>
-.page { max-width: 720px; }
+.page { max-width: 720px; margin: 0 auto; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
 .page-sub { color: var(--text-secondary); font-size: 13px; margin-top: var(--space-1); }
 .btn-back { background: transparent; border: none; color: var(--color-clinical-blue); font-size: 14px; cursor: pointer; padding: 0; }

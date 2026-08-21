@@ -38,6 +38,30 @@ const sorted = computed(() => {
   )
 })
 
+function bucketLabel(iso: string): string {
+  const d = new Date(iso)
+  const hoy = new Date()
+  const ayer = new Date(); ayer.setDate(hoy.getDate() - 1)
+  const inicioSemana = new Date(); inicioSemana.setDate(hoy.getDate() - hoy.getDay())
+  inicioSemana.setHours(0, 0, 0, 0)
+  if (d.toDateString() === hoy.toDateString()) return 'Hoy'
+  if (d.toDateString() === ayer.toDateString()) return 'Ayer'
+  if (d >= inicioSemana) return 'Esta semana'
+  return d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+    .replace(/^\w/, c => c.toUpperCase())
+}
+
+const grouped = computed(() => {
+  if (sortBy.value === 'az') return [{ label: '', items: sorted.value }]
+  const map = new Map<string, typeof sorted.value>()
+  for (const c of sorted.value) {
+    const label = bucketLabel(c.issued_at ?? c.created_at)
+    if (!map.has(label)) map.set(label, [])
+    map.get(label)!.push(c)
+  }
+  return [...map.entries()].map(([label, items]) => ({ label, items }))
+})
+
 onMounted(async () => {
   try {
     const [cons, pats] = await Promise.all([
@@ -88,24 +112,33 @@ function formatDate(d: string) {
           No hay consultas. Crea una desde el perfil de un paciente o desde aquí.
         </div>
 
-        <div v-else class="consultation-list">
-          <RouterLink
-            v-for="c in sorted"
-            :key="c.id"
-            :to="`/consultations/${c.id}`"
-            class="consultation-card"
-          >
-            <div class="con-header">
-              <span class="con-paciente">{{ patients[c.patient_id]?.nombre ?? c.patient_id }}</span>
-              <span class="con-fecha">{{ formatDate(c.issued_at ?? c.created_at) }}</span>
+        <div v-else class="grupos">
+          <div v-for="grupo in grouped" :key="grupo.label" class="grupo">
+            <div v-if="grupo.label" class="grupo-label">{{ grupo.label }}</div>
+            <div class="consultation-list">
+              <RouterLink
+                v-for="c in grupo.items"
+                :key="c.id"
+                :to="`/consultations/${c.id}`"
+                class="consultation-card"
+              >
+                <div class="con-header">
+                  <span class="con-paciente">{{ patients[c.patient_id]?.nombre ?? c.patient_id }}</span>
+                  <span class="con-fecha">{{ formatDate(c.issued_at ?? c.created_at) }}</span>
+                </div>
+                <div class="con-vitals">
+                  <span class="vital">{{ c.ta ? `T/A: ${c.ta} mmHg` : '' }}</span>
+                  <span class="vital">{{ c.fc ? `FC: ${c.fc} lpm` : '' }}</span>
+                  <span class="vital">{{ c.fr ? `FR: ${c.fr} rpm` : '' }}</span>
+                  <span class="vital">{{ c.temp ? `Temp: ${c.temp}°C` : '' }}</span>
+                  <span class="vital">{{ c.peso ? `Peso: ${c.peso} kg` : '' }}</span>
+                  <span class="vital">{{ c.talla ? `Talla: ${c.talla} m` : '' }}</span>
+                  <span class="vital">{{ c.sao2 ? `SAO₂: ${c.sao2}%` : '' }}</span>
+                  <span class="vital"></span>
+                </div>
+              </RouterLink>
             </div>
-            <div v-if="c.ta || c.fc || c.temp" class="con-vitals">
-              <span v-if="c.ta">T/A: {{ c.ta }}</span>
-              <span v-if="c.fc">FC: {{ c.fc }}</span>
-              <span v-if="c.temp">Temp: {{ c.temp }}</span>
-              <span v-if="c.peso">Peso: {{ c.peso }}</span>
-            </div>
-          </RouterLink>
+          </div>
         </div>
       </div>
     </div>
@@ -113,22 +146,34 @@ function formatDate(d: string) {
 </template>
 
 <style scoped>
-.page { width: 100%; max-width: 100%; }
+.page { width: 100%; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-4); }
 .page-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
 .btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
 .controls { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); align-items: center; }
 .search-input { flex: 1; font-family: var(--font-body); padding: var(--space-3) var(--space-4); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); font-size: 15px; color: var(--text-primary); background: var(--app-surface); outline: none; }
 .search-input:focus { border-color: var(--color-turquoise); }
-.sort-select { font-family: var(--font-body); font-size: 13px; color: var(--text-secondary); background: var(--app-surface); border: 1.5px solid #E2E8F0; border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); outline: none; cursor: pointer; transition: border-color 0.15s; }
+.sort-select { font-family: var(--font-body); font-size: 13px; color: var(--text-secondary); background: var(--app-surface); border: 1.5px solid #E2E8F0; border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); outline: none; cursor: pointer; transition: border-color 0.15s; }
 .sort-select:focus { border-color: var(--color-turquoise); color: var(--text-primary); }
-.consultation-list { display: flex; flex-direction: column; gap: var(--space-3); }
-.consultation-card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); padding: var(--space-4) var(--space-6); cursor: pointer; transition: border-color 0.15s; text-decoration: none; display: block; }
-.consultation-card:hover { border-color: var(--color-turquoise); }
-.con-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); }
-.con-paciente { font-weight: 600; font-size: 14px; color: var(--text-primary); }
-.con-fecha { font-size: 12px; color: var(--text-secondary); }
-.con-vitals { display: flex; gap: var(--space-3); font-size: 13px; color: var(--text-secondary); flex-wrap: wrap; }
+.grupos { display: flex; flex-direction: column; gap: var(--space-6); }
+.grupo { display: flex; flex-direction: column; gap: var(--space-3); }
+.grupo-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-secondary); padding-bottom: var(--space-1);
+  border-bottom: 1px solid #E2E8F0;
+}
+.consultation-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-3); }
+.consultation-card {
+  background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4); cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+  text-decoration: none; display: flex; flex-direction: column; justify-content: space-between;
+}
+.consultation-card:hover { border-color: var(--color-turquoise); box-shadow: 0 2px 8px rgba(0,200,212,0.08); }
+.con-header { display: flex; flex-direction: column; gap: 2px; }
+.con-paciente { font-weight: 700; font-size: 13px; color: var(--text-primary); }
+.con-fecha { font-size: 11px; color: var(--text-secondary); }
+.con-vitals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px 8px; font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.vital { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 15px; }
 .state-empty { color: var(--text-secondary); text-align: center; padding: var(--space-8); }
 .alert-error { background: #FFF0F3; border: 1px solid var(--color-error); border-radius: var(--radius-sm); padding: var(--space-3); font-size: 14px; color: var(--color-error); }
 </style>

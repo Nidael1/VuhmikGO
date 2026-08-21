@@ -5,8 +5,12 @@ import { useRouter, useRoute } from 'vue-router'
 import TermsModal from '@/presentation/components/TermsModal.vue'
 import { consultationRepository } from '@/infrastructure/repositories/consultationRepository'
 import { appointmentRepository } from '@/infrastructure/repositories/appointmentRepository'
+import { patientRepository } from '@/infrastructure/repositories/patientRepository'
+import { prescriptionRepository } from '@/infrastructure/repositories/prescriptionRepository'
 import type { Consultation } from '@/domain/types/consultation'
 import type { Appointment } from '@/domain/types/appointment'
+import type { Patient } from '@/domain/types/patient'
+import type { Prescription } from '@/domain/types/prescription'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -70,9 +74,91 @@ function nombreCorto(nombre?: string): string {
   return partes.length >= 2 ? `${partes[0]} ${partes[1][0]}.` : partes[0]
 }
 
-onMounted(cargarAgenda)
+// --- Buscador maestro ---
+const busqueda = ref('')
+const todosLosPacientes = ref<Patient[]>([])
+const todasLasConsultas = ref<Consultation[]>([])
+const todasLasRecetas = ref<Prescription[]>([])
+
+async function cargarDatosBuscador() {
+  if (!auth.token) return
+  try {
+    const [pats, cons, rxs] = await Promise.all([
+      patientRepository.list(),
+      consultationRepository.listAll(),
+      prescriptionRepository.listAll(),
+    ])
+    todosLosPacientes.value = pats
+    todasLasConsultas.value = cons
+    todasLasRecetas.value = rxs
+  } catch { /* silencioso */ }
+}
+
+function fechaTexto(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+const resultados = computed(() => {
+  const q = busqueda.value.trim().toLowerCase()
+  if (q.length < 2) return null
+  const pacienteMap = Object.fromEntries(todosLosPacientes.value.map(p => [p.id, p]))
+
+  const pacientes = todosLosPacientes.value
+    .filter(p => {
+      const fields = [p.nombre, p.num_expediente, p.fecha_nacimiento ?? ''].join(' ').toLowerCase()
+      return fields.includes(q)
+    })
+    .slice(0, 8)
+    .map(p => ({ label: p.nombre, sub: p.num_expediente, ruta: `/patients/${p.id}` }))
+
+  const consultas = todasLasConsultas.value
+    .filter(c => {
+      const nombre = pacienteMap[c.patient_id]?.nombre?.toLowerCase() ?? ''
+      const fecha = fechaTexto(c.issued_at ?? c.created_at).toLowerCase()
+      const vitales = [
+        c.ta ?? '', c.fc ?? '', c.fr ?? '', c.temp ?? '',
+        c.peso ?? '', c.talla ?? '', c.sao2 ?? '',
+      ].join(' ').toLowerCase()
+      return nombre.includes(q) || fecha.includes(q) || vitales.includes(q)
+    })
+    .slice(0, 8)
+    .map(c => ({
+      label: pacienteMap[c.patient_id]?.nombre ?? c.patient_id,
+      sub: fechaTexto(c.issued_at ?? c.created_at) + (c.ta ? ` · T/A ${c.ta}` : '') + (c.fc ? ` · FC ${c.fc}` : ''),
+      ruta: `/consultations/${c.id}`,
+    }))
+
+  const recetas = todasLasRecetas.value
+    .filter(rx => {
+      const nombre = pacienteMap[rx.patient_id]?.nombre?.toLowerCase() ?? ''
+      const fields = [rx.medicamento_generico, rx.dosis ?? '', rx.diagnostico ?? ''].join(' ').toLowerCase()
+      const fecha = fechaTexto(rx.issued_at ?? rx.created_at).toLowerCase()
+      return nombre.includes(q) || fields.includes(q) || fecha.includes(q)
+    })
+    .slice(0, 8)
+    .map(rx => ({
+      label: rx.medicamento_generico,
+      sub: (pacienteMap[rx.patient_id]?.nombre ?? '') + (rx.dosis ? ` · ${rx.dosis}` : ''),
+      ruta: `/prescriptions/${rx.id}`,
+    }))
+
+  return { pacientes, consultas, recetas }
+})
+
+const hayResultados = computed(() =>
+  resultados.value && (
+    resultados.value.pacientes.length > 0 ||
+    resultados.value.consultas.length > 0 ||
+    resultados.value.recetas.length > 0
+  )
+)
+
+onMounted(async () => {
+  await cargarAgenda()
+  await cargarDatosBuscador()
+})
 // Refresca cada vez que cambia la ruta (el médico registró una consulta y navega)
-watch(() => route.fullPath, cargarAgenda)
+watch(() => route.fullPath, () => { cargarAgenda(); cargarDatosBuscador() })
 </script>
 
 <template>
@@ -97,6 +183,21 @@ watch(() => route.fullPath, cargarAgenda)
         <span class="brand-icon">V</span>
         <span class="brand-name">vuhmik</span>
       </div>
+
+      <!-- Buscador maestro -->
+      <div class="search-maestro">
+        <div class="search-input-wrap">
+          <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input
+            v-model="busqueda"
+            class="search-input"
+            placeholder="Buscar..."
+            @keydown.escape="busqueda = ''"
+          />
+          <button v-if="busqueda" class="search-clear" @click="busqueda = ''">✕</button>
+        </div>
+      </div>
+
       <nav class="sidebar-nav">
         <RouterLink to="/patients" class="nav-item" @click="cerrarMenu">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -173,7 +274,62 @@ watch(() => route.fullPath, cargarAgenda)
     <TermsModal :open="showTerms" @close="showTerms = false" />
 
     <main class="main-content">
-      <slot />
+      <!-- Resultados de búsqueda maestro -->
+      <div v-if="busqueda.length >= 2" class="search-resultados">
+        <div class="search-resultados-header">
+          <h2>Resultados para "{{ busqueda }}"</h2>
+          <button class="search-cerrar" @click="busqueda = ''">✕ Cerrar búsqueda</button>
+        </div>
+
+        <div v-if="!hayResultados" class="search-vacio">Sin resultados para "{{ busqueda }}"</div>
+
+        <template v-else>
+          <!-- Pacientes -->
+          <div v-if="resultados!.pacientes.length > 0" class="sr-grupo">
+            <div class="sr-label">Pacientes</div>
+            <div class="sr-grid sr-grid--pacientes">
+              <RouterLink
+                v-for="r in resultados!.pacientes" :key="r.ruta"
+                :to="r.ruta" class="sr-card" @click="busqueda = ''"
+              >
+                <span class="sr-card-title">{{ r.label }}</span>
+                <span class="sr-card-sub">{{ r.sub }}</span>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- Consultas -->
+          <div v-if="resultados!.consultas.length > 0" class="sr-grupo">
+            <div class="sr-label">Consultas</div>
+            <div class="sr-grid sr-grid--consultas">
+              <RouterLink
+                v-for="r in resultados!.consultas" :key="r.ruta"
+                :to="r.ruta" class="sr-card" @click="busqueda = ''"
+              >
+                <span class="sr-card-title">{{ r.label }}</span>
+                <span class="sr-card-sub">{{ r.sub }}</span>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- Recetas -->
+          <div v-if="resultados!.recetas.length > 0" class="sr-grupo">
+            <div class="sr-label">Recetas</div>
+            <div class="sr-grid sr-grid--recetas">
+              <RouterLink
+                v-for="r in resultados!.recetas" :key="r.ruta"
+                :to="r.ruta" class="sr-card" @click="busqueda = ''"
+              >
+                <span class="sr-card-title">{{ r.label }}</span>
+                <span class="sr-card-sub">{{ r.sub }}</span>
+              </RouterLink>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Vista normal -->
+      <slot v-else />
     </main>
   </div>
 </template>
@@ -218,6 +374,34 @@ watch(() => route.fullPath, cargarAgenda)
 .btn-terms-sidebar:hover { opacity: 0.7; text-decoration: underline; }
 .nav-item-profile { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); color: var(--text-on-dark); opacity: 0.6; text-decoration: none; font-size: 13px; transition: all 0.15s; }
 .nav-item-profile:hover, .nav-item-profile.router-link-active { opacity: 1; color: var(--color-turquoise); }
+
+/* Buscador maestro — sidebar input */
+.search-maestro { padding: 0 var(--space-2); }
+.search-input-wrap { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 6px 10px; transition: border-color 0.15s; }
+.search-input-wrap:focus-within { border-color: var(--color-turquoise); }
+.search-icon { color: var(--text-on-dark); opacity: 0.4; flex-shrink: 0; }
+.search-input { background: none; border: none; outline: none; color: var(--text-on-dark); font-family: var(--font-body); font-size: 13px; width: 100%; }
+.search-input::placeholder { color: rgba(240,246,252,0.35); }
+.search-clear { background: none; border: none; color: rgba(240,246,252,0.4); cursor: pointer; font-size: 12px; line-height: 1; padding: 0; flex-shrink: 0; }
+.search-clear:hover { color: var(--text-on-dark); }
+
+/* Panel de resultados en main-content */
+.search-resultados { width: 100%; }
+.search-resultados-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-6); }
+.search-resultados-header h2 { margin: 0; }
+.search-cerrar { background: none; border: 1px solid #E2E8F0; border-radius: var(--radius-sm); padding: var(--space-1) var(--space-3); font-size: 13px; color: var(--text-secondary); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
+.search-cerrar:hover { border-color: var(--color-turquoise); color: var(--color-turquoise); }
+.search-vacio { color: var(--text-secondary); padding: var(--space-8); text-align: center; }
+.sr-grupo { margin-bottom: var(--space-8); }
+.sr-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); padding-bottom: var(--space-1); border-bottom: 1px solid #E2E8F0; margin-bottom: var(--space-3); }
+.sr-grid { display: grid; gap: var(--space-3); }
+.sr-grid--pacientes { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.sr-grid--consultas { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.sr-grid--recetas   { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.sr-card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); text-decoration: none; display: flex; flex-direction: column; gap: 3px; transition: border-color 0.15s, box-shadow 0.15s; }
+.sr-card:hover { border-color: var(--color-turquoise); box-shadow: 0 2px 8px rgba(0,200,212,0.08); }
+.sr-card-title { font-weight: 700; font-size: 13px; color: var(--text-primary); }
+.sr-card-sub { font-size: 11px; color: var(--text-secondary); }
 
 /* Agenda de hoy */
 .agenda-hoy { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: var(--space-3); }

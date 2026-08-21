@@ -83,7 +83,7 @@ function formatDate(d: string) {
 </template>
 
 <style scoped>
-.page { max-width: 800px; }
+.page { max-width: 800px; margin: 0 auto; }
 
 .page-header {
   display: flex;

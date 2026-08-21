@@ -102,7 +102,7 @@ async function guardar() {
 </template>
 
 <style scoped>
-.page { width: 100%; max-width: 640px; }
+.page { max-width: 640px; margin: 0 auto; }
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-6); }
 .btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-3) var(--space-6); border-radius: var(--radius-md); font-size: 15px; font-weight: 600; cursor: pointer; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }

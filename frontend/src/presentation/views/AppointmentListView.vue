@@ -80,6 +80,31 @@ const estadoLabel: Record<string, string> = {
   cancelled: 'Cancelada',
   no_show:   'No se presentó',
 }
+
+function bucketLabel(iso: string): string {
+  const d = new Date(iso)
+  const hoy = new Date()
+  const manana = new Date(); manana.setDate(hoy.getDate() + 1)
+  const ayer = new Date(); ayer.setDate(hoy.getDate() - 1)
+  const inicioSemana = new Date(); inicioSemana.setDate(hoy.getDate() - hoy.getDay()); inicioSemana.setHours(0,0,0,0)
+  const finSemana = new Date(inicioSemana); finSemana.setDate(inicioSemana.getDate() + 6)
+  if (d.toDateString() === hoy.toDateString()) return 'Hoy'
+  if (d.toDateString() === manana.toDateString()) return 'Mañana'
+  if (d.toDateString() === ayer.toDateString()) return 'Ayer'
+  if (d >= inicioSemana && d <= finSemana) return 'Esta semana'
+  return d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())
+}
+
+const grouped = computed(() => {
+  if (filtroEstado.value === 'hoy') return [{ label: '', items: filtradas.value }]
+  const map = new Map<string, typeof filtradas.value>()
+  for (const a of filtradas.value) {
+    const label = bucketLabel(a.scheduled_at)
+    if (!map.has(label)) map.set(label, [])
+    map.get(label)!.push(a)
+  }
+  return [...map.entries()].map(([label, items]) => ({ label, items }))
+})
 </script>
 
 <template>
@@ -110,9 +135,12 @@ const estadoLabel: Record<string, string> = {
           No hay citas en este filtro. Usa "+ Nueva cita" para agendar.
         </div>
 
-        <div v-else class="cita-list">
+        <div v-else class="grupos">
+          <div v-for="grupo in grouped" :key="grupo.label" class="grupo">
+            <div v-if="grupo.label" class="grupo-label">{{ grupo.label }}</div>
+            <div class="cita-list">
           <div
-            v-for="a in filtradas"
+            v-for="a in grupo.items"
             :key="a.id"
             class="cita-card"
             :class="`cita-card--${a.state}`"
@@ -135,6 +163,8 @@ const estadoLabel: Record<string, string> = {
               </div>
             </div>
           </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -142,7 +172,7 @@ const estadoLabel: Record<string, string> = {
 </template>
 
 <style scoped>
-.page { width: 100%; max-width: 100%; }
+.page { width: 100%; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-4); }
 .page-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
 .btn-primary { font-family: var(--font-brand); background: var(--action-primary-bg); color: var(--action-primary-text); border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
@@ -153,25 +183,31 @@ const estadoLabel: Record<string, string> = {
 .btn-filtro { background: var(--app-surface); border: 1.5px solid #E2E8F0; color: var(--text-secondary); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .btn-filtro:hover { border-color: var(--color-turquoise); color: var(--color-turquoise); }
 .btn-filtro.active { background: var(--color-obsidian); border-color: var(--color-obsidian); color: #fff; }
-.cita-list { display: flex; flex-direction: column; gap: var(--space-3); }
-.cita-card { background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-lg); display: flex; overflow: hidden; transition: border-color 0.15s; }
-.cita-card:hover { border-color: var(--color-turquoise); }
-.cita-estado-bar { width: 4px; flex-shrink: 0; }
+.grupos { display: flex; flex-direction: column; gap: var(--space-6); }
+.grupo { display: flex; flex-direction: column; gap: var(--space-3); }
+.grupo-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); padding-bottom: var(--space-1); border-bottom: 1px solid #E2E8F0; }
+.cita-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-3); }
+.cita-card {
+  background: var(--app-surface); border: 1px solid #E2E8F0; border-radius: var(--radius-md);
+  display: flex; overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.cita-card:hover { border-color: var(--color-turquoise); box-shadow: 0 2px 8px rgba(0,200,212,0.08); }
+.cita-estado-bar { width: 3px; flex-shrink: 0; }
 .cita-card--scheduled .cita-estado-bar { background: #3b82f6; }
 .cita-card--completed .cita-estado-bar { background: #22c55e; }
 .cita-card--cancelled .cita-estado-bar { background: #94a3b8; }
 .cita-card--no_show   .cita-estado-bar { background: #eab308; }
-.cita-body { flex: 1; padding: var(--space-4) var(--space-5); }
-.cita-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-1); }
-.cita-paciente { font-weight: 600; font-size: 15px; color: var(--text-primary); }
+.cita-body { flex: 1; padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: 3px; }
+.cita-header { display: flex; align-items: center; justify-content: space-between; }
+.cita-paciente { font-weight: 700; font-size: 13px; color: var(--text-primary); }
 .cita-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
 .badge--scheduled { background: #dbeafe; color: #1d4ed8; }
 .badge--completed { background: #dcfce7; color: #15803d; }
 .badge--cancelled { background: #f1f5f9; color: #64748b; }
 .badge--no_show   { background: #fef9c3; color: #854d0e; }
-.cita-fecha { font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-1); }
-.cita-motivo { font-size: 13px; color: var(--text-secondary); font-style: italic; margin-bottom: var(--space-2); }
-.cita-acciones { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-3); align-items: center; }
+.cita-fecha { font-size: 11px; color: var(--text-secondary); }
+.cita-motivo { font-size: 11px; color: var(--text-secondary); font-style: italic; }
+.cita-acciones { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; margin-top: var(--space-2); }
 .btn-accion { cursor: pointer; text-decoration: none; transition: all 0.15s; border: none; background: none; font-family: var(--font-body); }
 
 /* Primaria: peso alto — acción esperada */

@@ -555,24 +555,21 @@ async function exportExpediente() {
                 <div v-if="consultations.length === 0" class="state-empty-sm">Sin consultas registradas para este paciente.</div>
                 <div class="con-lista">
                   <RouterLink v-for="con in consultations" :key="con.id" :to="`/consultations/${con.id}`" class="con-card">
-                    <div class="nota-meta">
-                      <span class="nota-fecha">{{ formatDate(con.issued_at ?? con.created_at) }}</span>
-                    </div>
-                    <div v-if="con.ta || con.fc || con.fr || con.temp || con.peso || con.talla || con.sao2" class="vitals-row">
-                      <span v-if="con.ta" class="vital-chip"><strong>T/A</strong> {{ con.ta }} mmHg</span>
-                      <span v-if="con.fc" class="vital-chip"><strong>FC</strong> {{ con.fc }} lpm</span>
-                      <span v-if="con.fr" class="vital-chip"><strong>FR</strong> {{ con.fr }} rpm</span>
-                      <span v-if="con.temp" class="vital-chip"><strong>Temp</strong> {{ con.temp }}°C</span>
-                      <span v-if="con.peso" class="vital-chip"><strong>Peso</strong> {{ con.peso }} kg</span>
-                      <span v-if="con.talla" class="vital-chip"><strong>Talla</strong> {{ con.talla }} m</span>
-                      <span v-if="con.sao2" class="vital-chip"><strong>SAO2</strong> {{ con.sao2 }}%</span>
-                    </div>
-                    <div class="nota-contenido">
-                      {{ activeNotes.find(n => {
+                    <span class="con-fecha">{{ formatDate(con.issued_at ?? con.created_at) }}</span>
+                    <div class="con-right">
+                      <div v-if="con.ta || con.fc || con.fr || con.temp || con.peso || con.talla || con.sao2" class="vitals-row">
+                        <span v-if="con.ta" class="vital-chip"><strong>T/A</strong> {{ con.ta }}</span>
+                        <span v-if="con.fc" class="vital-chip"><strong>FC</strong> {{ con.fc }}</span>
+                        <span v-if="con.fr" class="vital-chip"><strong>FR</strong> {{ con.fr }}</span>
+                        <span v-if="con.temp" class="vital-chip"><strong>T°</strong> {{ con.temp }}</span>
+                        <span v-if="con.peso" class="vital-chip"><strong>Peso</strong> {{ con.peso }}kg</span>
+                        <span v-if="con.sao2" class="vital-chip"><strong>O₂</strong> {{ con.sao2 }}%</span>
+                      </div>
+                      <span class="con-nota">{{ activeNotes.find(n => {
                         try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
                       })?.content ? parseNoteContent(activeNotes.find(n => {
                         try { return JSON.parse(n.content)?.consultation_id === con.id } catch { return false }
-                      })!.content) : 'sin nota' }}
+                      })!.content) : 'sin nota' }}</span>
                     </div>
                   </RouterLink>
                 </div>
@@ -922,7 +919,7 @@ async function exportExpediente() {
 </template>
 
 <style scoped>
-.page { max-width: 1200px; }
+.page { width: 100%; }
 
 /* Header del paciente */
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-2); }
@@ -1221,20 +1218,21 @@ async function exportExpediente() {
 .con-lista {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-2) 0;
 }
 .con-card {
-  background: var(--app-bg);
-  border: 1px solid #E2E8F0;
-  border-radius: var(--radius-md);
-  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-6);
+  border-bottom: 1px solid #F1F5F9;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: background 0.12s;
+  text-decoration: none;
+  color: inherit;
 }
-.con-card:hover {
-  border-color: var(--color-turquoise);
-}
+.con-card:last-child { border-bottom: none; }
+.con-card:hover { background: #F8FAFB; }
 .rx-card {
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid #F1F5F9;
@@ -1328,7 +1326,29 @@ async function exportExpediente() {
   white-space: pre-wrap;
 }
 
-.vitals-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-2); }
+.con-fecha {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 200px;
+  text-transform: capitalize;
+}
+.con-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.con-nota {
+  font-size: 13px;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+.vitals-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .vital-chip {
   font-size: 12px;
   background: #EEF9F7;

@@ -81,6 +81,28 @@ function imprimirRx(rxId: string) {
   if (!auth.token) return
   window.open(`/api/v1/prescriptions/${rxId}/print?token=${auth.token}`, '_blank')
 }
+
+function bucketLabel(iso: string): string {
+  const d = new Date(iso)
+  const hoy = new Date()
+  const ayer = new Date(); ayer.setDate(hoy.getDate() - 1)
+  const inicioSemana = new Date(); inicioSemana.setDate(hoy.getDate() - hoy.getDay()); inicioSemana.setHours(0,0,0,0)
+  if (d.toDateString() === hoy.toDateString()) return 'Hoy'
+  if (d.toDateString() === ayer.toDateString()) return 'Ayer'
+  if (d >= inicioSemana) return 'Esta semana'
+  return d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())
+}
+
+const grouped = computed(() => {
+  if (sortBy.value === 'az') return [{ label: '', items: sorted.value }]
+  const map = new Map<string, typeof sorted.value>()
+  for (const rx of sorted.value) {
+    const label = bucketLabel(rx.issued_at ?? rx.created_at)
+    if (!map.has(label)) map.set(label, [])
+    map.get(label)!.push(rx)
+  }
+  return [...map.entries()].map(([label, items]) => ({ label, items }))
+})
 </script>
 
 <template>
@@ -113,9 +135,12 @@ function imprimirRx(rxId: string) {
         No hay recetas emitidas. Crea una desde el perfil de un paciente.
       </div>
 
-      <div v-else class="rx-list">
+      <div v-else class="grupos">
+        <div v-for="grupo in grouped" :key="grupo.label" class="grupo">
+          <div v-if="grupo.label" class="grupo-label">{{ grupo.label }}</div>
+          <div class="rx-list">
         <div
-          v-for="rx in sorted"
+          v-for="rx in grupo.items"
           :key="rx.id"
           class="rx-item"
           @click="goToPrescription(rx.id)"
@@ -142,29 +167,35 @@ function imprimirRx(rxId: string) {
             </button>
           </div>
         </div>
+          </div>
+        </div>
       </div>
     </div>
   </AppLayout>
 </template>
 
 <style scoped>
-.page { width: 100%; max-width: 100%; }
-.rx-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.page { width: 100%; }
+.grupos { display: flex; flex-direction: column; gap: var(--space-6); }
+.grupo { display: flex; flex-direction: column; gap: var(--space-3); }
+.grupo-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); padding-bottom: var(--space-1); border-bottom: 1px solid #E2E8F0; }
+.rx-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-3); }
 .rx-item {
   background: var(--app-surface);
   border: 1px solid #E2E8F0;
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  display: flex; flex-direction: column; gap: 3px;
 }
-.rx-item:hover { border-color: var(--color-turquoise); }
-.rx-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); }
-.rx-paciente { font-weight: 600; font-size: 14px; color: var(--text-primary); }
-.rx-fecha { font-size: 12px; color: var(--text-secondary); }
-.rx-med-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-1); }
-.rx-medicamento { font-size: 15px; color: var(--text-primary); font-weight: 600; }
-.rx-dosis { font-size: 13px; color: var(--text-secondary); }
+.rx-item:hover { border-color: var(--color-turquoise); box-shadow: 0 2px 8px rgba(0,200,212,0.08); }
+.rx-header { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.rx-paciente { font-weight: 700; font-size: 13px; color: var(--text-primary); }
+.rx-fecha { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+.rx-med-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.rx-medicamento { font-size: 13px; color: var(--text-primary); font-weight: 600; }
+.rx-dosis { font-size: 11px; color: var(--text-secondary); }
 .btn-reimprimir-sm {
   display: flex;
   align-items: center;
