@@ -679,6 +679,33 @@ nav {
   color: var(--c-text-3);
   margin-top: 12px;
 }
+.pricing-original {
+  font-family: var(--f-body);
+  font-size: 15px;
+  color: var(--c-text-3);
+  text-decoration: line-through;
+  margin-top: 12px;
+}
+.pricing-badge {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(0,200,212,0.12);
+  color: var(--c-turquoise);
+  border: 1px solid rgba(0,200,212,0.25);
+  padding: 4px 12px;
+  border-radius: 3px;
+  margin-bottom: 16px;
+}
+.pricing-savings {
+  font-size: 13px;
+  color: var(--c-jade);
+  font-weight: 600;
+  margin-top: 8px;
+}
 
 /* ── CTA ────────────────────────────────────────────────────────────────────── */
 .section-cta {
@@ -804,10 +831,10 @@ footer {
         <a href="#como-funciona" class="btn-ghost">Ver cómo funciona</a>
       </div>
       <div class="hero-noms">
-        <span class="nom-tag">NOM-024-SSA3-2012</span>
-        <span class="nom-tag">NOM-004-SSA3-2012</span>
-        <span class="nom-tag">IPS / FHIR R4</span>
-        <span class="nom-tag">Multi-tenant</span>
+        <span class="nom-tag">Norma oficial NOM-024</span>
+        <span class="nom-tag">Norma NOM-004</span>
+        <span class="nom-tag">Compatible con sistema nacional</span>
+        <span class="nom-tag">Un sistema por médico</span>
       </div>
     </div>
 
@@ -850,7 +877,7 @@ footer {
             <div class="seal-check">✓</div>
             <div class="seal-info">
               <span class="seal-label">Sellada e inalterable</span>
-              <span class="seal-hash">sha256:a3f2c1d8e4b7f09c2a81d5e63f4b2c90d7e1a5f8b3c6d4e2</span>
+              <span class="seal-hash">Huella de verificación · 21 ago 2026 · 10:32:47 — no puede modificarse</span>
             </div>
             <span class="seal-ts">10:32:47</span>
           </div>
@@ -921,19 +948,19 @@ footer {
         <div class="feature-icon feature-icon--seal">🔒</div>
         <h3>Sellado e inalterable</h3>
         <p>Cada nota queda con una huella verificable al momento de emitirse. Imposible de modificar en secreto. Prueba legal ante COFEPRIS y ante una demanda.</p>
-        <div class="feature-tag">Core append-only · sha-256</div>
+        <div class="feature-tag">Sin posibilidad de alteración posterior</div>
       </div>
       <div class="feature-card">
         <div class="feature-icon feature-icon--fluid">✏️</div>
-        <h3>Experiencia fluida</h3>
-        <p>El médico siente que trabaja libremente. Borradores editables hasta emitir. La integridad se preserva por debajo sin interrumpir el flujo clínico.</p>
-        <div class="feature-tag">ADR-0006 · UX sin fricción</div>
+        <h3>Sin cambiar cómo trabajas</h3>
+        <p>El médico escribe con libertad. Puede ajustar la nota antes de guardarla definitivamente. Al emitirla, queda sellada. No hay pasos extra ni formularios engorrosos.</p>
+        <div class="feature-tag">Diseñado para el ritmo del consultorio</div>
       </div>
       <div class="feature-card">
         <div class="feature-icon feature-icon--port">🔗</div>
-        <h3>Portable e interoperable</h3>
-        <p>Exporta y comparte el expediente con otro médico en IPS/FHIR R4, el estándar internacional que usa el sistema nacional de salud de México.</p>
-        <div class="feature-tag">IPS · FHIR R4 · NOM-024</div>
+        <h3>El expediente viaja con el paciente</h3>
+        <p>Comparte el historial con otro médico o institución con un clic. Compatible con el sistema nacional de salud — cuando el gobierno lo active, VUHMÍK ya habla su idioma.</p>
+        <div class="feature-tag">Compatible con el sistema nacional de salud</div>
       </div>
     </div>
   </div>
@@ -953,20 +980,20 @@ footer {
         <div class="step-label">Paso 1</div>
         <h3>El médico registra</h3>
         <p>Nota de consulta, signos vitales, diagnóstico, receta. La interfaz es fluida: borradores editables mientras no se emite. Sin campos obligatorios que interrumpan el flujo.</p>
-        <span class="step-hash">estado: draft · editable</span>
+        <span class="step-hash">Borrador — editable hasta que el médico lo emite</span>
       </div>
       <div class="step">
         <div class="step-arrow">→</div>
         <div class="step-label">Paso 2</div>
         <h3>El sistema sella</h3>
-        <p>Al emitir, el registro queda inmutable. El sistema calcula su huella criptográfica: cualquiera puede verificar que no se alteró después. Es prueba legal.</p>
-        <span class="step-hash">sha256:a3f2c1d8e4b7f09c…</span>
+        <p>Al emitir, la nota queda guardada de forma permanente e inalterable. El sistema genera una huella de verificación: si alguien intentara cambiarla, quedaría en evidencia. Es su protección legal.</p>
+        <span class="step-hash">Sellado · fecha y hora exacta · no modificable</span>
       </div>
       <div class="step">
         <div class="step-label">Paso 3</div>
         <h3>El médico comparte</h3>
-        <p>Exporta en IPS/FHIR R4 para compartir con otro médico o institución. El mismo estándar que usa el sistema nacional — sin encerramiento en un ecosistema cerrado.</p>
-        <span class="step-hash">formato: IPS · FHIR R4 · JSON/XML</span>
+        <p>Exporta el expediente para enviarlo a otro médico o institución. Funciona con cualquier sistema de salud que use el estándar nacional — sin depender de VUHMÍK para leerlo.</p>
+        <span class="step-hash">Compatible con el sistema nacional de salud</span>
       </div>
     </div>
   </div>
@@ -1010,19 +1037,19 @@ footer {
         </div>
         <div class="diff-item diff-item--good">
           <span class="diff-item-icon">✓</span>
-          <span class="diff-item-text"><strong>Sellado al emitir, inalterable.</strong> La nota queda con una huella criptográfica verificable. Cualquiera puede confirmar que no se modificó.</span>
+          <span class="diff-item-text"><strong>Sellado al momento de guardar.</strong> La nota queda con una huella de verificación. Cualquiera puede confirmar que no fue modificada después.</span>
         </div>
         <div class="diff-item diff-item--good">
           <span class="diff-item-icon">✓</span>
-          <span class="diff-item-text"><strong>Prueba legal real.</strong> El expediente defiende al médico ante COFEPRIS y en juicio. La integridad del registro es la defensa.</span>
+          <span class="diff-item-text"><strong>Prueba legal real.</strong> Si hay una demanda por mala praxis o una revisión de COFEPRIS, el expediente demuestra exactamente lo que el médico registró y cuándo.</span>
         </div>
         <div class="diff-item diff-item--good">
           <span class="diff-item-icon">✓</span>
-          <span class="diff-item-text"><strong>Portable por elección del médico.</strong> Exporta en IPS/FHIR R4. El paciente puede llevar su expediente a cualquier médico que use el estándar.</span>
+          <span class="diff-item-text"><strong>El paciente se lleva su historial.</strong> El médico puede exportarlo para que el paciente lo lleve a otra consulta o institución. Sin intermediarios.</span>
         </div>
         <div class="diff-item diff-item--good">
           <span class="diff-item-icon">✓</span>
-          <span class="diff-item-text"><strong>Conectado al sistema nacional.</strong> Habla el mismo estándar que NOM-024 exige. Cuando el gobierno active la plataforma, VUHMÍK ya está listo.</span>
+          <span class="diff-item-text"><strong>Compatible con el sistema nacional desde hoy.</strong> Cuando el gobierno conecte el expediente nacional, los médicos de VUHMÍK ya cumplen el estándar requerido.</span>
         </div>
       </div>
     </div>
@@ -1046,51 +1073,51 @@ footer {
       </div>
       <div class="modulo-card active">
         <div class="modulo-icon">👥</div>
-        <div class="modulo-name">Pacientes (CRM)</div>
-        <div class="modulo-desc">Expediente completo por paciente. NOM-004 cumplida.</div>
+        <div class="modulo-name">Expediente de pacientes</div>
+        <div class="modulo-desc">Historial completo por paciente. Cumple la norma oficial NOM-004.</div>
         <div class="modulo-status modulo-status--live">● Disponible</div>
       </div>
       <div class="modulo-card active">
         <div class="modulo-icon">💊</div>
         <div class="modulo-name">Receta electrónica</div>
-        <div class="modulo-desc">Receta válida bajo NOM-024 + LGS. Cédula profesional incluida.</div>
+        <div class="modulo-desc">Receta con validez legal. Incluye cédula profesional y datos del médico.</div>
         <div class="modulo-status modulo-status--live">● Disponible</div>
       </div>
       <div class="modulo-card active">
         <div class="modulo-icon">⚠️</div>
         <div class="modulo-name">Alergias</div>
-        <div class="modulo-desc">Registro de alergias e intolerancias. Alertas en consulta.</div>
+        <div class="modulo-desc">Registro de alergias e intolerancias del paciente. Visible en cada consulta.</div>
         <div class="modulo-status modulo-status--live">● Disponible</div>
       </div>
       <div class="modulo-card active">
         <div class="modulo-icon">🔬</div>
-        <div class="modulo-name">Diagnósticos CIE-10</div>
-        <div class="modulo-desc">Catálogo CIE-10 completo. Diagnósticos sellados por consulta.</div>
+        <div class="modulo-name">Diagnósticos</div>
+        <div class="modulo-desc">Catálogo de enfermedades reconocido internacionalmente. Sellado por consulta.</div>
         <div class="modulo-status modulo-status--live">● Disponible</div>
       </div>
       <div class="modulo-card active">
         <div class="modulo-icon">🧪</div>
-        <div class="modulo-name">Laboratorio</div>
-        <div class="modulo-desc">Resultados de estudios. Parte del IPS exportable.</div>
+        <div class="modulo-name">Resultados de laboratorio</div>
+        <div class="modulo-desc">Adjunta y comparte resultados de estudios directamente en el expediente.</div>
         <div class="modulo-status modulo-status--live">● Disponible</div>
       </div>
       <div class="modulo-card active">
         <div class="modulo-icon">📅</div>
-        <div class="modulo-name">Citas</div>
-        <div class="modulo-desc">Agenda con vínculo directo a la consulta del paciente.</div>
+        <div class="modulo-name">Agenda de citas</div>
+        <div class="modulo-desc">Programa citas y ábrelas directamente como consulta del paciente.</div>
         <div class="modulo-status modulo-status--live">● Disponible</div>
       </div>
       <div class="modulo-card">
         <div class="modulo-icon">🌐</div>
-        <div class="modulo-name">Export IPS/FHIR</div>
-        <div class="modulo-desc">Portabilidad del expediente en estándar internacional.</div>
+        <div class="modulo-name">Exportar expediente</div>
+        <div class="modulo-desc">Comparte el historial del paciente con otro médico o institución de salud.</div>
         <div class="modulo-status modulo-status--live">● Disponible</div>
       </div>
       <div class="modulo-card">
         <div class="modulo-icon">💉</div>
-        <div class="modulo-name">Vacunación</div>
-        <div class="modulo-desc">Registro de inmunizaciones. Sección obligatoria del IPS.</div>
-        <div class="modulo-status modulo-status--soon">◐ En roadmap</div>
+        <div class="modulo-name">Historial de vacunas</div>
+        <div class="modulo-desc">Registro de inmunizaciones del paciente a lo largo del tiempo.</div>
+        <div class="modulo-status modulo-status--soon">◐ Próximamente</div>
       </div>
     </div>
   </div>
@@ -1100,14 +1127,17 @@ footer {
 <section class="section-pricing">
   <div class="container">
     <div class="pricing-inner">
-      <span class="eyebrow">Precio de referencia</span>
+      <span class="eyebrow">Precio</span>
+      <div class="pricing-badge">Precio de apertura — plazas limitadas</div>
       <div class="pricing-num">
         <span class="pricing-currency">MXN</span>
-        183
+        600
         <span class="pricing-period">/ mes</span>
       </div>
-      <p class="pricing-sub">Referencia de mercado de los competidores directos en México. VUHMÍK se ubica en ese rango como base — con los módulos avanzados sumando a la cuota. El médico activa solo lo que usa.</p>
-      <p class="pricing-note">El precio final se define en el acceso anticipado. Estructura: módulo base + módulos activados.</p>
+      <p class="pricing-original">Precio regular: $1,000 MXN al mes</p>
+      <p class="pricing-savings">Ahorras $400 al mes · $4,800 al año</p>
+      <p class="pricing-sub">Acceso completo a todos los módulos disponibles. El precio de apertura es para los primeros médicos que se registren — se mantiene fijo mientras la suscripción esté activa. Sin contratos, sin permanencia mínima.</p>
+      <p class="pricing-note">Precio de apertura disponible para quienes se registren antes del lanzamiento general.</p>
     </div>
   </div>
 </section>
@@ -1140,8 +1170,8 @@ footer {
     <div class="footer-brand">VUHMÍK</div>
     <div class="footer-meta">
       NDT — Next Dev Tech · México<br>
-      NOM-024-SSA3-2012 · NOM-004-SSA3-2012 · IPS/FHIR R4<br>
-      Certificación CENETEC en roadmap.
+      Cumple normas oficiales NOM-024 y NOM-004 · Compatible con sistema nacional de salud<br>
+      Certificación CENETEC en proceso.
     </div>
     <div class="footer-links">
       <a href="#">Aviso de privacidad</a>
