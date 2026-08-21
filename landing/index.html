@@ -1,0 +1,1195 @@
+<title>VUHMÍK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* ── TOKENS — dark-first ───────────────────────────────────────────────────── */
+:root {
+  --c-ground:      #090C10;
+  --c-ground-2:    #111720;
+  --c-ground-3:    #1A2030;
+  --c-surface:     #141B26;
+  --c-border:      rgba(255,255,255,0.08);
+  --c-border-s:    rgba(255,255,255,0.14);
+  --c-text:        #E8EDF5;
+  --c-text-2:      #8A9AB5;
+  --c-text-3:      #4A5A72;
+  --c-turquoise:   #00C8D4;
+  --c-turquoise-d: #009EA8;
+  --c-jade:        #00B885;
+  --c-jade-d:      #009A6E;
+  --c-warn:        #FFB020;
+  --c-error:       #FF4D6D;
+  --f-brand:       "Sora", system-ui, sans-serif;
+  --f-body:        "Inter", system-ui, sans-serif;
+  --f-mono:        "JetBrains Mono", "Fira Mono", monospace;
+  --r:             6px;
+  --r-lg:          12px;
+}
+
+:root:not([data-theme="dark"]) {
+  @media (prefers-color-scheme: light) {
+    --c-ground:      #F8FAFB;
+    --c-ground-2:    #ECEEF2;
+    --c-ground-3:    #E2E6EC;
+    --c-surface:     #FFFFFF;
+    --c-border:      rgba(0,0,0,0.08);
+    --c-border-s:    rgba(0,0,0,0.14);
+    --c-text:        #1A1F2E;
+    --c-text-2:      #64748B;
+    --c-text-3:      #A0AABB;
+    --c-turquoise:   #009EA8;
+    --c-turquoise-d: #007880;
+    --c-jade:        #009A6E;
+    --c-jade-d:      #007A58;
+  }
+}
+:root[data-theme="light"] {
+  --c-ground:      #F8FAFB;
+  --c-ground-2:    #ECEEF2;
+  --c-ground-3:    #E2E6EC;
+  --c-surface:     #FFFFFF;
+  --c-border:      rgba(0,0,0,0.08);
+  --c-border-s:    rgba(0,0,0,0.14);
+  --c-text:        #1A1F2E;
+  --c-text-2:      #64748B;
+  --c-text-3:      #A0AABB;
+  --c-turquoise:   #009EA8;
+  --c-turquoise-d: #007880;
+  --c-jade:        #009A6E;
+  --c-jade-d:      #007A58;
+}
+
+/* ── RESET ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--f-body);
+  background: var(--c-ground);
+  color: var(--c-text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; }
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+
+/* ── UTILITIES ──────────────────────────────────────────────────────────────── */
+.container { max-width: 1160px; margin: 0 auto; padding: 0 32px; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-turquoise);
+}
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--f-brand);
+  font-size: 15px; font-weight: 700;
+  background: var(--c-turquoise);
+  color: #090C10;
+  padding: 14px 28px;
+  border-radius: var(--r);
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.btn-primary:hover { background: #1DD5E0; transform: translateY(-1px); }
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--f-brand);
+  font-size: 14px; font-weight: 600;
+  color: var(--c-text);
+  border: 1.5px solid var(--c-border-s);
+  padding: 10px 20px;
+  border-radius: var(--r);
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-ghost:hover { border-color: var(--c-turquoise); color: var(--c-turquoise); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+}
+
+/* ── NAV ────────────────────────────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(9,12,16,0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--c-border);
+}
+.nav-inner {
+  max-width: 1160px; margin: 0 auto; padding: 0 32px;
+  height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.brand {
+  font-family: var(--f-brand);
+  font-size: 20px; font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--c-text);
+}
+.brand span { color: var(--c-turquoise); }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.theme-toggle {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-border-s);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  color: var(--c-text-2);
+  transition: border-color 0.15s, color 0.15s;
+}
+.theme-toggle:hover { border-color: var(--c-turquoise); color: var(--c-turquoise); }
+
+/* ── HERO ───────────────────────────────────────────────────────────────────── */
+.hero {
+  min-height: 100vh;
+  display: flex; align-items: center;
+  padding: 100px 0 80px;
+  background: var(--c-ground);
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; top: -200px; right: -100px;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(0,200,212,0.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+.hero-inner {
+  max-width: 1160px; margin: 0 auto; padding: 0 32px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+.hero-eyebrow { margin-bottom: 24px; }
+.hero h1 {
+  font-family: var(--f-brand);
+  font-size: clamp(42px, 5vw, 68px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  color: var(--c-text);
+  margin-bottom: 28px;
+}
+.hero h1 .accent { color: var(--c-turquoise); display: block; }
+.hero-sub {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--c-text-2);
+  max-width: 460px;
+  margin-bottom: 36px;
+}
+.hero-cta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 40px; }
+.hero-noms {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.nom-tag {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--c-text-3);
+  border: 1px solid var(--c-border);
+  padding: 3px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+}
+
+/* Demo card */
+.demo-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-s);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,200,212,0.06);
+}
+.demo-topbar {
+  background: #090C10;
+  padding: 12px 20px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.demo-dots { display: flex; gap: 6px; }
+.demo-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+.demo-dot:nth-child(1) { background: #FF5F57; }
+.demo-dot:nth-child(2) { background: #FEBC2E; }
+.demo-dot:nth-child(3) { background: #28C840; }
+.demo-topbar-title {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  flex: 1; text-align: center;
+}
+.demo-body-wrap { padding: 24px; display: flex; flex-direction: column; gap: 0; }
+.demo-section-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-text-3);
+  margin-bottom: 12px;
+}
+.demo-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+  gap: 16px;
+}
+.demo-row:last-of-type { border-bottom: none; }
+.demo-key {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--c-text-3);
+  flex-shrink: 0;
+  min-width: 80px;
+}
+.demo-val {
+  font-family: var(--f-body);
+  font-size: 13px;
+  color: var(--c-text);
+  text-align: right;
+}
+.demo-nota {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--c-text-2);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--c-border);
+  overflow: hidden;
+}
+.demo-nota .typing {
+  border-right: 2px solid var(--c-turquoise);
+  animation: blink 0.8s step-end infinite;
+}
+.demo-seal {
+  margin-top: 16px;
+  background: rgba(0,184,133,0.08);
+  border: 1px solid rgba(0,184,133,0.25);
+  border-radius: var(--r);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  animation: seal-in 0.6s 1.8s both cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.seal-check {
+  width: 28px; height: 28px;
+  background: var(--c-jade);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #090C10;
+  font-weight: 700;
+}
+.seal-info { flex: 1; min-width: 0; }
+.seal-label {
+  font-family: var(--f-brand);
+  font-size: 12px; font-weight: 700;
+  color: var(--c-jade);
+  display: block;
+}
+.seal-hash {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--c-text-3);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.seal-ts {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--c-text-3);
+  flex-shrink: 0;
+}
+
+@keyframes blink { 50% { border-color: transparent; } }
+@keyframes seal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── STATS BAR ──────────────────────────────────────────────────────────────── */
+.stats-bar {
+  background: var(--c-ground-2);
+  border-top: 1px solid var(--c-border);
+  border-bottom: 1px solid var(--c-border);
+  padding: 32px 0;
+}
+.stats-inner {
+  max-width: 1160px; margin: 0 auto; padding: 0 32px;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+.stat-item {
+  padding: 0 40px;
+  border-right: 1px solid var(--c-border);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.stat-item:first-child { padding-left: 0; }
+.stat-item:last-child { border-right: none; }
+.stat-num {
+  font-family: var(--f-brand);
+  font-size: 40px; font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--c-turquoise);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 13px;
+  color: var(--c-text-2);
+  line-height: 1.4;
+}
+.stat-src {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--c-text-3);
+  letter-spacing: 0.06em;
+}
+
+/* ── PROBLEMA ───────────────────────────────────────────────────────────────── */
+.section-problema {
+  padding: 100px 0;
+  background: var(--c-ground);
+}
+.section-problema .container { max-width: 1160px; margin: 0 auto; padding: 0 32px; }
+.problema-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 80px;
+  align-items: start;
+}
+.problema-left h2 {
+  font-family: var(--f-brand);
+  font-size: clamp(30px, 3vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-wrap: balance;
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+.problema-left p {
+  font-size: 15px;
+  color: var(--c-text-2);
+  line-height: 1.75;
+}
+.problema-right {
+  display: flex; flex-direction: column; gap: 0;
+}
+.problema-fact {
+  padding: 28px 0;
+  border-bottom: 1px solid var(--c-border);
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.problema-fact:last-child { border-bottom: none; }
+.fact-num {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--c-text-3);
+  padding-top: 3px;
+}
+.fact-text {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--c-text-2);
+}
+.fact-text strong { color: var(--c-text); font-weight: 600; }
+
+/* ── SOLUCIÓN ───────────────────────────────────────────────────────────────── */
+.section-solucion {
+  padding: 100px 0;
+  background: var(--c-ground-2);
+  border-top: 1px solid var(--c-border);
+}
+.section-header { text-align: center; margin-bottom: 64px; }
+.section-header h2 {
+  font-family: var(--f-brand);
+  font-size: clamp(28px, 3vw, 42px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  margin-top: 12px;
+  margin-bottom: 16px;
+}
+.section-header p {
+  font-size: 16px;
+  color: var(--c-text-2);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+.feature-card {
+  background: var(--c-surface);
+  padding: 40px 36px;
+  display: flex; flex-direction: column; gap: 16px;
+  border: 1px solid var(--c-border);
+  transition: border-color 0.2s;
+}
+.feature-card:first-child { border-radius: var(--r-lg) 0 0 var(--r-lg); }
+.feature-card:last-child  { border-radius: 0 var(--r-lg) var(--r-lg) 0; }
+.feature-card:hover { border-color: var(--c-turquoise); }
+.feature-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.feature-icon--seal  { background: rgba(0,184,133,0.12); }
+.feature-icon--fluid { background: rgba(0,200,212,0.10); }
+.feature-icon--port  { background: rgba(30,111,168,0.12); }
+.feature-card h3 {
+  font-family: var(--f-brand);
+  font-size: 19px; font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--c-text);
+}
+.feature-card p {
+  font-size: 14px;
+  color: var(--c-text-2);
+  line-height: 1.7;
+}
+.feature-tag {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--c-turquoise);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* ── CÓMO FUNCIONA ─────────────────────────────────────────────────────────── */
+.section-como {
+  padding: 100px 0;
+  background: var(--c-ground);
+  border-top: 1px solid var(--c-border);
+}
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-top: 64px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.step {
+  padding: 48px 40px;
+  border-right: 1px solid var(--c-border);
+  position: relative;
+  background: var(--c-surface);
+}
+.step:last-child { border-right: none; }
+.step-arrow {
+  position: absolute; top: 50%; right: -14px;
+  transform: translateY(-50%);
+  width: 28px; height: 28px;
+  background: var(--c-ground);
+  border: 1px solid var(--c-border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  color: var(--c-text-3);
+  z-index: 2;
+}
+.step:last-child .step-arrow { display: none; }
+.step-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--c-turquoise);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.step h3 {
+  font-family: var(--f-brand);
+  font-size: 22px; font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+  color: var(--c-text);
+}
+.step p { font-size: 14px; color: var(--c-text-2); line-height: 1.7; }
+.step-hash {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--c-text-3);
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--c-border);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── DIFERENCIADOR ──────────────────────────────────────────────────────────── */
+.section-diff {
+  padding: 100px 0;
+  background: var(--c-ground-2);
+  border-top: 1px solid var(--c-border);
+}
+.diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+}
+.diff-col {
+  padding: 48px 40px;
+  background: var(--c-surface);
+}
+.diff-col--them { opacity: 0.75; }
+.diff-col--us   { border-left: 2px solid var(--c-turquoise); }
+.diff-col-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--c-border);
+}
+.diff-col-label {
+  font-family: var(--f-brand);
+  font-size: 16px; font-weight: 700;
+  color: var(--c-text);
+}
+.diff-badge {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+.diff-badge--them { background: rgba(255,255,255,0.06); color: var(--c-text-3); }
+.diff-badge--us   { background: rgba(0,200,212,0.12); color: var(--c-turquoise); }
+.diff-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.diff-item:last-child { border-bottom: none; }
+.diff-item-icon { font-size: 13px; flex-shrink: 0; margin-top: 2px; }
+.diff-item-text { color: var(--c-text-2); }
+.diff-item-text strong { color: var(--c-text); font-weight: 600; }
+.diff-item--bad  .diff-item-text { color: var(--c-text-3); }
+.diff-item--bad  .diff-item-icon { color: var(--c-text-3); }
+.diff-item--good .diff-item-icon { color: var(--c-jade); }
+
+/* ── MÓDULOS ────────────────────────────────────────────────────────────────── */
+.section-modulos {
+  padding: 100px 0;
+  background: var(--c-ground);
+  border-top: 1px solid var(--c-border);
+}
+.modulos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 56px;
+}
+.modulo-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r);
+  padding: 24px 20px;
+  display: flex; flex-direction: column; gap: 8px;
+  transition: border-color 0.15s;
+}
+.modulo-card:hover { border-color: var(--c-border-s); }
+.modulo-card.active { border-color: rgba(0,200,212,0.3); }
+.modulo-icon { font-size: 20px; }
+.modulo-name {
+  font-family: var(--f-brand);
+  font-size: 14px; font-weight: 700;
+  color: var(--c-text);
+}
+.modulo-desc { font-size: 12px; color: var(--c-text-2); line-height: 1.5; }
+.modulo-status {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  margin-top: 4px;
+}
+.modulo-status--live { color: var(--c-jade); }
+.modulo-status--soon { color: var(--c-warn); }
+
+/* ── PRICING ────────────────────────────────────────────────────────────────── */
+.section-pricing {
+  padding: 80px 0;
+  background: var(--c-ground-2);
+  border-top: 1px solid var(--c-border);
+}
+.pricing-inner { text-align: center; max-width: 680px; margin: 0 auto; }
+.pricing-inner .eyebrow { display: block; margin-bottom: 16px; }
+.pricing-num {
+  font-family: var(--f-brand);
+  font-size: clamp(52px, 7vw, 84px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  display: flex; align-items: baseline; justify-content: center; gap: 8px;
+}
+.pricing-currency {
+  font-size: 0.36em;
+  color: var(--c-text-2);
+  font-weight: 400;
+}
+.pricing-period {
+  font-size: 0.22em;
+  color: var(--c-text-3);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.pricing-sub {
+  font-size: 15px;
+  color: var(--c-text-2);
+  margin-top: 20px;
+  line-height: 1.7;
+}
+.pricing-note {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--c-text-3);
+  margin-top: 12px;
+}
+
+/* ── CTA ────────────────────────────────────────────────────────────────────── */
+.section-cta {
+  padding: 100px 0;
+  background: var(--c-ground);
+  border-top: 1px solid var(--c-border);
+  position: relative;
+  overflow: hidden;
+}
+.section-cta::before {
+  content: '';
+  position: absolute; bottom: -200px; left: 50%; transform: translateX(-50%);
+  width: 800px; height: 500px;
+  background: radial-gradient(ellipse, rgba(0,200,212,0.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+.cta-inner { text-align: center; max-width: 600px; margin: 0 auto; }
+.cta-inner .eyebrow { display: block; margin-bottom: 20px; }
+.cta-inner h2 {
+  font-family: var(--f-brand);
+  font-size: clamp(30px, 3.5vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  margin-bottom: 20px;
+}
+.cta-inner p { font-size: 16px; color: var(--c-text-2); line-height: 1.7; margin-bottom: 40px; }
+.cta-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto; }
+.cta-input {
+  flex: 1;
+  font-family: var(--f-body);
+  font-size: 15px;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border-s);
+  color: var(--c-text);
+  padding: 13px 18px;
+  border-radius: var(--r);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cta-input::placeholder { color: var(--c-text-3); }
+.cta-input:focus { border-color: var(--c-turquoise); }
+.cta-legal {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--c-text-3);
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* ── FOOTER ─────────────────────────────────────────────────────────────────── */
+footer {
+  background: #070A0E;
+  border-top: 1px solid var(--c-border);
+  padding: 48px 0;
+}
+.footer-inner {
+  max-width: 1160px; margin: 0 auto; padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 24px;
+}
+.footer-brand {
+  font-family: var(--f-brand);
+  font-size: 16px; font-weight: 800;
+  color: rgba(255,255,255,0.6);
+}
+.footer-meta {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: rgba(255,255,255,0.2);
+  line-height: 1.8;
+}
+.footer-links { display: flex; gap: 24px; }
+.footer-links a {
+  font-size: 13px;
+  color: rgba(255,255,255,0.35);
+  transition: color 0.15s;
+}
+.footer-links a:hover { color: var(--c-turquoise); }
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero-inner { grid-template-columns: 1fr; gap: 48px; }
+  .hero-demo { order: -1; }
+  .stats-inner { grid-template-columns: 1fr; gap: 24px; }
+  .stat-item { border-right: none; border-bottom: 1px solid var(--c-border); padding: 0 0 24px; }
+  .stat-item:last-child { border-bottom: none; }
+  .problema-grid { grid-template-columns: 1fr; gap: 48px; }
+  .features-grid { grid-template-columns: 1fr; gap: 2px; }
+  .feature-card:first-child { border-radius: var(--r-lg) var(--r-lg) 0 0; }
+  .feature-card:last-child  { border-radius: 0 0 var(--r-lg) var(--r-lg); }
+  .steps { grid-template-columns: 1fr; }
+  .step { border-right: none; border-bottom: 1px solid var(--c-border); }
+  .step:last-child { border-bottom: none; }
+  .step-arrow { display: none; }
+  .diff-grid { grid-template-columns: 1fr; }
+  .diff-col--us { border-left: none; border-top: 2px solid var(--c-turquoise); }
+  .cta-form { flex-direction: column; }
+  .footer-inner { flex-direction: column; text-align: center; }
+}
+</style>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div class="brand">VUHMÍK</div>
+    <div class="nav-right">
+      <button class="theme-toggle" id="themeBtn" aria-label="Cambiar tema">☀</button>
+      <a href="#acceso" class="btn-primary">Solicitar acceso</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <p class="eyebrow hero-eyebrow">Expediente Clínico Electrónico · México 2026</p>
+      <h1>El expediente<br>que no se puede<span class="accent">alterar.</span></h1>
+      <p class="hero-sub">El decreto de enero 2026 obliga a todo médico privado a llevar ECE. El gobierno construyó el sistema solo para el sector público. VUHMÍK es para el médico independiente.</p>
+      <div class="hero-cta">
+        <a href="#acceso" class="btn-primary">Solicitar acceso anticipado →</a>
+        <a href="#como-funciona" class="btn-ghost">Ver cómo funciona</a>
+      </div>
+      <div class="hero-noms">
+        <span class="nom-tag">NOM-024-SSA3-2012</span>
+        <span class="nom-tag">NOM-004-SSA3-2012</span>
+        <span class="nom-tag">IPS / FHIR R4</span>
+        <span class="nom-tag">Multi-tenant</span>
+      </div>
+    </div>
+
+    <div class="hero-demo">
+      <div class="demo-card">
+        <div class="demo-topbar">
+          <div class="demo-dots">
+            <div class="demo-dot"></div>
+            <div class="demo-dot"></div>
+            <div class="demo-dot"></div>
+          </div>
+          <span class="demo-topbar-title">vuhmik · consulta · nueva</span>
+        </div>
+        <div class="demo-body-wrap">
+          <div class="demo-section-label">Nota de consulta</div>
+          <div class="demo-row">
+            <span class="demo-key">Paciente</span>
+            <span class="demo-val">Mayte Rodríguez · 34 años</span>
+          </div>
+          <div class="demo-row">
+            <span class="demo-key">Fecha</span>
+            <span class="demo-val">21 ago 2026 · 10:32 a.m.</span>
+          </div>
+          <div class="demo-nota">
+            Paciente femenino de 34 años que acude por cefalea frontal de 3 días de evolución, de intensidad 7/10, sin fiebre ni rigidez de nuca.<span class="typing">&nbsp;</span>
+          </div>
+          <div class="demo-row">
+            <span class="demo-key">T/A</span>
+            <span class="demo-val">118/76 mmHg</span>
+          </div>
+          <div class="demo-row">
+            <span class="demo-key">FC</span>
+            <span class="demo-val">68 lpm</span>
+          </div>
+          <div class="demo-row">
+            <span class="demo-key">Temp</span>
+            <span class="demo-val">36.5°C</span>
+          </div>
+          <div class="demo-seal">
+            <div class="seal-check">✓</div>
+            <div class="seal-info">
+              <span class="seal-label">Sellada e inalterable</span>
+              <span class="seal-hash">sha256:a3f2c1d8e4b7f09c2a81d5e63f4b2c90d7e1a5f8b3c6d4e2</span>
+            </div>
+            <span class="seal-ts">10:32:47</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stats-inner container">
+    <div class="stat-item">
+      <div class="stat-num">71%</div>
+      <div class="stat-label">de los hospitales en México son privados — obligados por ley, sin sistema del Estado</div>
+      <div class="stat-src">INEGI · DENUE 2026</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">2027</div>
+      <div class="stat-label">fecha límite para cumplir el decreto de digitalización de expedientes clínicos</div>
+      <div class="stat-src">Decreto ENE 2026 · DOF</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">642</div>
+      <div class="stat-label">startups healthtech operando en México en el primer semestre de 2026</div>
+      <div class="stat-src">Análisis de mercado VUHMÍK · 2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEMA -->
+<section class="section-problema">
+  <div class="container">
+    <div class="problema-grid">
+      <div class="problema-left">
+        <p class="eyebrow">El problema</p>
+        <h2>La ley obligó a digitalizar, pero dejó solo al médico privado.</h2>
+        <p>El gobierno construyó el ECE para el IMSS, el ISSSTE y el IMSS-Bienestar. El médico privado independiente tiene que comprarlo. Y lo que existe en el mercado no protege al médico cuando más lo necesita.</p>
+      </div>
+      <div class="problema-right">
+        <div class="problema-fact">
+          <span class="fact-num">01</span>
+          <p class="fact-text">El decreto de enero 2026 y la NOM-024 hacen <strong>obligatorio el expediente clínico electrónico</strong> para todo médico, con implementación hasta 2027. No es opcional.</p>
+        </div>
+        <div class="problema-fact">
+          <span class="fact-num">02</span>
+          <p class="fact-text">El sistema nacional se construyó solo para el sector público. El médico privado — <strong>71% de los hospitales del país</strong> — queda obligado a cumplir pero sin un sistema del Estado.</p>
+        </div>
+        <div class="problema-fact">
+          <span class="fact-num">03</span>
+          <p class="fact-text">Lo que existe en el mercado son <strong>formularios digitales editables</strong>: se pueden alterar después de la consulta. No son prueba legal ante COFEPRIS ni ante una demanda por mala praxis.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUCIÓN -->
+<section class="section-solucion">
+  <div class="container">
+    <div class="section-header">
+      <p class="eyebrow">La solución</p>
+      <h2>Tres cosas que el médico hoy no puede tener juntas.</h2>
+      <p>VUHMÍK las pone en un solo sistema, construido desde el principio para el médico independiente en México.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon feature-icon--seal">🔒</div>
+        <h3>Sellado e inalterable</h3>
+        <p>Cada nota queda con una huella verificable al momento de emitirse. Imposible de modificar en secreto. Prueba legal ante COFEPRIS y ante una demanda.</p>
+        <div class="feature-tag">Core append-only · sha-256</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon feature-icon--fluid">✏️</div>
+        <h3>Experiencia fluida</h3>
+        <p>El médico siente que trabaja libremente. Borradores editables hasta emitir. La integridad se preserva por debajo sin interrumpir el flujo clínico.</p>
+        <div class="feature-tag">ADR-0006 · UX sin fricción</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon feature-icon--port">🔗</div>
+        <h3>Portable e interoperable</h3>
+        <p>Exporta y comparte el expediente con otro médico en IPS/FHIR R4, el estándar internacional que usa el sistema nacional de salud de México.</p>
+        <div class="feature-tag">IPS · FHIR R4 · NOM-024</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CÓMO FUNCIONA -->
+<section class="section-como" id="como-funciona">
+  <div class="container">
+    <div class="section-header">
+      <p class="eyebrow">Cómo funciona</p>
+      <h2>Registrar. Sellar. Compartir.</h2>
+      <p>Tres pasos que resumen todo lo que pasa cuando el médico usa VUHMÍK.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-arrow">→</div>
+        <div class="step-label">Paso 1</div>
+        <h3>El médico registra</h3>
+        <p>Nota de consulta, signos vitales, diagnóstico, receta. La interfaz es fluida: borradores editables mientras no se emite. Sin campos obligatorios que interrumpan el flujo.</p>
+        <span class="step-hash">estado: draft · editable</span>
+      </div>
+      <div class="step">
+        <div class="step-arrow">→</div>
+        <div class="step-label">Paso 2</div>
+        <h3>El sistema sella</h3>
+        <p>Al emitir, el registro queda inmutable. El sistema calcula su huella criptográfica: cualquiera puede verificar que no se alteró después. Es prueba legal.</p>
+        <span class="step-hash">sha256:a3f2c1d8e4b7f09c…</span>
+      </div>
+      <div class="step">
+        <div class="step-label">Paso 3</div>
+        <h3>El médico comparte</h3>
+        <p>Exporta en IPS/FHIR R4 para compartir con otro médico o institución. El mismo estándar que usa el sistema nacional — sin encerramiento en un ecosistema cerrado.</p>
+        <span class="step-hash">formato: IPS · FHIR R4 · JSON/XML</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DIFERENCIADOR -->
+<section class="section-diff">
+  <div class="container">
+    <div class="section-header">
+      <p class="eyebrow">El diferenciador</p>
+      <h2>Editable vs. sellado.</h2>
+      <p>No competimos de frente por funciones. La cuña es la integridad del registro.</p>
+    </div>
+    <div class="diff-grid">
+      <div class="diff-col diff-col--them">
+        <div class="diff-col-header">
+          <span class="diff-col-label">Formulario digital</span>
+          <span class="diff-badge diff-badge--them">Lo que existe</span>
+        </div>
+        <div class="diff-item diff-item--bad">
+          <span class="diff-item-icon">✗</span>
+          <span class="diff-item-text"><strong>Editable en cualquier momento.</strong> El médico — o alguien más — puede cambiar la nota después de la consulta sin dejar rastro.</span>
+        </div>
+        <div class="diff-item diff-item--bad">
+          <span class="diff-item-icon">✗</span>
+          <span class="diff-item-text"><strong>No es prueba legal.</strong> Un expediente alterable no defiende al médico ante COFEPRIS ni ante una demanda por mala praxis.</span>
+        </div>
+        <div class="diff-item diff-item--bad">
+          <span class="diff-item-icon">✗</span>
+          <span class="diff-item-text"><strong>Aislado.</strong> No se puede compartir con otro médico en un estándar que otros sistemas lean. El paciente queda atrapado.</span>
+        </div>
+        <div class="diff-item diff-item--bad">
+          <span class="diff-item-icon">✗</span>
+          <span class="diff-item-text"><strong>Sin conexión con el sistema nacional.</strong> No habla IPS ni FHIR; cuando el gobierno exija interoperabilidad, el médico tendrá que migrar.</span>
+        </div>
+      </div>
+      <div class="diff-col diff-col--us">
+        <div class="diff-col-header">
+          <span class="diff-col-label">VUHMÍK</span>
+          <span class="diff-badge diff-badge--us">Expediente sellado</span>
+        </div>
+        <div class="diff-item diff-item--good">
+          <span class="diff-item-icon">✓</span>
+          <span class="diff-item-text"><strong>Sellado al emitir, inalterable.</strong> La nota queda con una huella criptográfica verificable. Cualquiera puede confirmar que no se modificó.</span>
+        </div>
+        <div class="diff-item diff-item--good">
+          <span class="diff-item-icon">✓</span>
+          <span class="diff-item-text"><strong>Prueba legal real.</strong> El expediente defiende al médico ante COFEPRIS y en juicio. La integridad del registro es la defensa.</span>
+        </div>
+        <div class="diff-item diff-item--good">
+          <span class="diff-item-icon">✓</span>
+          <span class="diff-item-text"><strong>Portable por elección del médico.</strong> Exporta en IPS/FHIR R4. El paciente puede llevar su expediente a cualquier médico que use el estándar.</span>
+        </div>
+        <div class="diff-item diff-item--good">
+          <span class="diff-item-icon">✓</span>
+          <span class="diff-item-text"><strong>Conectado al sistema nacional.</strong> Habla el mismo estándar que NOM-024 exige. Cuando el gobierno active la plataforma, VUHMÍK ya está listo.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MÓDULOS -->
+<section class="section-modulos">
+  <div class="container">
+    <div class="section-header">
+      <p class="eyebrow">Módulos</p>
+      <h2>Activa lo que necesitas.</h2>
+      <p>El médico paga por lo que usa. Cada módulo activado cumple un requerimiento de la NOM-024.</p>
+    </div>
+    <div class="modulos-grid">
+      <div class="modulo-card active">
+        <div class="modulo-icon">📋</div>
+        <div class="modulo-name">Notas clínicas</div>
+        <div class="modulo-desc">Consultas, signos vitales, historial sellado e inalterable.</div>
+        <div class="modulo-status modulo-status--live">● Disponible</div>
+      </div>
+      <div class="modulo-card active">
+        <div class="modulo-icon">👥</div>
+        <div class="modulo-name">Pacientes (CRM)</div>
+        <div class="modulo-desc">Expediente completo por paciente. NOM-004 cumplida.</div>
+        <div class="modulo-status modulo-status--live">● Disponible</div>
+      </div>
+      <div class="modulo-card active">
+        <div class="modulo-icon">💊</div>
+        <div class="modulo-name">Receta electrónica</div>
+        <div class="modulo-desc">Receta válida bajo NOM-024 + LGS. Cédula profesional incluida.</div>
+        <div class="modulo-status modulo-status--live">● Disponible</div>
+      </div>
+      <div class="modulo-card active">
+        <div class="modulo-icon">⚠️</div>
+        <div class="modulo-name">Alergias</div>
+        <div class="modulo-desc">Registro de alergias e intolerancias. Alertas en consulta.</div>
+        <div class="modulo-status modulo-status--live">● Disponible</div>
+      </div>
+      <div class="modulo-card active">
+        <div class="modulo-icon">🔬</div>
+        <div class="modulo-name">Diagnósticos CIE-10</div>
+        <div class="modulo-desc">Catálogo CIE-10 completo. Diagnósticos sellados por consulta.</div>
+        <div class="modulo-status modulo-status--live">● Disponible</div>
+      </div>
+      <div class="modulo-card active">
+        <div class="modulo-icon">🧪</div>
+        <div class="modulo-name">Laboratorio</div>
+        <div class="modulo-desc">Resultados de estudios. Parte del IPS exportable.</div>
+        <div class="modulo-status modulo-status--live">● Disponible</div>
+      </div>
+      <div class="modulo-card active">
+        <div class="modulo-icon">📅</div>
+        <div class="modulo-name">Citas</div>
+        <div class="modulo-desc">Agenda con vínculo directo a la consulta del paciente.</div>
+        <div class="modulo-status modulo-status--live">● Disponible</div>
+      </div>
+      <div class="modulo-card">
+        <div class="modulo-icon">🌐</div>
+        <div class="modulo-name">Export IPS/FHIR</div>
+        <div class="modulo-desc">Portabilidad del expediente en estándar internacional.</div>
+        <div class="modulo-status modulo-status--live">● Disponible</div>
+      </div>
+      <div class="modulo-card">
+        <div class="modulo-icon">💉</div>
+        <div class="modulo-name">Vacunación</div>
+        <div class="modulo-desc">Registro de inmunizaciones. Sección obligatoria del IPS.</div>
+        <div class="modulo-status modulo-status--soon">◐ En roadmap</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section-pricing">
+  <div class="container">
+    <div class="pricing-inner">
+      <span class="eyebrow">Precio de referencia</span>
+      <div class="pricing-num">
+        <span class="pricing-currency">MXN</span>
+        183
+        <span class="pricing-period">/ mes</span>
+      </div>
+      <p class="pricing-sub">Referencia de mercado de los competidores directos en México. VUHMÍK se ubica en ese rango como base — con los módulos avanzados sumando a la cuota. El médico activa solo lo que usa.</p>
+      <p class="pricing-note">El precio final se define en el acceso anticipado. Estructura: módulo base + módulos activados.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section-cta" id="acceso">
+  <div class="container">
+    <div class="cta-inner">
+      <span class="eyebrow">Acceso anticipado</span>
+      <h2>El expediente que protege al médico, y lo conecta.</h2>
+      <p>VUHMÍK está en desarrollo activo. Deja tu correo para acceso anticipado y ser de los primeros médicos en usarlo antes del lanzamiento general.</p>
+      <form class="cta-form" onsubmit="handleSubmit(event)">
+        <input
+          type="email"
+          class="cta-input"
+          placeholder="tu@correo.com"
+          required
+          id="emailInput"
+        />
+        <button type="submit" class="btn-primary">Solicitar acceso →</button>
+      </form>
+      <p class="cta-legal">Sin costo. Sin tarjeta. Solo te avisamos cuando esté listo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">VUHMÍK</div>
+    <div class="footer-meta">
+      NDT — Next Dev Tech · México<br>
+      NOM-024-SSA3-2012 · NOM-004-SSA3-2012 · IPS/FHIR R4<br>
+      Certificación CENETEC en roadmap.
+    </div>
+    <div class="footer-links">
+      <a href="#">Aviso de privacidad</a>
+      <a href="#">Términos</a>
+      <a href="mailto:hola@vuhmik.com">Contacto</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Theme toggle
+const btn = document.getElementById('themeBtn');
+let theme = localStorage.getItem('vuhmik-theme') || 'dark';
+
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  btn.textContent = t === 'dark' ? '☀' : '☾';
+  localStorage.setItem('vuhmik-theme', t);
+  theme = t;
+}
+
+applyTheme(theme);
+btn.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark'));
+
+// CTA form
+function handleSubmit(e) {
+  e.preventDefault();
+  const input = document.getElementById('emailInput');
+  const btn = e.target.querySelector('button');
+  btn.textContent = '✓ Registrado';
+  btn.style.background = '#00B885';
+  input.disabled = true;
+  btn.disabled = true;
+}
+
+// Scroll animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.animation = 'fade-up 0.5s ease both';
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.feature-card, .step, .modulo-card, .diff-col, .problema-fact')
+  .forEach(el => {
+    el.style.opacity = '0';
+    observer.observe(el);
+  });
+</script>
